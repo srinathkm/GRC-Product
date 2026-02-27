@@ -1,0 +1,41 @@
+.main-nav {
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  padding: 1rem 0;
+  min-width: 220px;
+}
+
+.main-nav-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.main-nav-list li {
+  margin: 0;
+}
+
+.main-nav-item {
+  display: block;
+  width: 100%;
+  padding: 0.6rem 1.25rem;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.main-nav-item:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+.main-nav-item.active {
+  background: var(--surface-hover);
+  color: var(--accent);
+  font-weight: 600;
+  border-left: 3px solid var(--accent);
+}

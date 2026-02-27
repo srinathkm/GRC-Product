@@ -1,0 +1,474 @@
+.data-sovereignty-section {
+  padding-bottom: 2rem;
+}
+
+.data-sovereignty-title {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.data-sovereignty-intro {
+  margin: 0 0 1.25rem 0;
+  font-size: 0.95rem;
+  color: var(--text-muted);
+  max-width: 72ch;
+}
+
+.data-sovereignty-parent-banner {
+  margin-bottom: 1rem;
+  padding: 0.6rem 0.9rem;
+  background: var(--surface-hover);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 0.95rem;
+  color: var(--text);
+}
+
+.data-sovereignty-parent-banner strong {
+  color: var(--accent);
+}
+
+.data-sovereignty-empty-prompt {
+  margin-top: 1rem;
+}
+
+.data-sovereignty-summary {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+@media (max-width: 640px) {
+  .data-sovereignty-summary {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.data-sovereignty-summary-card {
+  padding: 1rem;
+  border-radius: var(--radius);
+  text-align: center;
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: box-shadow 0.15s ease, transform 0.1s ease;
+  font: inherit;
+  color: inherit;
+  background: var(--surface);
+}
+
+.data-sovereignty-summary-card:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.data-sovereignty-summary-card.data-sovereignty-card-selected {
+  box-shadow: 0 0 0 2px var(--accent);
+  outline: none;
+}
+
+.data-sovereignty-critical.data-sovereignty-card-selected {
+  box-shadow: 0 0 0 2px #dc2626;
+}
+
+.data-sovereignty-medium.data-sovereignty-card-selected {
+  box-shadow: 0 0 0 2px #ca8a04;
+}
+
+.data-sovereignty-low.data-sovereignty-card-selected {
+  box-shadow: 0 0 0 2px #16a34a;
+}
+
+.data-sovereignty-met.data-sovereignty-card-selected {
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+.data-sovereignty-summary-value {
+  display: block;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.data-sovereignty-summary-label {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.data-sovereignty-critical {
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(239, 68, 68, 0.4);
+}
+
+.data-sovereignty-critical .data-sovereignty-summary-value {
+  color: #dc2626;
+}
+
+.data-sovereignty-medium {
+  background: rgba(234, 179, 8, 0.12);
+  border-color: rgba(234, 179, 8, 0.4);
+}
+
+.data-sovereignty-medium .data-sovereignty-summary-value {
+  color: #ca8a04;
+}
+
+.data-sovereignty-low {
+  background: rgba(34, 197, 94, 0.08);
+  border-color: rgba(34, 197, 94, 0.35);
+}
+
+.data-sovereignty-low .data-sovereignty-summary-value {
+  color: #16a34a;
+}
+
+.data-sovereignty-met {
+  background: rgba(59, 130, 246, 0.08);
+  border-color: var(--accent);
+}
+
+.data-sovereignty-met .data-sovereignty-summary-value {
+  color: var(--accent);
+}
+
+.data-sovereignty-filter {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.data-sovereignty-filter label {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.data-sovereignty-filter select {
+  padding: 0.4rem 0.6rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.9rem;
+  min-width: 140px;
+}
+
+.data-sovereignty-risks {
+  margin-bottom: 1.5rem;
+}
+
+.data-sovereignty-risks-title,
+.data-sovereignty-met-title {
+  margin: 0 0 0.75rem 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.data-sovereignty-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.data-sovereignty-item {
+  display: flex;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  border-left: 4px solid var(--border);
+}
+
+.data-sovereignty-item-severity {
+  flex-shrink: 0;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  align-self: flex-start;
+}
+
+.data-sovereignty-severity-critical {
+  border-left-color: #dc2626;
+  background: rgba(239, 68, 68, 0.06);
+}
+
+.data-sovereignty-severity-critical .data-sovereignty-item-severity {
+  background: rgba(239, 68, 68, 0.2);
+  color: #dc2626;
+}
+
+.data-sovereignty-severity-medium {
+  border-left-color: #ca8a04;
+  background: rgba(234, 179, 8, 0.06);
+}
+
+.data-sovereignty-severity-medium .data-sovereignty-item-severity {
+  background: rgba(234, 179, 8, 0.2);
+  color: #ca8a04;
+}
+
+.data-sovereignty-severity-low {
+  border-left-color: #16a34a;
+  background: rgba(34, 197, 94, 0.06);
+}
+
+.data-sovereignty-severity-low .data-sovereignty-item-severity {
+  background: rgba(34, 197, 94, 0.2);
+  color: #16a34a;
+}
+
+.data-sovereignty-item-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.data-sovereignty-item-name {
+  display: block;
+  font-size: 0.95rem;
+  color: var(--text);
+  margin-bottom: 0.25rem;
+}
+
+.data-sovereignty-item-regulation {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-bottom: 0.35rem;
+}
+
+.data-sovereignty-item-desc {
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.data-sovereignty-item-met {
+  border-left-color: var(--accent);
+  background: rgba(59, 130, 246, 0.04);
+}
+
+.data-sovereignty-met-section {
+  margin-top: 1rem;
+}
+
+.data-sovereignty-empty {
+  padding: 1.5rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-muted);
+  font-size: 0.95rem;
+}
+
+.data-sovereignty-loading {
+  padding: 1.5rem;
+  color: var(--text-muted);
+  font-size: 0.95rem;
+}
+
+/* OpCo cards: OpCo name + list of non-compliant sections */
+.data-sovereignty-opco-card {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--surface);
+}
+
+.data-sovereignty-opco-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.85rem 1.25rem;
+  background: var(--surface-hover);
+  border-bottom: 1px solid var(--border);
+}
+
+.data-sovereignty-opco-card .data-sovereignty-opco-name {
+  font-size: 1rem;
+  color: var(--text);
+}
+
+.data-sovereignty-opco-count {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.data-sovereignty-check-sublist {
+  list-style: none;
+  margin: 0;
+  padding: 0.5rem 0;
+}
+
+.data-sovereignty-check-sublist .data-sovereignty-item {
+  margin: 0 1rem 0.5rem;
+  border-radius: 6px;
+}
+
+.data-sovereignty-check-sublist .data-sovereignty-item:last-child {
+  margin-bottom: 0;
+}
+
+/* Met-only list: simple OpCo names */
+.data-sovereignty-opco-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.data-sovereignty-opco-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  border-left: 4px solid var(--accent);
+}
+
+.data-sovereignty-opco-item .data-sovereignty-opco-name {
+  font-size: 0.95rem;
+  color: var(--text);
+}
+
+.data-sovereignty-opco-badge {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.25rem 0.5rem;
+  background: rgba(34, 197, 94, 0.15);
+  color: #16a34a;
+  border-radius: 4px;
+}
+
+/* Data Classification & Inventory Visibility */
+.data-sovereignty-classification-section {
+  margin-top: 2.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border);
+}
+
+.data-sovereignty-classification-title {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.data-sovereignty-classification-intro {
+  margin: 0 0 1.25rem 0;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  max-width: 80ch;
+  line-height: 1.45;
+}
+
+.data-sovereignty-c-level-insight {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.25rem;
+  background: rgba(59, 130, 246, 0.08);
+  border: 1px solid rgba(59, 130, 246, 0.35);
+  border-radius: var(--radius);
+  border-left: 4px solid var(--accent);
+}
+
+.data-sovereignty-c-level-icon {
+  color: var(--accent);
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.data-sovereignty-c-level-text {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--text);
+  line-height: 1.5;
+}
+
+.data-sovereignty-c-level-text strong {
+  color: var(--accent);
+}
+
+.data-sovereignty-c-level-detail {
+  display: block;
+  margin-top: 0.35rem;
+  font-size: 0.88rem;
+  color: var(--text-muted);
+}
+
+.data-sovereignty-inventory-wrap {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: auto;
+}
+
+.data-sovereignty-inventory-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+
+.data-sovereignty-inventory-table th,
+.data-sovereignty-inventory-table td {
+  padding: 0.6rem 0.9rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+
+.data-sovereignty-inventory-table th {
+  background: var(--surface-hover);
+  font-weight: 600;
+  color: var(--text);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
+.data-sovereignty-inventory-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.data-sovereignty-inventory-table tbody tr:hover {
+  background: var(--surface-hover);
+}
+
+.data-sovereignty-inventory-table td {
+  color: var(--text);
+}
+
+.data-sovereignty-inventory-table td:nth-child(3),
+.data-sovereignty-inventory-table td:nth-child(4) {
+  max-width: 220px;
+}
+
+.data-sovereignty-inventory-row-at-risk {
+  background: rgba(239, 68, 68, 0.06);
+}
+
+.data-sovereignty-inventory-row-at-risk td:first-child {
+  border-left: 3px solid #dc2626;
+}

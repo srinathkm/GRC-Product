@@ -1,0 +1,509 @@
+.data-security-section {
+  padding-bottom: 2rem;
+}
+
+.data-security-title {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.data-security-intro {
+  margin: 0 0 1.25rem 0;
+  font-size: 0.95rem;
+  color: var(--text-muted);
+  max-width: 72ch;
+}
+
+.data-security-parent-banner {
+  margin-bottom: 1rem;
+  padding: 0.6rem 0.9rem;
+  background: var(--surface-hover);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 0.95rem;
+  color: var(--text);
+}
+
+.data-security-parent-banner strong {
+  color: var(--accent);
+}
+
+.data-security-empty-prompt {
+  margin-top: 1rem;
+}
+
+.data-security-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+@media (max-width: 640px) {
+  .data-security-summary {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.data-security-card {
+  padding: 1rem;
+  border-radius: var(--radius);
+  text-align: center;
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: box-shadow 0.15s ease, transform 0.1s ease;
+  font: inherit;
+  color: inherit;
+  background: var(--surface);
+}
+
+.data-security-card:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.data-security-card.data-security-card-selected {
+  box-shadow: 0 0 0 2px var(--accent);
+  outline: none;
+}
+
+.data-security-compliant {
+  background: rgba(34, 197, 94, 0.1);
+  border-color: rgba(34, 197, 94, 0.4);
+}
+
+.data-security-compliant.data-security-card-selected {
+  box-shadow: 0 0 0 2px #16a34a;
+}
+
+.data-security-failing {
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(239, 68, 68, 0.4);
+}
+
+.data-security-failing.data-security-card-selected {
+  box-shadow: 0 0 0 2px #dc2626;
+}
+
+.data-security-critical {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.5);
+}
+
+.data-security-critical.data-security-card-selected {
+  box-shadow: 0 0 0 2px #dc2626;
+}
+
+.data-security-high {
+  background: rgba(234, 179, 8, 0.12);
+  border-color: rgba(234, 179, 8, 0.4);
+}
+
+.data-security-high.data-security-card-selected {
+  box-shadow: 0 0 0 2px #ca8a04;
+}
+
+.data-security-medium {
+  background: rgba(59, 130, 246, 0.1);
+  border-color: rgba(59, 130, 246, 0.4);
+}
+
+.data-security-medium.data-security-card-selected {
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+.data-security-all {
+  background: var(--surface-hover);
+  border-color: var(--border);
+}
+
+.data-security-card-value {
+  display: block;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.data-security-compliant .data-security-card-value {
+  color: #16a34a;
+}
+
+.data-security-failing .data-security-card-value,
+.data-security-critical .data-security-card-value {
+  color: #dc2626;
+}
+
+.data-security-high .data-security-card-value {
+  color: #ca8a04;
+}
+
+.data-security-medium .data-security-card-value {
+  color: var(--accent);
+}
+
+.data-security-card-label {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.data-security-filter {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.data-security-filter label {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.data-security-filter select {
+  padding: 0.4rem 0.6rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.9rem;
+  min-width: 160px;
+}
+
+.data-security-list-section {
+  margin-bottom: 1.5rem;
+}
+
+.data-security-list-title {
+  margin: 0 0 0.75rem 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.data-security-empty {
+  padding: 1.5rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-muted);
+  font-size: 0.95rem;
+}
+
+.data-security-loading {
+  padding: 1.5rem;
+  color: var(--text-muted);
+  font-size: 0.95rem;
+}
+
+.data-security-opco-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.data-security-opco-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--surface);
+}
+
+.data-security-opco-failing {
+  border-left: 4px solid #dc2626;
+  background: rgba(239, 68, 68, 0.04);
+}
+
+.data-security-opco-header {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.85rem 1.25rem;
+  background: var(--surface-hover);
+  border-bottom: 1px solid var(--border);
+}
+
+.data-security-opco-card:not(.data-security-opco-failing) .data-security-opco-header {
+  border-bottom: none;
+}
+
+.data-security-opco-name {
+  font-size: 1rem;
+  color: var(--text);
+}
+
+.data-security-opco-badge {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+}
+
+.data-security-badge-compliant {
+  background: rgba(34, 197, 94, 0.2);
+  color: #16a34a;
+}
+
+.data-security-badge-failing {
+  background: rgba(239, 68, 68, 0.2);
+  color: #dc2626;
+}
+
+.data-security-opco-severity {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.2rem 0.45rem;
+  border-radius: 4px;
+}
+
+.data-security-severity-critical {
+  background: rgba(239, 68, 68, 0.25);
+  color: #dc2626;
+}
+
+.data-security-severity-high {
+  background: rgba(234, 179, 8, 0.25);
+  color: #ca8a04;
+}
+
+.data-security-severity-medium {
+  background: rgba(59, 130, 246, 0.2);
+  color: var(--accent);
+}
+
+.data-security-failing-details {
+  padding: 1rem 1.25rem;
+}
+
+.data-security-failing-intro {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.data-security-pillar-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.data-security-pillar-item {
+  padding: 0.75rem 1rem;
+  background: rgba(239, 68, 68, 0.06);
+  border-left: 4px solid #dc2626;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  color: var(--text);
+}
+
+.data-security-pillar-item strong {
+  display: block;
+  margin-bottom: 0.25rem;
+  color: #dc2626;
+}
+
+.data-security-pillar-detail {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.data-security-chain-legend {
+  margin: 0.4rem 0 0.5rem 0;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.data-security-regulation-module-list {
+  list-style: none;
+  margin: 0.5rem 0 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.data-security-regulation-module-item {
+  padding: 0.65rem 0.75rem;
+  background: rgba(0, 0, 0, 0.04);
+  border-radius: 4px;
+  font-size: 0.88rem;
+  color: var(--text);
+}
+
+.data-security-control-chain {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem;
+}
+
+.data-security-chain-resource {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.data-security-chain-arrow {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.data-security-chain-framework {
+  font-weight: 500;
+  color: var(--accent);
+}
+
+.data-security-chain-datasec {
+  font-weight: 500;
+  color: #16a34a;
+}
+
+.data-security-regulation-name {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.data-security-module-name {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.data-security-regulation-module-item .data-security-pillar-detail {
+  margin: 0.25rem 0 0 0;
+  padding-left: 0;
+}
+
+.data-security-compliant-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  padding: 0.65rem 1.25rem;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.data-security-compliant-summary span {
+  white-space: nowrap;
+}
+
+/* Framework-Mapped Control Coverage */
+.data-security-framework-coverage-section {
+  margin-top: 2.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border);
+}
+
+.data-security-framework-coverage-title {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.data-security-framework-coverage-intro {
+  margin: 0 0 1.25rem 0;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  max-width: 80ch;
+  line-height: 1.45;
+}
+
+.data-security-framework-coverage-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.data-security-framework-opco-block {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--surface);
+}
+
+.data-security-framework-opco-name {
+  margin: 0;
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--accent);
+  background: var(--surface-hover);
+  border-bottom: 1px solid var(--border);
+}
+
+.data-security-framework-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+
+.data-security-framework-table th,
+.data-security-framework-table td {
+  padding: 0.6rem 1rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+
+.data-security-framework-table th {
+  background: var(--surface-hover);
+  font-weight: 600;
+  color: var(--text);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.data-security-coverage-pct {
+  font-weight: 700;
+}
+
+.data-security-coverage-ok {
+  color: #16a34a;
+}
+
+.data-security-coverage-warn {
+  color: #ca8a04;
+}
+
+.data-security-coverage-fail {
+  color: #dc2626;
+}
+
+.data-security-framework-gaps-list,
+.data-security-remediation-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.data-security-framework-gaps-list li,
+.data-security-remediation-list li {
+  margin-bottom: 0.35rem;
+}
+
+.data-security-gap-control {
+  display: block;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.data-security-gap-desc {
+  display: block;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin-top: 0.15rem;
+}

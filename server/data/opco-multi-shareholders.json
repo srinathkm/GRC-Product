@@ -1,0 +1,39 @@
+[
+  {
+    "opco": "Etihad Airways",
+    "shareholders": [
+      { "parent": "ADQ", "percentage": 40 },
+      { "parent": "Mubadala Investment Company", "percentage": 35 },
+      { "parent": "Investment Corporation of Dubai (ICD)", "percentage": 25 }
+    ]
+  },
+  {
+    "opco": "AD Ports Group",
+    "shareholders": [
+      { "parent": "ADQ", "percentage": 51 },
+      { "parent": "Investment Corporation of Dubai (ICD)", "percentage": 49 }
+    ]
+  },
+  {
+    "opco": "Aramex",
+    "shareholders": [
+      { "parent": "ADQ", "percentage": 33 },
+      { "parent": "Mubadala Investment Company", "percentage": 33 },
+      { "parent": "Other institutional investors", "percentage": 34 }
+    ]
+  },
+  {
+    "opco": "Saudi Aramco",
+    "shareholders": [
+      { "parent": "Public Investment Fund (PIF)", "percentage": 65 },
+      { "parent": "Saudi Government (direct)", "percentage": 35 }
+    ]
+  },
+  {
+    "opco": "Saudi Electricity",
+    "shareholders": [
+      { "parent": "Public Investment Fund (PIF)", "percentage": 74 },
+      { "parent": "Saudi Government (direct)", "percentage": 26 }
+    ]
+  }
+]

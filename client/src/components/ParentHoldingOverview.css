@@ -1,0 +1,366 @@
+.parent-overview {
+  padding: 0 0 2rem 0;
+}
+
+.parent-overview-title {
+  margin: 0 0 1.25rem 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.parent-overview-select-wrap {
+  margin-bottom: 1.25rem;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.parent-overview-select-wrap label {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.parent-holding-select {
+  min-width: 260px;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.95rem;
+}
+
+.parent-overview-selection-note {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.parent-overview-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.ph-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.25rem;
+}
+
+.ph-card-clickable {
+  cursor: pointer;
+  border: 2px solid var(--border);
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.ph-card-clickable:hover {
+  border-color: var(--accent);
+  background: rgba(59, 130, 246, 0.06);
+}
+
+.ph-card-label {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.5rem;
+}
+
+.ph-card-value {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.parent-overview-ribbon {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  border-radius: var(--radius);
+  margin-bottom: 1.5rem;
+  color: #f87171;
+}
+
+.parent-overview-ribbon-clickable {
+  width: 100%;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.parent-overview-ribbon-clickable:hover {
+  background: rgba(239, 68, 68, 0.25);
+  border-color: rgba(239, 68, 68, 0.6);
+}
+
+.ribbon-icon {
+  font-size: 1.1rem;
+}
+
+.ribbon-text {
+  font-size: 0.95rem;
+}
+
+.parent-overview-table-section {
+  margin-top: 1.5rem;
+}
+
+.parent-overview-table-title {
+  margin: 0 0 0.75rem 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.ph-table-subtitle {
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.ph-table-empty-msg,
+.ph-table-loading {
+  margin: 0;
+  padding: 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-muted);
+  font-size: 0.95rem;
+}
+
+.ph-table-loading {
+  color: var(--accent);
+}
+
+.ph-table-wrap {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.ph-compliance-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.ph-compliance-table th,
+.ph-compliance-table td {
+  padding: 0.65rem 1rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+
+.ph-compliance-table th {
+  background: var(--surface-hover);
+  font-weight: 600;
+  color: var(--text);
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.ph-compliance-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.ph-compliance-table tbody tr:hover {
+  background: var(--surface-hover);
+}
+
+.ph-compliance-table td {
+  color: var(--text);
+}
+
+.ph-status {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.ph-status-compliant {
+  background: rgba(34, 197, 94, 0.2);
+  color: #22c55e;
+}
+
+.ph-status-at-risk {
+  background: rgba(234, 179, 8, 0.2);
+  color: #eab308;
+}
+
+.ph-status-non-compliant {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+}
+
+/* Overdue deadlines modal */
+.ph-overdue-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.ph-overdue-modal {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  max-width: 900px;
+  width: 100%;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+}
+
+.ph-overdue-modal-close {
+  position: absolute;
+  top: 0.75rem;
+  inset-inline-end: 0.75rem;
+  width: 2rem;
+  height: 2rem;
+  border: none;
+  background: transparent;
+  font-size: 1.5rem;
+  line-height: 1;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ph-overdue-modal-close:hover {
+  color: var(--text);
+  background: var(--surface-hover);
+}
+
+.ph-overdue-modal-title {
+  margin: 0;
+  padding: 1.25rem 3rem 0.75rem 1.25rem;
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.ph-overdue-modal-body {
+  padding: 0 1.25rem 1.25rem;
+  overflow: auto;
+}
+
+.ph-overdue-table-wrap {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: auto;
+  max-height: 60vh;
+}
+
+.ph-overdue-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.ph-overdue-table th,
+.ph-overdue-table td {
+  padding: 0.65rem 1rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+
+.ph-overdue-table th {
+  background: var(--surface-hover);
+  font-weight: 600;
+  color: var(--text);
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
+.ph-overdue-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.ph-overdue-table tbody tr:hover {
+  background: var(--surface-hover);
+}
+
+.ph-overdue-table td {
+  color: var(--text);
+}
+
+.ph-overdue-table td:nth-child(2) {
+  max-width: 320px;
+}
+
+/* Visualization section */
+.ph-visualization-section {
+  margin-top: 2.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border);
+}
+
+.ph-visualization-empty {
+  margin: 0;
+  padding: 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-muted);
+  font-size: 0.95rem;
+}
+
+.ph-visualization-intro {
+  margin: 0 0 1.25rem 0;
+  font-size: 0.95rem;
+  color: var(--text-muted);
+}
+
+.ph-visualization-charts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: 1.5rem;
+}
+
+.ph-viz-chart-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.25rem;
+  min-height: 320px;
+}
+
+.ph-viz-chart-title {
+  margin: 0 0 0.75rem 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.35;
+}
+
+.ph-viz-chart-inner {
+  width: 100%;
+  height: 280px;
+}

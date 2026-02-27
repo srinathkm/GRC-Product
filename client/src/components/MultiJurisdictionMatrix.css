@@ -1,0 +1,372 @@
+.multi-jurisdiction-matrix {
+  padding-bottom: 2rem;
+}
+
+.mjm-title {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.mjm-intro {
+  margin: 0 0 1.25rem 0;
+  font-size: 0.95rem;
+  color: var(--text-muted);
+  max-width: 78ch;
+}
+
+.mjm-empty,
+.mjm-loading {
+  padding: 1.5rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-muted);
+  font-size: 0.95rem;
+}
+
+.mjm-loading {
+  color: var(--accent);
+}
+
+.mjm-empty-hint {
+  margin: 0.75rem 0 0 0;
+  font-size: 0.88rem;
+  opacity: 0.9;
+}
+
+.mjm-parent-label {
+  margin: 0 0 1rem 0;
+  font-size: 0.95rem;
+  color: var(--text);
+}
+
+.mjm-parent-label strong {
+  color: var(--accent);
+}
+
+/* Selectable cards: All OpCos | OpCos in multiple regions */
+.mjm-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.mjm-card {
+  padding: 1rem 1.25rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  text-align: center;
+  min-width: 140px;
+  transition: box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.mjm-card:hover {
+  border-color: var(--accent);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.mjm-card.mjm-card-selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent);
+  outline: none;
+}
+
+.mjm-card-multi-region.mjm-card-selected {
+  border-color: #16a34a;
+  box-shadow: 0 0 0 2px #16a34a;
+}
+
+.mjm-card-value {
+  display: block;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.mjm-card-multi-region .mjm-card-value {
+  color: #16a34a;
+}
+
+.mjm-card-label {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-top: 0.25rem;
+}
+
+.mjm-empty-inline {
+  margin: 0 0 1rem 0;
+  padding: 1rem;
+  background: var(--surface-hover);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-muted);
+  font-size: 0.95rem;
+}
+
+/* Per-OpCo block */
+.mjm-opco-block {
+  margin-bottom: 1.75rem;
+  padding: 1.25rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.mjm-opco-name {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.mjm-opco-locations {
+  margin: 0 0 0.75rem 0;
+  font-size: 0.9rem;
+  color: var(--text);
+}
+
+.mjm-opco-locations strong {
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.mjm-opco-subtitle {
+  margin: 1rem 0 0.5rem 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.mjm-zone-detail {
+  margin-bottom: 1rem;
+  padding: 0.85rem 1rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.mjm-zone-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  margin-bottom: 0.4rem;
+}
+
+.mjm-zone-name {
+  font-weight: 600;
+  color: var(--accent);
+  font-size: 0.95rem;
+}
+
+.mjm-zone-type {
+  font-size: 0.75rem;
+  padding: 0.2rem 0.45rem;
+  background: var(--surface-hover);
+  border-radius: 4px;
+  color: var(--text-muted);
+}
+
+.mjm-zone-loc {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.mjm-zone-desc {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.mjm-zone-regs-title {
+  margin: 0.35rem 0 0.2rem 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.mjm-zone-regs {
+  margin: 0;
+  padding-left: 1.2rem;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.mjm-zone-regs li {
+  margin-bottom: 0.2rem;
+}
+
+.mjm-frameworks-table-wrap {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.mjm-frameworks-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+
+.mjm-frameworks-table th,
+.mjm-frameworks-table td {
+  padding: 0.55rem 0.85rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+
+.mjm-frameworks-table th {
+  background: var(--surface-hover);
+  font-weight: 600;
+  color: var(--text);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.mjm-frameworks-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.mjm-frameworks-table tbody tr:hover {
+  background: var(--surface-hover);
+}
+
+.mjm-frameworks-table td {
+  color: var(--text);
+}
+
+.mjm-categories {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+.mjm-scope {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  max-width: 42ch;
+}
+
+.mjm-legend {
+  margin-top: 1.5rem;
+  padding: 1rem 1.25rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.mjm-legend h4 {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.mjm-legend ul {
+  margin: 0;
+  padding-left: 1.25rem;
+  font-size: 0.88rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+.mjm-legend li {
+  margin-bottom: 0.25rem;
+}
+
+.mjm-legend strong {
+  color: var(--text);
+}
+
+/* Free Zones & Jurisdictions reference */
+.mjm-reference {
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border);
+}
+
+.mjm-reference-title {
+  margin: 0 0 0.35rem 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.mjm-reference-desc {
+  margin: 0 0 1rem 0;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.mjm-ref-zone {
+  margin-bottom: 1.25rem;
+  padding: 1rem 1.15rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.mjm-ref-zone-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.mjm-ref-zone-name {
+  font-weight: 600;
+  color: var(--text);
+  font-size: 0.95rem;
+}
+
+.mjm-ref-zone-type {
+  font-size: 0.75rem;
+  padding: 0.2rem 0.45rem;
+  background: var(--surface-hover);
+  border-radius: 4px;
+  color: var(--text-muted);
+}
+
+.mjm-ref-zone-loc {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.mjm-ref-zone-desc {
+  margin: 0 0 0.4rem 0;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.mjm-ref-zone-regs-title {
+  margin: 0.35rem 0 0.2rem 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.mjm-ref-zone-regs {
+  margin: 0;
+  padding-left: 1.2rem;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.mjm-ref-zone-regs li {
+  margin-bottom: 0.2rem;
+}

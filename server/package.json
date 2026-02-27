@@ -1,0 +1,20 @@
+{
+  "name": "regulation-changes-server",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch index.js",
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.0",
+    "mammoth": "^1.11.0",
+    "multer": "^2.0.2",
+    "nodemailer": "^6.9.14",
+    "openai": "^4.73.0",
+    "pdf-lib": "^1.17.1",
+    "pdf-parse": "^2.4.5"
+  }
+}

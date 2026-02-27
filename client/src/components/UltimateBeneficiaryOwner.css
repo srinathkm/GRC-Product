@@ -1,0 +1,1472 @@
+.ubo-section {
+  padding-bottom: 2rem;
+}
+
+.ubo-title {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.ubo-intro {
+  margin: 0 0 1.25rem 0;
+  font-size: 0.95rem;
+  color: var(--text-muted);
+  max-width: 72ch;
+}
+
+.ubo-empty,
+.ubo-loading {
+  padding: 1.5rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-muted);
+  font-size: 0.95rem;
+}
+
+.ubo-loading {
+  color: var(--accent);
+}
+
+.ubo-parent-banner {
+  margin-bottom: 1rem;
+  padding: 0.6rem 0.9rem;
+  background: var(--surface-hover);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 0.95rem;
+  color: var(--text);
+}
+
+.ubo-parent-banner strong {
+  color: var(--accent);
+}
+
+/* Look up OpCo by name */
+.ubo-lookup {
+  margin-bottom: 1.25rem;
+  padding: 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.ubo-lookup label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 0.5rem;
+}
+
+.ubo-lookup-input {
+  width: 100%;
+  max-width: 320px;
+  padding: 0.5rem 0.75rem;
+  margin-right: 0.5rem;
+  margin-bottom: 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 0.95rem;
+}
+
+.ubo-lookup .ubo-btn {
+  margin-bottom: 0.5rem;
+}
+
+.ubo-lookup-results {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+
+.ubo-lookup-results-title {
+  margin: 0 0 0.75rem 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.ubo-lookup-card {
+  margin-bottom: 1rem;
+  padding: 1rem;
+  background: var(--surface-hover);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.ubo-lookup-card:last-child {
+  margin-bottom: 0;
+}
+
+.ubo-lookup-card-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.ubo-lookup-card-header strong {
+  font-size: 1.05rem;
+  color: var(--text);
+}
+
+.ubo-lookup-parent {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+.ubo-lookup-card-body {
+  font-size: 0.9rem;
+  color: var(--text);
+}
+
+.ubo-lookup-card-body .ubo-view-section {
+  margin-top: 0.75rem;
+}
+
+.ubo-lookup-card-body .ubo-view-section h4 {
+  margin: 0 0 0.35rem 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.ubo-lookup-card-body p {
+  margin: 0.25rem 0;
+}
+
+.ubo-lookup-no-results {
+  margin-top: 0.75rem;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.ubo-lookup-loading {
+  margin-top: 0.75rem;
+  font-size: 0.9rem;
+  color: var(--accent);
+}
+
+/* UBO tree (OpCo → parents) */
+.ubo-lookup-tree {
+  margin-bottom: 1.25rem;
+  padding: 1rem;
+  background: var(--surface-hover);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.ubo-lookup-tree:last-child {
+  margin-bottom: 0;
+}
+
+.ubo-lookup-tree-root {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.ubo-lookup-tree-opco {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.ubo-lookup-tree-badge {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  background: var(--surface);
+  padding: 0.2rem 0.45rem;
+  border-radius: var(--radius);
+}
+
+.ubo-lookup-tree-parents {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.ubo-lookup-tree-node {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  padding: 0.5rem 0.75rem;
+  margin-bottom: 0.35rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+}
+
+.ubo-lookup-tree-node:last-child {
+  margin-bottom: 0;
+}
+
+.ubo-lookup-tree-connector {
+  display: inline-block;
+  width: 4px;
+  height: 1em;
+  background: var(--accent);
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.ubo-lookup-tree-parent {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.ubo-lookup-tree-pct {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.ubo-lookup-tree-details {
+  width: 100%;
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px dashed var(--border);
+  font-size: 0.85rem;
+  color: var(--text);
+}
+
+.ubo-lookup-tree-details .ubo-view-section {
+  margin-top: 0.5rem;
+}
+
+.ubo-lookup-tree-details .ubo-view-section h4 {
+  margin: 0 0 0.25rem 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.ubo-lookup-tree-details p {
+  margin: 0.2rem 0;
+}
+
+/* Lookup: per-parent UBO detail (same format as Parent Holding / View details) */
+.ubo-lookup-opcos {
+  margin-top: 0.5rem;
+}
+
+.ubo-lookup-parent-detail {
+  margin-top: 1rem;
+  padding: 0.75rem 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+  color: var(--text);
+}
+
+.ubo-lookup-parent-detail-title {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.ubo-lookup-parent-detail .ubo-view-section {
+  margin-top: 0.5rem;
+}
+
+.ubo-lookup-parent-detail .ubo-view-section h4 {
+  margin: 0 0 0.25rem 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.ubo-lookup-parent-detail p {
+  margin: 0.2rem 0;
+}
+
+.ubo-summary-cards {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+@media (max-width: 640px) {
+  .ubo-summary-cards {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.ubo-summary-card {
+  padding: 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  text-align: center;
+}
+
+.ubo-summary-card.ubo-summary-total {
+  border-color: var(--accent);
+  background: rgba(59, 130, 246, 0.08);
+}
+
+.ubo-summary-value {
+  display: block;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.ubo-summary-label {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.ubo-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.ubo-filter label {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-bottom: 0.25rem;
+}
+
+.ubo-filter select {
+  padding: 0.4rem 0.6rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.9rem;
+  min-width: 140px;
+}
+
+.ubo-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-left: auto;
+}
+
+.ubo-btn {
+  padding: 0.5rem 0.85rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+}
+
+.ubo-btn-primary {
+  background: var(--accent);
+  color: #fff;
+}
+
+.ubo-btn-primary:hover {
+  background: var(--accent-hover);
+}
+
+.ubo-btn-secondary {
+  background: var(--surface-hover);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+.ubo-btn-secondary:hover {
+  background: var(--border);
+}
+
+.ubo-table-wrap {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.ubo-register-details-row td {
+  background: rgba(15, 23, 42, 0.02);
+  padding: 0.75rem 1rem;
+}
+
+.ubo-register-details-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1.25rem;
+}
+
+.ubo-register-details-group h4 {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.ubo-register-details-grid-inner {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.5rem 1rem;
+  font-size: 0.85rem;
+}
+
+.ubo-register-details-grid-inner strong {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 0.1rem;
+}
+
+.ubo-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.ubo-table th,
+.ubo-table td {
+  padding: 0.65rem 1rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+
+.ubo-table th {
+  background: var(--surface-hover);
+  font-weight: 600;
+  color: var(--text);
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.ubo-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.ubo-table tbody tr:hover {
+  background: var(--surface-hover);
+}
+
+.ubo-table td {
+  color: var(--text);
+}
+
+.ubo-status {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.82rem;
+  font-weight: 500;
+}
+
+.ubo-status-updated {
+  background: rgba(34, 197, 94, 0.2);
+  color: #22c55e;
+}
+
+.ubo-status-pending {
+  background: rgba(234, 179, 8, 0.2);
+  color: #eab308;
+}
+
+.ubo-status-not-updated {
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+}
+
+.ubo-link {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 0.85rem;
+  color: var(--accent);
+  cursor: pointer;
+}
+
+.ubo-link:hover {
+  text-decoration: underline;
+}
+
+.ubo-link-quick {
+  color: var(--success);
+}
+
+.ubo-sep {
+  margin: 0 0.35rem;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.ubo-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.ubo-modal {
+  position: relative;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  max-width: 440px;
+  width: 100%;
+  max-height: 90vh;
+  overflow: auto;
+}
+
+.ubo-modal-close {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: none;
+  background: var(--surface-hover);
+  color: var(--text-muted);
+  font-size: 1.5rem;
+  line-height: 1;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ubo-modal-close:hover {
+  background: var(--border);
+  color: var(--text);
+}
+
+.ubo-modal-title {
+  margin: 0 0 1rem 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.ubo-form .ubo-form-row {
+  margin-bottom: 1rem;
+}
+
+.ubo-form .ubo-form-row label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  margin-bottom: 0.35rem;
+}
+
+.ubo-form .ubo-form-row input,
+.ubo-form .ubo-form-row select,
+.ubo-form .ubo-form-row textarea {
+  width: 100%;
+  padding: 0.5rem 0.6rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 0.9rem;
+}
+
+.ubo-form .ubo-form-row textarea {
+  resize: vertical;
+  min-height: 60px;
+}
+
+.ubo-form-actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+
+.ubo-view-details p {
+  margin: 0 0 0.75rem 0;
+  font-size: 0.95rem;
+  color: var(--text);
+}
+
+.ubo-view-details p:last-child {
+  margin-bottom: 0;
+}
+
+.ubo-modal-view .ubo-form-actions {
+  margin-top: 1rem;
+}
+
+/* Tabs */
+.ubo-tabs {
+  display: flex;
+  gap: 0.25rem;
+  margin-bottom: 1.25rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.ubo-tab {
+  padding: 0.6rem 1rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  margin-bottom: -1px;
+}
+
+.ubo-tab:hover {
+  color: var(--text);
+}
+
+.ubo-tab-active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+/* Holding structure */
+.ubo-structure {
+  padding: 1rem 0;
+}
+
+.ubo-structure-title {
+  margin: 0 0 0.35rem 0;
+  font-size: 1.1rem;
+  color: var(--text);
+}
+
+.ubo-structure-intro {
+  margin: 0 0 1.25rem 0;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.ubo-structure-tree {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.25rem;
+  max-width: 560px;
+}
+
+.ubo-structure-node {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0;
+}
+
+.ubo-structure-root {
+  font-weight: 600;
+  color: var(--text);
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 0.5rem;
+}
+
+.ubo-structure-root .ubo-structure-pct {
+  color: var(--accent);
+}
+
+.ubo-structure-badge {
+  font-size: 0.75rem;
+  padding: 0.2rem 0.5rem;
+  background: rgba(59, 130, 246, 0.15);
+  color: var(--accent);
+  border-radius: 4px;
+}
+
+.ubo-structure-children {
+  padding-left: 1rem;
+  border-left: 2px solid var(--border);
+  margin-left: 0.5rem;
+}
+
+.ubo-structure-child {
+  position: relative;
+  font-size: 0.95rem;
+  color: var(--text);
+}
+
+.ubo-structure-connector {
+  position: absolute;
+  left: -1.25rem;
+  top: 50%;
+  width: 0.75rem;
+  height: 1px;
+  background: var(--border);
+}
+
+.ubo-structure-pct {
+  margin-left: auto;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+/* Holding structure – filter cards and dropdown */
+.ubo-structure-filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.ubo-structure-cards {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.ubo-structure-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.85rem 1.25rem;
+  min-width: 140px;
+  background: var(--surface);
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+  font: inherit;
+  color: inherit;
+}
+
+.ubo-structure-card:hover {
+  border-color: var(--accent);
+  background: rgba(59, 130, 246, 0.06);
+}
+
+.ubo-structure-card.ubo-structure-card-selected {
+  border-color: var(--accent);
+  background: rgba(59, 130, 246, 0.1);
+}
+
+.ubo-structure-card-multi.ubo-structure-card-selected {
+  border-color: #ca8a04;
+  background: rgba(234, 179, 8, 0.1);
+}
+
+.ubo-structure-card-value {
+  display: block;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.ubo-structure-card-multi .ubo-structure-card-value {
+  color: #ca8a04;
+}
+
+.ubo-structure-card-label {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  text-align: center;
+  margin-top: 0.25rem;
+}
+
+.ubo-structure-select-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: auto;
+}
+
+.ubo-structure-select-wrap label {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.ubo-structure-select-wrap select {
+  padding: 0.4rem 0.6rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.9rem;
+  min-width: 200px;
+}
+
+/* Holding structure – graphical visualization */
+.ubo-structure-viz {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  max-width: 720px;
+}
+
+.ubo-structure-viz-root {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.6rem 1rem;
+  background: var(--surface-hover);
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.ubo-structure-viz-root.ubo-structure-viz-highlight {
+  border-color: var(--accent);
+  background: rgba(59, 130, 246, 0.1);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.ubo-structure-viz-label {
+  font-size: 1rem;
+}
+
+.ubo-structure-viz-pct {
+  font-weight: 600;
+  color: var(--accent);
+  font-size: 0.9rem;
+}
+
+.ubo-structure-viz-connector {
+  width: 2px;
+  height: 24px;
+  background: linear-gradient(to bottom, var(--border), var(--border));
+  margin: 0.5rem 0 0.5rem 1rem;
+}
+
+.ubo-structure-viz-opcos {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.ubo-structure-viz-opco-wrap {
+  border-left: 3px solid var(--border);
+  padding-left: 1rem;
+  margin-left: 0.5rem;
+}
+
+.ubo-structure-viz-opco {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  padding: 0.5rem 0.85rem;
+  background: var(--surface-hover);
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  font-size: 0.95rem;
+  color: var(--text);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+  text-align: left;
+  width: 100%;
+  max-width: 420px;
+}
+
+.ubo-structure-viz-opco:hover {
+  border-color: var(--accent);
+  background: rgba(59, 130, 246, 0.06);
+}
+
+.ubo-structure-viz-opco.ubo-structure-viz-opco-selected {
+  border-color: var(--accent);
+  background: rgba(59, 130, 246, 0.12);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.ubo-structure-viz-opco-header {
+  justify-content: flex-start;
+}
+
+.ubo-structure-viz-chevron {
+  display: inline-block;
+  width: 0;
+  height: 0;
+  margin-right: 0.5rem;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 6px solid var(--text-muted);
+  transition: transform 0.2s ease;
+}
+
+.ubo-structure-viz-chevron-open {
+  transform: rotate(180deg);
+}
+
+.ubo-structure-viz-details {
+  overflow: hidden;
+  max-height: 0;
+  opacity: 0;
+  transition: max-height 0.25s ease, opacity 0.2s ease;
+}
+
+.ubo-structure-viz-details-open {
+  max-height: 400px;
+  opacity: 1;
+}
+
+.ubo-structure-viz-opco-name {
+  font-weight: 500;
+}
+
+.ubo-structure-viz-multi-badge {
+  font-size: 0.7rem;
+  padding: 0.15rem 0.4rem;
+  background: rgba(234, 179, 8, 0.2);
+  color: #ca8a04;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+.ubo-structure-viz-parents {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  padding-left: 0.5rem;
+}
+
+.ubo-structure-viz-parent {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.6rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.ubo-structure-viz-parent.ubo-structure-viz-highlight {
+  border-color: var(--accent);
+  background: rgba(59, 130, 246, 0.08);
+  color: var(--text);
+}
+
+.ubo-structure-viz-parent-name {
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Mandatory documents section */
+.ubo-mandatory-docs {
+  padding: 1rem 0;
+}
+
+.ubo-mandatory-title {
+  margin: 0 0 0.35rem 0;
+  font-size: 1.1rem;
+  color: var(--text);
+}
+
+.ubo-mandatory-intro {
+  margin: 0 0 1rem 0;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.ubo-mandatory-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1rem 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.ubo-mandatory-item {
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.ubo-mandatory-item:last-child {
+  border-bottom: none;
+}
+
+.ubo-mandatory-desc {
+  font-size: 0.88rem;
+  color: var(--text-muted);
+}
+
+.ubo-mandatory-note {
+  font-size: 0.88rem;
+  color: var(--text-muted);
+}
+
+.ubo-mandatory-per-opco {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.ubo-mandatory-opco-block {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.ubo-mandatory-opco-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.85rem 1.25rem;
+  border: none;
+  background: var(--surface-hover);
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.ubo-mandatory-opco-header:hover {
+  background: var(--border);
+}
+
+.ubo-mandatory-opco-chevron {
+  display: inline-block;
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 6px solid var(--text-muted);
+  transition: transform 0.2s ease;
+  flex-shrink: 0;
+}
+
+.ubo-mandatory-opco-chevron-open {
+  transform: rotate(180deg);
+}
+
+.ubo-mandatory-opco-header .ubo-mandatory-opco-name {
+  flex: 1;
+  margin: 0;
+  padding: 0;
+  border: none;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.ubo-mandatory-opco-badge {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.ubo-mandatory-opco-body {
+  overflow: hidden;
+  max-height: 0;
+  transition: max-height 0.25s ease;
+}
+
+.ubo-mandatory-opco-body-open {
+  max-height: 2000px;
+}
+
+.ubo-mandatory-opco-body .ubo-mandatory-doc-rows {
+  padding: 1rem 1.25rem;
+  border-top: 1px solid var(--border);
+}
+
+.ubo-mandatory-doc-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.ubo-mandatory-doc-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto auto;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.9rem;
+}
+
+.ubo-mandatory-doc-row:last-child {
+  border-bottom: none;
+}
+
+@media (max-width: 720px) {
+  .ubo-mandatory-doc-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.ubo-mandatory-doc-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.ubo-mandatory-doc-info .ubo-mandatory-desc {
+  font-size: 0.8rem;
+}
+
+.ubo-mandatory-doc-completed {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.ubo-mandatory-doc-upload {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.ubo-file-input-hidden {
+  position: absolute;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.ubo-mandatory-doc-meta {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+/* View Changes modal */
+.ubo-changes-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 60vh;
+  overflow: auto;
+}
+
+.ubo-changes-item {
+  padding: 0.6rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.ubo-changes-item:last-child {
+  border-bottom: none;
+}
+
+.ubo-changes-time {
+  flex-shrink: 0;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.ubo-changes-message {
+  flex: 1;
+  color: var(--text);
+}
+
+.ubo-changes-opco {
+  font-size: 0.8rem;
+  padding: 0.2rem 0.5rem;
+  background: var(--surface-hover);
+  border-radius: 4px;
+  color: var(--text-muted);
+}
+
+.ubo-changes-empty {
+  padding: 1rem;
+  color: var(--text-muted);
+  font-size: 0.95rem;
+}
+
+/* Large modal (UBO form) */
+.ubo-modal-large {
+  max-width: 640px;
+  max-height: 90vh;
+}
+
+.ubo-modal-subtitle {
+  margin: -0.5rem 0 1rem 0;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.ubo-file-input {
+  position: absolute;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.ubo-upload-block {
+  margin-bottom: 1.25rem;
+  padding: 1rem;
+  background: var(--surface-hover);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+}
+
+.ubo-upload-block .ubo-btn {
+  margin-right: 0.5rem;
+}
+
+.ubo-extract-msg {
+  margin: 0.5rem 0 0 0;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.ubo-form-section {
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.ubo-form-section h4 {
+  margin: 0 0 0.75rem 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.ubo-doc-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  padding: 0.5rem 0;
+  font-size: 0.9rem;
+}
+
+.ubo-doc-label {
+  font-weight: 500;
+  color: var(--text);
+}
+
+.ubo-doc-desc {
+  grid-column: 1;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+.ubo-doc-check {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.ubo-doc-filename {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+.ubo-view-section {
+  margin-top: 1rem;
+}
+
+.ubo-view-section h4 {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.9rem;
+  color: var(--text);
+}
+
+/* UAE Trade Registry tab */
+.ubo-registry {
+  margin-top: 0.5rem;
+}
+
+.ubo-registry-title {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.ubo-registry-intro {
+  margin: 0 0 1rem 0;
+  font-size: 0.95rem;
+  color: var(--text-muted);
+  max-width: 72ch;
+}
+
+.ubo-registry-link {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.ubo-registry-link:hover {
+  text-decoration: underline;
+}
+
+.ubo-registry-table-wrap {
+  overflow-x: auto;
+}
+
+.ubo-registry-table {
+  font-size: 0.9rem;
+}
+
+.ubo-registry-table td {
+  vertical-align: top;
+  padding: 0.75rem;
+}
+
+.ubo-btn-sm {
+  padding: 0.35rem 0.65rem;
+  font-size: 0.85rem;
+}
+
+.ubo-registry-status-list {
+  margin: 0.5rem 0 0 0;
+  padding-left: 1.25rem;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.ubo-registry-status-list li {
+  margin-bottom: 0.2rem;
+}
+
+.ubo-registry-status-opco {
+  font-weight: 500;
+  color: var(--text);
+}
+
+.ubo-form-row-check label {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.ubo-form-row-check input[type="checkbox"] {
+  margin-top: 0.2rem;
+}
+
+/* Multi-shareholder tree (OpCos with multiple ≥25% holders) */
+.ubo-multi-shareholder {
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border);
+}
+
+.ubo-multi-shareholder-title {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.ubo-multi-shareholder-intro {
+  margin: 0 0 1rem 0;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.ubo-multi-shareholder-trees {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.ubo-multi-tree-card {
+  padding: 1rem 1.25rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  border-left: 4px solid var(--accent);
+}
+
+.ubo-multi-tree-opco.ubo-multi-tree-node-root {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.ubo-multi-tree-badge {
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 0.2rem 0.5rem;
+  background: rgba(59, 130, 246, 0.15);
+  color: var(--accent);
+  border-radius: 4px;
+}
+
+.ubo-multi-tree-parents {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.25rem;
+  padding-left: 0.5rem;
+}
+
+.ubo-multi-tree-node.ubo-multi-tree-parent {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.75rem;
+  background: var(--surface-hover);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 0.9rem;
+}
+
+.ubo-multi-tree-connector {
+  width: 6px;
+  height: 6px;
+  border-left: 2px solid var(--border);
+  border-bottom: 2px solid var(--border);
+  margin-right: 0.25rem;
+}
+
+.ubo-multi-tree-entity {
+  color: var(--text);
+}
+
+.ubo-multi-tree-pct {
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.ubo-download-doc-note {
+  margin-top: 1rem;
+  padding: 0.6rem 0.75rem;
+  background: rgba(59, 130, 246, 0.08);
+  border-radius: 6px;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}

@@ -1,0 +1,13 @@
+PORT=3001
+#OPENAI_API_KEY=sk-your-openai-key-here
+
+LLM_BASE_URL=https://api.core42.ai/v1
+LLM_API_KEY=fc97dc60a42742c9b1c10cbce243dd08
+LLM_MODEL=gpt-5.1
+
+# Optional: for sending email
+SMTP_HOST=smtp.example.com
+SMTP_PORT=587
+SMTP_USER=your-user
+SMTP_PASS=your-password
+SMTP_FROM="Regulation Dashboard <noreply@example.com>"
