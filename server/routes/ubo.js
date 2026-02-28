@@ -296,6 +296,20 @@ function heuristicExtractFromText(text, guessedOrgName) {
 }
 
 /**
+ * Detect whether the document table uses "Entity Name" (corporate) or "Full Name" (member) header.
+ * Returns "corporate", "member", or "".
+ */
+function detectParentRelationshipTypeFromHeaders(text) {
+  if (!text || typeof text !== 'string') return '';
+  const upper = text.toUpperCase();
+  const hasEntityName = /ENTITY\s+NAME/.test(upper);
+  const hasFullName = /FULL\s+NAME/.test(upper);
+  if (hasEntityName && !hasFullName) return 'corporate';
+  if (hasFullName && !hasEntityName) return 'member';
+  return '';
+}
+
+/**
  * Given a document buffer (image/PDF/DOCX/text), extract organization name and certificate
  * details. Uses LLM when configured; otherwise falls back to simple text heuristics.
  * Returns a JSON object (e.g. { organizationName, uboCertificateNumber, ..., parentHoldings })
@@ -417,7 +431,9 @@ async function extractOrganizationNameFromBuffer(buffer, contentType) {
     // If LLM gave nothing usable, fall back entirely to heuristics on the text.
     if (!extracted || typeof extracted !== 'object') {
       if (!guessed && !snippet) return null;
-      return heuristicExtractFromText(snippet || rawText, guessed);
+      const result = heuristicExtractFromText(snippet || rawText, guessed);
+      result.defaultRelationshipType = detectParentRelationshipTypeFromHeaders(rawText);
+      return result;
     }
 
     // Merge: heuristic baseline + model output, with model taking precedence,
@@ -468,6 +484,7 @@ async function extractOrganizationNameFromBuffer(buffer, contentType) {
       });
     }
 
+    merged.defaultRelationshipType = detectParentRelationshipTypeFromHeaders(rawText);
     return merged;
   } catch {
     return null;
@@ -572,6 +589,7 @@ uboRouter.post('/extract-org-from-link', async (req, res) => {
         jurisdiction: extracted?.jurisdiction || '',
       },
       parentHoldings,
+      defaultRelationshipType: extracted?.defaultRelationshipType || '',
       fromDocument: !!organizationName,
       message: organizationName
         ? 'Organization name extracted from document title.'
@@ -617,6 +635,7 @@ uboRouter.post('/extract-org-from-file', (req, res, next) => {
         jurisdiction: extracted?.jurisdiction || '',
       },
       parentHoldings,
+      defaultRelationshipType: extracted?.defaultRelationshipType || '',
       fromDocument: !!organizationName,
       message: organizationName
         ? 'Organization name extracted from document title.'

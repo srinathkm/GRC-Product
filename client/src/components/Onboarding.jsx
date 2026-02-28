@@ -220,6 +220,7 @@ export function Onboarding({ language = 'en', onOpcoAdded }) {
           const data = await res.json();
           const extractedName = (data.organizationName || '').trim();
           const cert = data.certificate || {};
+          const defaultRelationshipType = data.defaultRelationshipType || '';
           const parentsRaw = Array.isArray(data.parentHoldings) ? data.parentHoldings : [];
           const parents = parentsRaw.map((ph) => ({
             name: ph.name || '',
@@ -232,7 +233,7 @@ export function Onboarding({ language = 'en', onOpcoAdded }) {
                         ? ph.percentage
                         : '')),
             registrationNumber: ph.registrationNumber || '',
-            relationshipType: ph.relationshipType || ph.type || '',
+            relationshipType: ph.relationshipType || ph.type || defaultRelationshipType || '',
           }));
           setReviewData((prev) => ({
             ...prev,
@@ -243,6 +244,9 @@ export function Onboarding({ language = 'en', onOpcoAdded }) {
             tradeLicenceNumber: cert.tradeLicenceNumber || prev.tradeLicenceNumber,
             certificateJurisdiction: cert.jurisdiction || prev.certificateJurisdiction,
             certificateParentHoldings: parents.length ? parents : prev.certificateParentHoldings,
+            parentRelationshipType: (defaultRelationshipType === 'corporate' || defaultRelationshipType === 'member')
+              ? defaultRelationshipType
+              : prev.parentRelationshipType,
           }));
         } catch {
           // ignore; keep heuristic
@@ -260,6 +264,7 @@ export function Onboarding({ language = 'en', onOpcoAdded }) {
           const data = await res.json();
           const extractedName = (data.organizationName || '').trim();
           const cert = data.certificate || {};
+          const defaultRelationshipType = data.defaultRelationshipType || '';
           const parentsRaw = Array.isArray(data.parentHoldings) ? data.parentHoldings : [];
           const parents = parentsRaw.map((ph) => ({
             name: ph.name || '',
@@ -272,7 +277,7 @@ export function Onboarding({ language = 'en', onOpcoAdded }) {
                         ? ph.percentage
                         : '')),
             registrationNumber: ph.registrationNumber || '',
-            relationshipType: ph.relationshipType || ph.type || '',
+            relationshipType: ph.relationshipType || ph.type || defaultRelationshipType || '',
           }));
           setReviewData((prev) => ({
             ...prev,
@@ -283,6 +288,9 @@ export function Onboarding({ language = 'en', onOpcoAdded }) {
             tradeLicenceNumber: cert.tradeLicenceNumber || prev.tradeLicenceNumber,
             certificateJurisdiction: cert.jurisdiction || prev.certificateJurisdiction,
             certificateParentHoldings: parents.length ? parents : prev.certificateParentHoldings,
+            parentRelationshipType: (defaultRelationshipType === 'corporate' || defaultRelationshipType === 'member')
+              ? defaultRelationshipType
+              : prev.parentRelationshipType,
           }));
         } catch {
           // ignore and keep the heuristic name
@@ -703,7 +711,9 @@ export function Onboarding({ language = 'en', onOpcoAdded }) {
               </div>
               <div className="onboarding-field onboarding-parent-holdings-field">
                 <span className="onboarding-field-label">
-                  Parent Holding Name | Ownership % | Registration Number
+                  {reviewData.parentRelationshipType === 'member'
+                    ? 'Full Name | Ownership % | Passport Number'
+                    : 'Parent Holding Name | Ownership % | Registration Number'}
                   <span className="onboarding-parent-type-header">
                     <label>
                       <input
@@ -754,7 +764,7 @@ export function Onboarding({ language = 'en', onOpcoAdded }) {
                       <input
                         type="text"
                         className="onboarding-input"
-                        placeholder="Parent Holding Name"
+                        placeholder={reviewData.parentRelationshipType === 'member' ? 'Full Name' : 'Parent Holding Name'}
                         value={ph.name || ''}
                         onChange={(e) => {
                           const base = Array.isArray(reviewData.certificateParentHoldings)
@@ -782,7 +792,7 @@ export function Onboarding({ language = 'en', onOpcoAdded }) {
                       <input
                         type="text"
                         className="onboarding-input"
-                        placeholder="Registration Number"
+                        placeholder={reviewData.parentRelationshipType === 'member' ? 'Passport Number' : 'Registration Number'}
                         value={ph.registrationNumber || ''}
                         onChange={(e) => {
                           const base = Array.isArray(reviewData.certificateParentHoldings)
