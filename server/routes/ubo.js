@@ -90,6 +90,28 @@ function cleanCertificateNumber(raw) {
   return str;
 }
 
+/** True if the value looks like a certificate reference (e.g. DF-UBO-2026-003) rather than an entity name. */
+function looksLikeCertificateReference(value) {
+  if (!value || typeof value !== 'string') return false;
+  const s = value.trim();
+  if (!s) return false;
+  if (/DF-UBO-\d{4}-\d{3}/i.test(s)) return true;
+  if (/\d{4,}/.test(s) && s.length <= 80) return true;
+  if (/\d/.test(s) && s.length <= 50 && !/\s{2,}/.test(s)) return true;
+  return false;
+}
+
+/** True if certValue is the same as or clearly the organization name (avoid leaking org name into cert number). */
+function isSameAsOrganizationName(certValue, orgName) {
+  if (!certValue || typeof certValue !== 'string') return false;
+  const c = certValue.trim().toLowerCase();
+  const o = (orgName && typeof orgName === 'string') ? orgName.trim().toLowerCase() : '';
+  if (!o) return false;
+  if (c === o) return true;
+  if (c.length > 20 && (o.includes(c) || c.includes(o))) return true;
+  return false;
+}
+
 function cleanParentEntityName(raw) {
   if (!raw || typeof raw !== 'string') return '';
   let name = raw.trim();
@@ -178,8 +200,7 @@ function heuristicExtractFromText(text, guessedOrgName) {
   const lines = text.split(/\r?\n/);
 
   // Certificate / reference number (e.g. "Certificate Reference No", "UBO Certificate No").
-  // First, try to capture value on the same line; if not present, use the next
-  // non-empty line as the value.
+  // Only set when we find the label and a value that looks like a reference (not the organization name).
   let certificateNumber = '';
   for (let i = 0; i < lines.length; i += 1) {
     const line = lines[i].trim();
@@ -189,19 +210,23 @@ function heuristicExtractFromText(text, guessedOrgName) {
     if (!m) continue;
     const inline = m[1]?.trim() || '';
     if (inline) {
-      certificateNumber = inline;
+      if (!isSameAsOrganizationName(inline, guessedOrgName) && (looksLikeCertificateReference(inline) || inline.length <= 60)) {
+        certificateNumber = inline;
+      }
       break;
     }
-    // If nothing after the label on the same line, look at the next non-empty line.
+    // If nothing after the label on the same line, use next non-empty line only if it looks like a reference.
     for (let j = i + 1; j < lines.length; j += 1) {
       const nextLine = lines[j].trim();
       if (!nextLine) continue;
-      certificateNumber = nextLine;
+      if (looksLikeCertificateReference(nextLine) && !isSameAsOrganizationName(nextLine, guessedOrgName)) {
+        certificateNumber = nextLine;
+      }
       break;
     }
     if (certificateNumber) break;
   }
-  if (certificateNumber) {
+  if (certificateNumber && !isSameAsOrganizationName(certificateNumber, guessedOrgName)) {
     result.uboCertificateNumber = cleanCertificateNumber(certificateNumber);
   }
 
@@ -445,10 +470,12 @@ async function extractOrganizationNameFromBuffer(buffer, contentType) {
       organizationName: guessed || extracted.organizationName || baseline.organizationName || '',
     };
 
-    // Prefer the heuristic "Certificate Reference No" value for the
-    // UBO Certificate Number when the model's value looks generic or
-    // clearly wrong (e.g. just "certificate" or contains no real id).
-    if (baseline.uboCertificateNumber) {
+    // Only populate UBO Certificate Number when "Certificate Reference No" (or equivalent)
+    // was found in the document. If the heuristic did not find it, leave blank.
+    if (!baseline.uboCertificateNumber) {
+      merged.uboCertificateNumber = '';
+    } else {
+      // Prefer the heuristic value when the model's value looks generic or wrong.
       const fromModel = (extracted && extracted.uboCertificateNumber) ? String(extracted.uboCertificateNumber).trim() : '';
       const looksGeneric =
         !fromModel ||
@@ -458,11 +485,13 @@ async function extractOrganizationNameFromBuffer(buffer, contentType) {
       if (looksGeneric) {
         merged.uboCertificateNumber = baseline.uboCertificateNumber;
       }
+      // Normalise so that only the actual reference/id value remains.
+      merged.uboCertificateNumber = cleanCertificateNumber(merged.uboCertificateNumber);
     }
-
-    // Always normalise the final uboCertificateNumber so that only the actual
-    // reference/id value remains (without the "Certificate Reference No:" text).
-    merged.uboCertificateNumber = cleanCertificateNumber(merged.uboCertificateNumber);
+    // Never use organization name as certificate number (LLM or heuristic may have leaked it).
+    if (isSameAsOrganizationName(merged.uboCertificateNumber, merged.organizationName)) {
+      merged.uboCertificateNumber = '';
+    }
 
     // Normalise and rebuild parent holding names so that the "Parent Holding Name"
     // column shows only the legal entity / person name, NOT the jurisdiction or

@@ -148,6 +148,7 @@ export function Onboarding({ language = 'en', onOpcoAdded }) {
   const [confirmedList, setConfirmedList] = useState([]);
   const [confirming, setConfirming] = useState(false);
   const [existingLinkModal, setExistingLinkModal] = useState(null); // { parentName, orgName }
+  const [uboCertRequiredModal, setUboCertRequiredModal] = useState(false);
   const fileRefs = useRef({});
 
   useEffect(() => {
@@ -238,7 +239,7 @@ export function Onboarding({ language = 'en', onOpcoAdded }) {
           setReviewData((prev) => ({
             ...prev,
             organizationName: extractedName || prev.organizationName,
-            uboCertificateNumber: cert.uboCertificateNumber || prev.uboCertificateNumber,
+            uboCertificateNumber: typeof cert.uboCertificateNumber === 'string' ? cert.uboCertificateNumber : '',
             dateOfIssue: cert.dateOfIssue || prev.dateOfIssue,
             registeredAddress: cert.registeredAddress || prev.registeredAddress,
             tradeLicenceNumber: cert.tradeLicenceNumber || prev.tradeLicenceNumber,
@@ -282,7 +283,7 @@ export function Onboarding({ language = 'en', onOpcoAdded }) {
           setReviewData((prev) => ({
             ...prev,
             organizationName: extractedName || prev.organizationName,
-            uboCertificateNumber: cert.uboCertificateNumber || prev.uboCertificateNumber,
+            uboCertificateNumber: typeof cert.uboCertificateNumber === 'string' ? cert.uboCertificateNumber : '',
             dateOfIssue: cert.dateOfIssue || prev.dateOfIssue,
             registeredAddress: cert.registeredAddress || prev.registeredAddress,
             tradeLicenceNumber: cert.tradeLicenceNumber || prev.tradeLicenceNumber,
@@ -477,6 +478,10 @@ export function Onboarding({ language = 'en', onOpcoAdded }) {
       : reviewData.existingParent;
     const orgName = reviewData.organizationName.trim();
     if (!parentName || !orgName) return;
+    if (!reviewData.uboCertificateNumber?.trim()) {
+      setUboCertRequiredModal(true);
+      return;
+    }
     // Check if this parent-opco relationship already exists.
     setConfirming(true);
     fetch(`${API}/companies/by-parent?parent=${encodeURIComponent(parentName)}`)
@@ -660,11 +665,14 @@ export function Onboarding({ language = 'en', onOpcoAdded }) {
                 />
               </div>
               <div className="onboarding-field">
-                <label htmlFor="review-ubo-cert-number">UBO Certificate Number</label>
+                <label htmlFor="review-ubo-cert-number">
+                  UBO Certificate Number <span className="onboarding-required">(Mandatory)</span>
+                </label>
                 <input
                   id="review-ubo-cert-number"
                   type="text"
                   className="onboarding-input"
+                  placeholder="e.g. DF-UBO-2026-003"
                   value={reviewData.uboCertificateNumber}
                   onChange={(e) => setReviewData((p) => ({ ...p, uboCertificateNumber: e.target.value }))}
                 />
@@ -920,6 +928,41 @@ export function Onboarding({ language = 'en', onOpcoAdded }) {
             </table>
           </div>
         </section>
+      )}
+
+      {uboCertRequiredModal && (
+        <div className="onboarding-modal-backdrop" role="dialog" aria-modal="true">
+          <div className="onboarding-modal">
+            <div className="onboarding-modal-header">
+              <h4 className="onboarding-modal-title">UBO Certificate Number required</h4>
+              <button
+                type="button"
+                className="onboarding-modal-close"
+                aria-label="Close"
+                onClick={() => setUboCertRequiredModal(false)}
+              >
+                ×
+              </button>
+            </div>
+            <div className="onboarding-modal-body">
+              <p>Please fill the &quot;UBO Certificate Number&quot; field.</p>
+              <p>
+                Format: <strong>DF-UBO-&lt;Year of Issue&gt;-&lt;3 Digit code&gt;</strong>
+                <br />
+                For example: <strong>DF-UBO-2026-003</strong>
+              </p>
+            </div>
+            <div className="onboarding-modal-actions">
+              <button
+                type="button"
+                className="onboarding-btn onboarding-btn-confirm"
+                onClick={() => setUboCertRequiredModal(false)}
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {existingLinkModal && (

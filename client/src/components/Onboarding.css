@@ -152,6 +152,11 @@
   color: var(--text);
 }
 
+.onboarding-field .onboarding-required {
+  font-weight: 600;
+  color: var(--error, #c00);
+}
+
 .onboarding-input,
 .onboarding-select,
 .onboarding-textarea {
