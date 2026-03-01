@@ -149,6 +149,9 @@ export function Onboarding({ language = 'en', onOpcoAdded }) {
   const [confirming, setConfirming] = useState(false);
   const [existingLinkModal, setExistingLinkModal] = useState(null); // { parentName, orgName }
   const [uboCertRequiredModal, setUboCertRequiredModal] = useState(false);
+  const [extractedMemberDetailsModal, setExtractedMemberDetailsModal] = useState(null); // [{ fullName, idType, idNumber }, ...]
+  const [pendingConfirm, setPendingConfirm] = useState(null); // { parentName, orgName }
+  const [expandedMandatoryEntityIndices, setExpandedMandatoryEntityIndices] = useState(() => new Set()); // indices in set = expanded; empty = all collapsed by default
   const fileRefs = useRef({});
 
   useEffect(() => {
@@ -235,6 +238,18 @@ export function Onboarding({ language = 'en', onOpcoAdded }) {
                         : '')),
             registrationNumber: ph.registrationNumber || '',
             relationshipType: ph.relationshipType || ph.type || defaultRelationshipType || '',
+            // Corporate: from extraction (Jurisdiction of Incorporation / Registered Address columns only).
+            corporateName: ph.corporateName || ph.name || '',
+            corporateJurisdictionOfIncorporation: ph.corporateJurisdictionOfIncorporation || '',
+            corporateRegisteredAddress: ph.corporateRegisteredAddress || '',
+            corporateRegistrationNumber: ph.corporateRegistrationNumber || ph.registrationNumber || '',
+            // Member-specific fields for Mandatory details in UBO drawer.
+            individualFullName: ph.individualFullName || ph.fullName || '',
+            individualNationality: ph.individualNationality || ph.nationality || '',
+            individualDateOfBirth: ph.individualDateOfBirth || ph.dateOfBirth || '',
+            individualPlaceOfBirth: ph.individualPlaceOfBirth || ph.placeOfBirth || '',
+            individualIdType: ph.individualIdType || ph.idType || '',
+            individualIdNumber: ph.individualIdNumber || ph.idNumber || '',
           }));
           setReviewData((prev) => ({
             ...prev,
@@ -279,6 +294,18 @@ export function Onboarding({ language = 'en', onOpcoAdded }) {
                         : '')),
             registrationNumber: ph.registrationNumber || '',
             relationshipType: ph.relationshipType || ph.type || defaultRelationshipType || '',
+            // Corporate: from extraction (Jurisdiction of Incorporation / Registered Address columns only).
+            corporateName: ph.corporateName || ph.name || '',
+            corporateJurisdictionOfIncorporation: ph.corporateJurisdictionOfIncorporation || '',
+            corporateRegisteredAddress: ph.corporateRegisteredAddress || '',
+            corporateRegistrationNumber: ph.corporateRegistrationNumber || ph.registrationNumber || '',
+            // Member-specific fields for Mandatory details in UBO drawer.
+            individualFullName: ph.individualFullName || ph.fullName || '',
+            individualNationality: ph.individualNationality || ph.nationality || '',
+            individualDateOfBirth: ph.individualDateOfBirth || ph.dateOfBirth || '',
+            individualPlaceOfBirth: ph.individualPlaceOfBirth || ph.placeOfBirth || '',
+            individualIdType: ph.individualIdType || ph.idType || '',
+            individualIdNumber: ph.individualIdNumber || ph.idNumber || '',
           }));
           setReviewData((prev) => ({
             ...prev,
@@ -364,14 +391,15 @@ export function Onboarding({ language = 'en', onOpcoAdded }) {
                 relationshipType === 'corporate'
                   ? (ph.corporateName || ph.name || existingDetails.corporateName || '')
                   : existingDetails.corporateName || '',
+              // Jurisdiction of Incorporation / Registered Address from extraction only (not certificate-level).
               corporateJurisdictionOfIncorporation:
                 relationshipType === 'corporate'
-                  ? (ph.corporateJurisdictionOfIncorporation || reviewData.certificateJurisdiction || existingDetails.corporateJurisdictionOfIncorporation || '')
-                  : existingDetails.corporateJurisdictionOfIncorporation || '',
+                  ? (ph.corporateJurisdictionOfIncorporation ?? existingDetails.corporateJurisdictionOfIncorporation ?? '')
+                  : existingDetails.corporateJurisdictionOfIncorporation ?? '',
               corporateRegisteredAddress:
                 relationshipType === 'corporate'
-                  ? (ph.corporateRegisteredAddress || reviewData.registeredAddress || existingDetails.corporateRegisteredAddress || '')
-                  : existingDetails.corporateRegisteredAddress || '',
+                  ? (ph.corporateRegisteredAddress ?? existingDetails.corporateRegisteredAddress ?? '')
+                  : existingDetails.corporateRegisteredAddress ?? '',
               corporateRegistrationNumber:
                 relationshipType === 'corporate'
                   ? (ph.corporateRegistrationNumber || ph.registrationNumber || existingDetails.corporateRegistrationNumber || '')
@@ -380,6 +408,7 @@ export function Onboarding({ language = 'en', onOpcoAdded }) {
                 relationshipType === 'member'
                   ? (ph.individualFullName || existingDetails.fullName || '')
                   : existingDetails.fullName || '',
+              // Nationality from document extraction (parentHoldings[].individualNationality) → OpCo Mandatory Details
               nationality:
                 relationshipType === 'member'
                   ? (ph.individualNationality || existingDetails.nationality || '')
@@ -472,16 +501,7 @@ export function Onboarding({ language = 'en', onOpcoAdded }) {
     }
   };
 
-  const handleConfirm = () => {
-    const parentName = reviewData.parentChoice === 'new'
-      ? reviewData.newParentName.trim()
-      : reviewData.existingParent;
-    const orgName = reviewData.organizationName.trim();
-    if (!parentName || !orgName) return;
-    if (!reviewData.uboCertificateNumber?.trim()) {
-      setUboCertRequiredModal(true);
-      return;
-    }
+  const runConfirmFlow = (parentName, orgName) => {
     // Check if this parent-opco relationship already exists.
     setConfirming(true);
     fetch(`${API}/companies/by-parent?parent=${encodeURIComponent(parentName)}`)
@@ -500,6 +520,40 @@ export function Onboarding({ language = 'en', onOpcoAdded }) {
         // On error, just proceed normally.
         performConfirm(parentName, orgName);
       });
+  };
+
+  const handleConfirm = () => {
+    const parentName = reviewData.parentChoice === 'new'
+      ? reviewData.newParentName.trim()
+      : reviewData.existingParent;
+    const orgName = reviewData.organizationName.trim();
+    if (!parentName || !orgName) return;
+    if (!reviewData.uboCertificateNumber?.trim()) {
+      setUboCertRequiredModal(true);
+      return;
+    }
+
+    // Build member details from current Review & Confirm data so we can show
+    // the extracted values before proceeding with new/update.
+    const rows = Array.isArray(reviewData.certificateParentHoldings)
+      ? reviewData.certificateParentHoldings
+      : [];
+    const memberDetails = rows
+      .filter((ph) => (ph.relationshipType || ph.type) === 'member')
+      .map((ph) => ({
+        fullName: (ph.individualFullName || ph.name || '').trim(),
+        idType: (ph.individualIdType || '').trim(),
+        idNumber: (ph.individualIdNumber || '').trim(),
+      }))
+      .filter((row) => row.fullName || row.idType || row.idNumber);
+
+    if (memberDetails.length > 0) {
+      setPendingConfirm({ parentName, orgName });
+      setExtractedMemberDetailsModal(memberDetails);
+      return;
+    }
+
+    runConfirmFlow(parentName, orgName);
   };
 
   const handleFileChange = (docId, filesOrFile) => {
@@ -814,6 +868,63 @@ export function Onboarding({ language = 'en', onOpcoAdded }) {
                     </div>
                   ))}
                 </div>
+                {/* Mandatory details: all entities from the document with Corporate or Member fields per entity */}
+                {Array.isArray(reviewData.certificateParentHoldings) && reviewData.certificateParentHoldings.length > 0 && (
+                  <div className="onboarding-mandatory-details-section">
+                    <h4 className="onboarding-mandatory-details-title">Mandatory details (all entities from document)</h4>
+                    <p className="onboarding-mandatory-details-intro">The following entities were found in the document. Each shows the respective details for Corporate or Member as extracted.</p>
+                    <div className="onboarding-mandatory-details-entities">
+                      {reviewData.certificateParentHoldings.map((ph, idx) => {
+                        const relType = ph.relationshipType || ph.type || reviewData.parentRelationshipType || '';
+                        const isCorporate = relType === 'corporate';
+                        const isExpanded = expandedMandatoryEntityIndices.has(idx);
+                        const toggleExpanded = () => {
+                          setExpandedMandatoryEntityIndices((prev) => {
+                            const next = new Set(prev);
+                            if (next.has(idx)) next.delete(idx);
+                            else next.add(idx);
+                            return next;
+                          });
+                        };
+                        return (
+                          <div key={`mandatory-${ph.name || ph.corporateName || idx}-${idx}`} className={`onboarding-entity-details-card ${!isExpanded ? 'onboarding-entity-details-card-collapsed' : ''}`}>
+                            <button
+                              type="button"
+                              className="onboarding-entity-details-header"
+                              onClick={toggleExpanded}
+                              aria-expanded={isExpanded}
+                            >
+                              <span className="onboarding-entity-details-chevron" aria-hidden>{isExpanded ? '▼' : '▶'}</span>
+                              <strong>{isCorporate ? (ph.corporateName || ph.name || `Entity ${idx + 1}`) : (ph.individualFullName || ph.name || `Entity ${idx + 1}`)}</strong>
+                              <span className="onboarding-entity-type-badge">{isCorporate ? 'Corporate' : 'Member'}</span>
+                            </button>
+                            {isExpanded && (
+                              <div className="onboarding-entity-details-grid">
+                                {isCorporate ? (
+                                  <>
+                                    <div><strong>Entity Name</strong><div>{ph.corporateName || ph.name || '—'}</div></div>
+                                    <div><strong>Jurisdiction of Incorporation</strong><div>{ph.corporateJurisdictionOfIncorporation || '—'}</div></div>
+                                    <div><strong>Registered Address</strong><div>{ph.corporateRegisteredAddress || '—'}</div></div>
+                                    <div><strong>Registration Number</strong><div>{ph.corporateRegistrationNumber || ph.registrationNumber || '—'}</div></div>
+                                  </>
+                                ) : (
+                                  <>
+                                    <div><strong>Full name (as per ID)</strong><div>{ph.individualFullName || ph.fullName || ph.name || '—'}</div></div>
+                                    <div><strong>Nationality</strong><div>{ph.individualNationality || ph.nationality || '—'}</div></div>
+                                    <div><strong>Date of birth</strong><div>{ph.individualDateOfBirth || ph.dateOfBirth || '—'}</div></div>
+                                    <div><strong>Place of birth</strong><div>{ph.individualPlaceOfBirth || ph.placeOfBirth || '—'}</div></div>
+                                    <div><strong>ID type (Passport / National ID)</strong><div>{ph.individualIdType || ph.idType || '—'}</div></div>
+                                    <div><strong>ID number</strong><div>{ph.individualIdNumber || ph.idNumber || '—'}</div></div>
+                                  </>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
             <div className="onboarding-field">
@@ -957,6 +1068,64 @@ export function Onboarding({ language = 'en', onOpcoAdded }) {
                 type="button"
                 className="onboarding-btn onboarding-btn-confirm"
                 onClick={() => setUboCertRequiredModal(false)}
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {extractedMemberDetailsModal && extractedMemberDetailsModal.length > 0 && (
+        <div className="onboarding-modal-backdrop" role="dialog" aria-modal="true">
+          <div className="onboarding-modal">
+            <div className="onboarding-modal-header">
+              <h4 className="onboarding-modal-title">Extracted member details</h4>
+              <button
+                type="button"
+                className="onboarding-modal-close"
+                aria-label="Close"
+                onClick={() => {
+                  setExtractedMemberDetailsModal(null);
+                  setPendingConfirm(null);
+                }}
+              >
+                ×
+              </button>
+            </div>
+            <div className="onboarding-modal-body">
+              <p className="onboarding-extracted-intro">The following details were extracted from the document and will be used for Mandatory details when Member is selected:</p>
+              <table className="onboarding-extracted-table">
+                <thead>
+                  <tr>
+                    <th>Full Name</th>
+                    <th>Passport (ID Type)</th>
+                    <th>Passport Number</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {extractedMemberDetailsModal.map((row, idx) => (
+                    <tr key={idx}>
+                      <td>{row.fullName}</td>
+                      <td>{row.idType}</td>
+                      <td>{row.idNumber}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="onboarding-modal-actions">
+              <button
+                type="button"
+                className="onboarding-btn onboarding-btn-confirm"
+                onClick={() => {
+                  const info = pendingConfirm;
+                  setExtractedMemberDetailsModal(null);
+                  if (info && info.parentName && info.orgName) {
+                    runConfirmFlow(info.parentName, info.orgName);
+                  }
+                  setPendingConfirm(null);
+                }}
               >
                 OK
               </button>

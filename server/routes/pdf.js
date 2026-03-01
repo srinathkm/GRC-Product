@@ -195,7 +195,7 @@ pdfRouter.post('/', async (req, res) => {
   }
 });
 
-/** UBO registration document: field labels for PDF (aligned with ME register). */
+/** UBO registration document: field labels for PDF – member (individual) mandatory details. */
 const UBO_FIELD_LABELS = {
   fullName: 'Full name (as per ID)',
   nationality: 'Nationality',
@@ -210,6 +210,14 @@ const UBO_FIELD_LABELS = {
   percentageOwnership: 'Percentage ownership / control',
   natureOfControl: 'Nature of control (ownership / voting / other means)',
   dateBecameBeneficialOwner: 'Date became beneficial owner',
+};
+
+/** Corporate parent: labels for opco drawer / PDF (corporateJurisdictionOfIncorporation → Jurisdiction of Incorporation, etc.). */
+const UBO_CORPORATE_FIELD_LABELS = {
+  corporateName: 'Entity Name',
+  corporateJurisdictionOfIncorporation: 'Jurisdiction of Incorporation',
+  corporateRegisteredAddress: 'Registered Address',
+  corporateRegistrationNumber: 'Registration Number',
 };
 
 /** POST /api/pdf/ubo-registration – generate pre-filled UBO registration document (signature to be added by signatory). */
@@ -239,7 +247,9 @@ pdfRouter.post('/ubo-registration', async (req, res) => {
 
     page.drawText('Pre-filled UBO details (as per UAE/GCC register requirements)', { x: margin, y, font: bold, size: 10, color: rgb(0.3, 0.3, 0.3) });
     y -= lineHeight;
-    for (const [id, label] of Object.entries(UBO_FIELD_LABELS)) {
+    const isCorporate = details.relationshipType === 'corporate';
+    const fieldLabels = isCorporate ? UBO_CORPORATE_FIELD_LABELS : UBO_FIELD_LABELS;
+    for (const [id, label] of Object.entries(fieldLabels)) {
       if (y < 120) {
         page = addPage();
         y = 800;
