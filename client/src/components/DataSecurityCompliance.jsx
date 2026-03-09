@@ -1,5 +1,8 @@
 import { useState, useMemo, useEffect } from 'react';
 import './DataSecurityCompliance.css';
+import { DefenderUpload } from './defender/DefenderUpload.jsx';
+import { SecurityPostureDashboard } from './defender/SecurityPostureDashboard.jsx';
+import './defender/defender.css';
 
 const API = '/api';
 
@@ -351,10 +354,30 @@ function getOpcoSecurity(opcoName) {
   };
 }
 
+const DEFENDER_TABS = { summary: 'Summary', posture: 'Security Posture (Defender)', upload: 'Upload Evidence' };
+
+/** Map Defender band to Summary overallStatus and severity for unified filter/cards. */
+function defenderBandToStatus(band, score) {
+  if (band === 'Exemplary' || band === 'Compliant') return { overallStatus: 'compliant', severity: null };
+  if (band === 'Critical') return { overallStatus: 'failing', severity: 'Critical' };
+  if (band === 'Deficient') return { overallStatus: 'failing', severity: 'High' };
+  if (band === 'Developing') return { overallStatus: 'failing', severity: 'Medium' };
+  if (score != null) {
+    if (score >= 75) return { overallStatus: 'compliant', severity: null };
+    if (score >= 50) return { overallStatus: 'failing', severity: 'Medium' };
+    if (score >= 25) return { overallStatus: 'failing', severity: 'High' };
+    return { overallStatus: 'failing', severity: 'Critical' };
+  }
+  return null;
+}
+
 export function DataSecurityCompliance({ language = 'en', selectedParentHolding, companiesRefreshKey = 0 }) {
   const [opcos, setOpcos] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [defenderGroupSummary, setDefenderGroupSummary] = useState([]);
   const [filterCard, setFilterCard] = useState('all'); // 'all' | 'compliant' | 'failing' | 'Critical' | 'High' | 'Medium'
+  const [defenderTab, setDefenderTab] = useState('summary');
+  const [uploadRefresh, setUploadRefresh] = useState(0);
 
   useEffect(() => {
     if (!selectedParentHolding) {
@@ -382,12 +405,49 @@ export function DataSecurityCompliance({ language = 'en', selectedParentHolding,
       .finally(() => setLoading(false));
   }, [selectedParentHolding, companiesRefreshKey]);
 
+  useEffect(() => {
+    if (!selectedParentHolding) {
+      setDefenderGroupSummary([]);
+      return;
+    }
+    fetch(`${API}/defender/group-summary/${encodeURIComponent(selectedParentHolding)}`)
+      .then((r) => r.json())
+      .then((data) => setDefenderGroupSummary(data.opcos || []))
+      .catch(() => setDefenderGroupSummary([]));
+  }, [selectedParentHolding, uploadRefresh]);
+
+  const defenderByOpco = useMemo(() => {
+    const map = {};
+    for (const o of defenderGroupSummary) {
+      if (o && o.opcoName) map[o.opcoName] = o;
+    }
+    return map;
+  }, [defenderGroupSummary]);
+
   const opcosWithSecurity = useMemo(() => {
-    return opcos.map((name) => ({
-      opcoName: name,
-      ...getOpcoSecurity(name),
-    }));
-  }, [opcos]);
+    return opcos.map((name) => {
+      const mock = getOpcoSecurity(name);
+      const defender = defenderByOpco[name];
+      const hasDefender = defender && defender.score != null;
+      if (hasDefender) {
+        const status = defenderBandToStatus(defender.band, defender.score) || { overallStatus: mock.overallStatus, severity: mock.severity };
+        return {
+          opcoName: name,
+          ...mock,
+          defenderScore: defender.score,
+          defenderBand: defender.band,
+          defenderBandColor: defender.bandColor,
+          defenderSummary: defender.summary ?? null,
+          overallStatus: status.overallStatus,
+          severity: status.severity,
+          securityPosture: { ...mock.securityPosture, score: defender.score },
+          regulatoryCompliance: { ...mock.regulatoryCompliance, score: defender.score },
+          dataAndAISecurity: { ...mock.dataAndAISecurity, score: defender.score },
+        };
+      }
+      return { opcoName: name, ...mock };
+    });
+  }, [opcos, defenderByOpco]);
 
   const grouped = useMemo(() => {
     const compliant = opcosWithSecurity.filter((o) => o.overallStatus === 'compliant');
@@ -442,6 +502,39 @@ export function DataSecurityCompliance({ language = 'en', selectedParentHolding,
         Parent Holding: <strong>{selectedParentHolding}</strong>
       </div>
 
+      <div className="data-security-defender-tabs">
+        {Object.entries(DEFENDER_TABS).map(([key, label]) => (
+          <button
+            key={key}
+            type="button"
+            className={'data-security-defender-tab ' + (defenderTab === key ? 'data-security-defender-tab-active' : '')}
+            onClick={() => setDefenderTab(key)}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {defenderTab === 'posture' && (
+        <div className="data-security-defender-panel">
+          <SecurityPostureDashboard
+            selectedParentHolding={selectedParentHolding}
+            uploadRefresh={uploadRefresh}
+          />
+        </div>
+      )}
+      {defenderTab === 'upload' && (
+        <div className="data-security-defender-panel">
+          <DefenderUpload
+            selectedParentHolding={selectedParentHolding}
+            opcos={opcos}
+            onUploadComplete={() => setUploadRefresh((n) => n + 1)}
+          />
+        </div>
+      )}
+
+      {defenderTab === 'summary' && (
+        <>
       <div className="data-security-summary">
         <button
           type="button"
@@ -535,6 +628,15 @@ export function DataSecurityCompliance({ language = 'en', selectedParentHolding,
               >
                 <div className="data-security-opco-header">
                   <strong className="data-security-opco-name">{item.opcoName}</strong>
+                  {item.defenderScore != null && (
+                    <span
+                      className="data-security-opco-defender-score"
+                      style={item.defenderBandColor ? { color: item.defenderBandColor } : {}}
+                      title="Security Posture Score (Defender)"
+                    >
+                      SPS: {item.defenderScore} – {item.defenderBand}
+                    </span>
+                  )}
                   <span className={`data-security-opco-badge data-security-badge-${item.overallStatus}`}>
                     {item.overallStatus === 'compliant' ? 'Compliant' : 'Failing'}
                   </span>
@@ -546,7 +648,17 @@ export function DataSecurityCompliance({ language = 'en', selectedParentHolding,
                 </div>
                 {item.overallStatus === 'failing' && (
                   <div className="data-security-failing-details">
+                    {item.defenderScore != null && (
+                      <p className="data-security-defender-sps-inline">
+                        Security Posture (Defender): {item.defenderScore}% – {item.defenderBand}
+                      </p>
+                    )}
                     <p className="data-security-failing-intro">Failing areas and details:</p>
+                    {item.defenderSummary ? (
+                      <div className="data-security-llm-summary" style={{ whiteSpace: 'pre-wrap' }}>
+                        {item.defenderSummary}
+                      </div>
+                    ) : (
                     <ul className="data-security-pillar-list">
                       {item.securityPosture.status === 'fail' && (
                         <li className="data-security-pillar-item data-security-pillar-fail">
@@ -595,13 +707,20 @@ export function DataSecurityCompliance({ language = 'en', selectedParentHolding,
                         </li>
                       )}
                     </ul>
+                    )}
                   </div>
                 )}
                 {item.overallStatus === 'compliant' && (
                   <div className="data-security-compliant-summary">
-                    <span>Security Posture {item.securityPosture.score}%</span>
-                    <span>Regulatory Compliance {item.regulatoryCompliance.score}%</span>
-                    <span>Data and AI Security {item.dataAndAISecurity.score}%</span>
+                    {item.defenderScore != null ? (
+                      <span>Security Posture (Defender): {item.defenderScore}% – {item.defenderBand}</span>
+                    ) : (
+                      <>
+                        <span>Security Posture {item.securityPosture.score}%</span>
+                        <span>Regulatory Compliance {item.regulatoryCompliance.score}%</span>
+                        <span>Data and AI Security {item.dataAndAISecurity.score}%</span>
+                      </>
+                    )}
                   </div>
                 )}
               </li>
@@ -618,14 +737,27 @@ export function DataSecurityCompliance({ language = 'en', selectedParentHolding,
         <div className="data-security-framework-coverage-wrap">
           {opcos.map((opcoName) => {
             const frameworks = getFrameworksForOpco(opcoName);
+            const defenderCoverage = defenderByOpco[opcoName]?.frameworkCoverage;
             const rows = frameworks.map((fwId) => {
-              const data = OPCO_FRAMEWORK_COVERAGE_MOCK[opcoName]?.[fwId] || { coveragePct: 85, gaps: [] };
+              const fromDefender = Array.isArray(defenderCoverage) ? defenderCoverage.find((r) => r.frameworkId === fwId) : null;
+              const data = fromDefender
+                ? { coveragePct: fromDefender.coveragePct ?? 0, gaps: fromDefender.gaps || [] }
+                : (OPCO_FRAMEWORK_COVERAGE_MOCK[opcoName]?.[fwId] || { coveragePct: 85, gaps: [] });
               const meta = CYBER_FRAMEWORKS.find((f) => f.id === fwId);
-              return { frameworkId: fwId, frameworkLabel: meta?.label || fwId, coveragePct: data.coveragePct ?? 85, gaps: data.gaps || [] };
+              return {
+                frameworkId: fwId,
+                frameworkLabel: meta?.label || fwId,
+                coveragePct: data.coveragePct ?? (fromDefender ? 0 : 85),
+                gaps: data.gaps || [],
+                fromEvidence: !!fromDefender,
+              };
             });
             return (
               <div key={opcoName} className="data-security-framework-opco-block">
                 <h4 className="data-security-framework-opco-name">{opcoName}</h4>
+                {defenderCoverage && defenderCoverage.length > 0 && (
+                  <p className="data-security-framework-coverage-from-evidence">Coverage and gaps from uploaded Defender evidence.</p>
+                )}
                 <table className="data-security-framework-table">
                   <thead>
                     <tr>
@@ -674,6 +806,8 @@ export function DataSecurityCompliance({ language = 'en', selectedParentHolding,
           })}
         </div>
       </section>
+        </>
+      )}
     </div>
   );
 }

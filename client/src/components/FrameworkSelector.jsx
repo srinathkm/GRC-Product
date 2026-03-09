@@ -1,4 +1,4 @@
-export function FrameworkSelector({ allFrameworksValue, frameworks, value, onFrameworkChange }) {
+export function FrameworkSelector({ frameworks, value, onFrameworkChange }) {
   const selectValue = value ?? '';
   return (
     <div className="framework-selector">
@@ -9,7 +9,6 @@ export function FrameworkSelector({ allFrameworksValue, frameworks, value, onFra
         onChange={(e) => onFrameworkChange?.(e.target.value)}
       >
         <option value="">Select framework…</option>
-        <option value={allFrameworksValue ?? '__ALL__'}>All frameworks</option>
         {frameworks.map((f) => (
           <option key={f} value={f}>
             {f}

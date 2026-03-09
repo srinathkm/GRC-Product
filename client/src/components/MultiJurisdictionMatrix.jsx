@@ -387,7 +387,8 @@ export function MultiJurisdictionMatrix({ language = 'en', selectedParentHolding
       .then((r) => r.json())
       .then((data) => {
         const list = (data.opcos || []).filter((item) =>
-          GCC_FRAMEWORKS.includes(item.framework)
+          GCC_FRAMEWORKS.includes(item.framework) ||
+          (Array.isArray(item.locations) && item.locations.length > 0)
         );
         setOpcos(list);
       })
@@ -395,29 +396,48 @@ export function MultiJurisdictionMatrix({ language = 'en', selectedParentHolding
       .finally(() => setLoading(false));
   }, [selectedParentHolding, companiesRefreshKey]);
 
+  const [frameworkLocationOpen, setFrameworkLocationOpen] = useState({});
+
   const rows = useMemo(() => {
-    return opcos.map(({ name, framework }) => {
-      const meta = FRAMEWORK_META[framework];
-      if (!meta) return null;
-      const zone = zoneById[meta.zoneId];
-      return {
-        opcoName: name,
-        zoneId: meta.zoneId,
-        zone,
-        location: meta.location,
-        locationShort: meta.locationShort,
-        categories: meta.categories.join(', '),
-        frameworkName: meta.name,
-        description: meta.description,
-      };
-    }).filter(Boolean);
+    const out = [];
+    for (const item of opcos) {
+      if (Array.isArray(item.locations) && item.locations.length > 0) {
+        out.push({
+          opcoName: item.name,
+          fromLicence: true,
+          locations: item.locations,
+          applicableFrameworks: Array.isArray(item.applicableFrameworks) ? item.applicableFrameworks : [],
+          applicableFrameworksByLocation: Array.isArray(item.applicableFrameworksByLocation) ? item.applicableFrameworksByLocation : [],
+        });
+      } else {
+        const meta = FRAMEWORK_META[item.framework];
+        if (!meta) continue;
+        const zone = zoneById[meta.zoneId];
+        out.push({
+          opcoName: item.name,
+          fromLicence: false,
+          zoneId: meta.zoneId,
+          zone,
+          location: meta.location,
+          locationShort: meta.locationShort,
+          categories: meta.categories.join(', '),
+          frameworkName: meta.name,
+          description: meta.description,
+        });
+      }
+    }
+    return out;
   }, [opcos]);
 
   const opcoToLocations = useMemo(() => {
     const map = {};
     rows.forEach((r) => {
       if (!map[r.opcoName]) map[r.opcoName] = new Set();
-      map[r.opcoName].add(r.location);
+      if (r.fromLicence && r.locations) {
+        r.locations.forEach((loc) => map[r.opcoName].add(loc));
+      } else if (r.location) {
+        map[r.opcoName].add(r.location);
+      }
     });
     return map;
   }, [rows]);
@@ -426,9 +446,8 @@ export function MultiJurisdictionMatrix({ language = 'en', selectedParentHolding
     const map = {};
     rows.forEach((r) => {
       if (!map[r.opcoName]) map[r.opcoName] = [];
-      const zone = r.zone;
-      if (zone && !map[r.opcoName].some((z) => z.id === zone.id)) {
-        map[r.opcoName].push(zone);
+      if (!r.fromLicence && r.zone && !map[r.opcoName].some((z) => z.id === r.zone.id)) {
+        map[r.opcoName].push(r.zone);
       }
     });
     return map;
@@ -438,14 +457,33 @@ export function MultiJurisdictionMatrix({ language = 'en', selectedParentHolding
     const map = {};
     rows.forEach((r) => {
       if (!map[r.opcoName]) map[r.opcoName] = [];
-      map[r.opcoName].push({
-        zone: r.zone,
-        zoneId: r.zoneId,
-        location: r.location,
-        categories: r.categories,
-        frameworkName: r.frameworkName,
-        description: r.description,
-      });
+      if (r.fromLicence) {
+        const pairs = r.applicableFrameworksByLocation && r.applicableFrameworksByLocation.length > 0
+          ? r.applicableFrameworksByLocation
+          : (r.applicableFrameworks || []).map((fwName) => ({ framework: fwName, location: null, category: null }));
+        pairs.forEach((p) => {
+          const fwName = typeof p === 'object' && p && typeof p.framework === 'string' ? p.framework : String(p);
+          const location = typeof p === 'object' && p && p.location != null ? p.location : null;
+          const category = typeof p === 'object' && p && p.category != null && String(p.category).trim() ? String(p.category).trim() : 'From sector & location (LLM)';
+          map[r.opcoName].push({
+            zone: null,
+            zoneId: null,
+            location: location ?? '',
+            categories: category,
+            frameworkName: fwName,
+            description: 'Applicable per sector of operation and licence location(s).',
+          });
+        });
+      } else {
+        map[r.opcoName].push({
+          zone: r.zone,
+          zoneId: r.zoneId,
+          location: r.location,
+          categories: r.categories,
+          frameworkName: r.frameworkName,
+          description: r.description,
+        });
+      }
     });
     return map;
   }, [rows]);
@@ -455,10 +493,15 @@ export function MultiJurisdictionMatrix({ language = 'en', selectedParentHolding
     return Array.from(set);
   }, [rows]);
 
-  /** OpCos that operate in more than one zone/country (multiple frameworks = multi-region). */
+  /** OpCos in multiple regions: 2+ zones (framework-based) or 2+ locations (licence-based). */
   const multiRegionOpcos = useMemo(() => {
-    return uniqueOpcos.filter((name) => (opcoToZones[name] || []).length > 1);
-  }, [uniqueOpcos, opcoToZones]);
+    return uniqueOpcos.filter((name) => {
+      const zones = opcoToZones[name] || [];
+      const locs = opcoToLocations[name];
+      const locCount = locs ? locs.size : 0;
+      return zones.length > 1 || locCount > 1;
+    });
+  }, [uniqueOpcos, opcoToZones, opcoToLocations]);
 
   const displayedOpcos = filterMultiRegion ? multiRegionOpcos : uniqueOpcos;
 
@@ -522,7 +565,7 @@ export function MultiJurisdictionMatrix({ language = 'en', selectedParentHolding
               </p>
 
               <h4 className="mjm-opco-subtitle">Free Zones & Jurisdictions where this entity operates</h4>
-              {(opcoToZones[opcoName] || []).map((zone) => (
+              {(opcoToZones[opcoName] || []).length > 0 ? (opcoToZones[opcoName] || []).map((zone) => (
                 <div key={zone.id} className="mjm-zone-detail">
                   <div className="mjm-zone-header">
                     <span className="mjm-zone-name">{zone.name}</span>
@@ -539,32 +582,75 @@ export function MultiJurisdictionMatrix({ language = 'en', selectedParentHolding
                     ))}
                   </ul>
                 </div>
-              ))}
+              )) : (opcoToLocations[opcoName] && opcoToLocations[opcoName].size > 0) ? (
+                <p className="mjm-opco-licence-note">Regions from <strong>Regional Branch Commercial Licence</strong> (see locations above). Applicable frameworks evaluated by LLM from sector of operation and these locations.</p>
+              ) : null}
 
-              <h4 className="mjm-opco-subtitle">Applicable frameworks for this entity (by location)</h4>
-              <div className="mjm-frameworks-table-wrap">
-                <table className="mjm-frameworks-table">
-                  <thead>
-                    <tr>
-                      <th>Free Zone / Jurisdiction</th>
-                      <th>Location</th>
-                      <th>Category</th>
-                      <th>Framework / Regulation</th>
-                      <th>Scope</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(opcoToFrameworks[opcoName] || []).map((fw, i) => (
-                      <tr key={i}>
-                        <td>{fw.zone ? fw.zone.name : fw.zoneId}</td>
-                        <td>{fw.location}</td>
-                        <td><span className="mjm-categories">{fw.categories}</span></td>
-                        <td><strong>{fw.frameworkName}</strong></td>
-                        <td className="mjm-scope">{fw.description}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div className="mjm-frameworks-cards">
+                {(() => {
+                  const list = opcoToFrameworks[opcoName] || [];
+                  if (list.length === 0) {
+                    return <p className="mjm-frameworks-empty">No frameworks have been evaluated yet for this entity.</p>;
+                  }
+                  const grouped = list.reduce((acc, fw) => {
+                    const locLabel = (fw.location && String(fw.location).trim()) || 'Unspecified location';
+                    if (!acc[locLabel]) acc[locLabel] = [];
+                    acc[locLabel].push(fw);
+                    return acc;
+                  }, {});
+                  return Object.entries(grouped).map(([locLabel, group], idx) => {
+                    const key = `${opcoName}::${locLabel}`;
+                    const isOpen = !!frameworkLocationOpen[key];
+                    const zoneName = group.find((fw) => fw.zone && fw.zone.name)?.zone?.name || group[0].zoneId || '';
+                    return (
+                      <div key={key} className="mjm-framework-card">
+                        <button
+                          type="button"
+                          className="mjm-framework-card-header"
+                          onClick={() =>
+                            setFrameworkLocationOpen((prev) => ({
+                              ...prev,
+                              [key]: !prev[key],
+                            }))
+                          }
+                          aria-expanded={isOpen}
+                        >
+                          <div className="mjm-framework-card-main">
+                            <span className="mjm-framework-card-location">{locLabel}</span>
+                            {zoneName && <span className="mjm-framework-card-zone">{zoneName}</span>}
+                          </div>
+                          <div className="mjm-framework-card-meta">
+                            <span className="mjm-framework-card-count">
+                              {group.length} framework{group.length !== 1 ? 's' : ''}
+                            </span>
+                            <span className="mjm-framework-card-chevron" aria-hidden="true">
+                              {isOpen ? '▾' : '▸'}
+                            </span>
+                          </div>
+                        </button>
+                        {isOpen && (
+                          <div className="mjm-framework-card-body">
+                            <ul className="mjm-framework-card-list">
+                              {group.map((fw, i) => (
+                                <li key={i} className="mjm-framework-card-item">
+                                  <div className="mjm-framework-card-item-header">
+                                    <strong className="mjm-framework-card-name">{fw.frameworkName}</strong>
+                                    {fw.categories && (
+                                      <span className="mjm-framework-card-categories">{fw.categories}</span>
+                                    )}
+                                  </div>
+                                  {fw.description && (
+                                    <p className="mjm-framework-card-desc">{fw.description}</p>
+                                  )}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  });
+                })()}
               </div>
             </div>
           ))}
@@ -579,26 +665,6 @@ export function MultiJurisdictionMatrix({ language = 'en', selectedParentHolding
             </ul>
           </div>
 
-          <section className="mjm-reference">
-            <h3 className="mjm-reference-title">Free Zones & Jurisdictions reference</h3>
-            <p className="mjm-reference-desc">Overview of free zones and jurisdictions in the GCC and Middle East and the regulations applicable to entities operating there.</p>
-            {FREE_ZONES_AND_JURISDICTIONS.map((zone) => (
-              <div key={zone.id} className="mjm-ref-zone">
-                <div className="mjm-ref-zone-header">
-                  <span className="mjm-ref-zone-name">{zone.name}</span>
-                  <span className="mjm-ref-zone-type">{zone.type}</span>
-                  <span className="mjm-ref-zone-loc">{zone.location}</span>
-                </div>
-                <p className="mjm-ref-zone-desc">{zone.description}</p>
-                <p className="mjm-ref-zone-regs-title">Applicable regulations:</p>
-                <ul className="mjm-ref-zone-regs">
-                  {zone.regulations.map((reg, i) => (
-                    <li key={i}><strong>{reg.name}</strong> — {reg.category}: {reg.scope}</li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </section>
         </>
       )}
     </div>

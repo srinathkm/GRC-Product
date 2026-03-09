@@ -140,6 +140,13 @@
   font-weight: 600;
 }
 
+.mjm-opco-licence-note {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.85rem;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+
 .mjm-opco-subtitle {
   margin: 1rem 0 0.5rem 0;
   font-size: 0.9rem;
@@ -259,6 +266,110 @@
   max-width: 42ch;
 }
 
+.mjm-frameworks-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.mjm-frameworks-empty {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.mjm-framework-card {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.mjm-framework-card-header {
+  width: 100%;
+  padding: 0.6rem 0.85rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  background: var(--surface);
+  border: none;
+  cursor: pointer;
+  text-align: left;
+}
+
+.mjm-framework-card-header:hover {
+  background: var(--surface-hover);
+}
+
+.mjm-framework-card-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.mjm-framework-card-location {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.mjm-framework-card-zone {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.mjm-framework-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.mjm-framework-card-chevron {
+  font-size: 0.8rem;
+}
+
+.mjm-framework-card-body {
+  border-top: 1px solid var(--border);
+  padding: 0.6rem 0.85rem 0.75rem 0.85rem;
+  background: var(--bg);
+}
+
+.mjm-framework-card-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.mjm-framework-card-item-header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  align-items: baseline;
+}
+
+.mjm-framework-card-name {
+  font-size: 0.9rem;
+  color: var(--text);
+}
+
+.mjm-framework-card-categories {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.mjm-framework-card-desc {
+  margin: 0.1rem 0 0 0;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
 .mjm-legend {
   margin-top: 1.5rem;
   padding: 1rem 1.25rem;
@@ -290,22 +401,41 @@
   color: var(--text);
 }
 
-/* Free Zones & Jurisdictions reference */
+/* GCC Frameworks (collapsible reference) */
 .mjm-reference {
   margin-top: 2rem;
   padding-top: 1.5rem;
   border-top: 1px solid var(--border);
 }
 
+.mjm-reference-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0.5rem 0;
+  margin: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+}
+
+.mjm-reference-toggle:hover {
+  color: var(--accent);
+}
+
 .mjm-reference-title {
-  margin: 0 0 0.35rem 0;
+  margin: 0;
   font-size: 1.1rem;
   font-weight: 600;
   color: var(--text);
 }
 
-.mjm-reference-desc {
-  margin: 0 0 1rem 0;
+.mjm-reference-chevron {
+  margin-left: 0.5rem;
   font-size: 0.9rem;
   color: var(--text-muted);
 }

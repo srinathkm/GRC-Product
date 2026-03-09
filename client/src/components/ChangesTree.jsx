@@ -99,11 +99,12 @@ function ParentCard({ parent, opcosCount, deadline, changeId, changeTitle, compa
   );
 }
 
-function TreeNode({ label, children, level, parentCards, changeId, changeTitle, showViewDetails, onViewDetails, onAssignTasks }) {
+function TreeNode({ label, children, level, parentCards, affectedOpcoNames, changeId, changeTitle, showViewDetails, onViewDetails, onAssignTasks }) {
   const [open, setOpen] = useState(level < 2);
   const hasChildren = Array.isArray(children) && children.length > 0;
   const hasParentCards = Array.isArray(parentCards) && parentCards.length > 0;
   const levelClass = level === 0 ? 'tree-root' : level === 1 ? 'tree-branch' : 'tree-leaf';
+  const opcosList = Array.isArray(affectedOpcoNames) && affectedOpcoNames.length > 0 ? affectedOpcoNames : [];
 
   return (
     <li className={`tree-node tree-level-${level} ${levelClass}`}>
@@ -121,6 +122,12 @@ function TreeNode({ label, children, level, parentCards, changeId, changeTitle, 
         {!hasChildren && !hasParentCards && <span className="tree-bullet" />}
         <span className="tree-text">{label}</span>
       </div>
+      {open && level === 1 && opcosList.length > 0 && (
+        <div className="impact-affected-opcos">
+          <span className="impact-affected-opcos-label">Affected OpCos: </span>
+          <span className="impact-affected-opcos-list">{opcosList.join(', ')}</span>
+        </div>
+      )}
       {open && hasParentCards && level === 1 && (
         <div className="impact-parent-cards">
           {parentCards.map((item) => (
@@ -147,6 +154,7 @@ function TreeNode({ label, children, level, parentCards, changeId, changeTitle, 
               children={child.children}
               level={level + 1}
               parentCards={child.parentCards}
+              affectedOpcoNames={child.affectedOpcoNames}
               changeId={child.changeId}
               changeTitle={child.changeTitle}
               showViewDetails={showViewDetails}
@@ -170,16 +178,21 @@ function buildTree(changes, filterParent) {
       parents = parents.filter((p) => p.parent === filterParent);
       if (parents.length === 0) continue;
     }
+    const parentCardsList = parents.map((p) => ({
+      parent: p.parent,
+      opcosCount: p.opcosCount,
+      deadline: c.deadline,
+      companies: p.companies || [],
+    }));
+    const fromParents = parentCardsList.flatMap((p) => p.companies || []);
+    const fromChange = c.affectedCompanies || [];
+    const affectedOpcoNames = [...new Set([...fromParents, ...fromChange])];
     const changeNode = {
       id: c.id,
       label: `${c.title} (${c.date || ''})`,
       children: null,
-      parentCards: parents.map((p) => ({
-        parent: p.parent,
-        opcosCount: p.opcosCount,
-        deadline: c.deadline,
-        companies: p.companies || [],
-      })),
+      parentCards: parentCardsList,
+      affectedOpcoNames,
       changeId: c.id,
       changeTitle: c.title,
     };
@@ -246,7 +259,8 @@ export function ChangesTree({ changes, selectedParent, selectedOpCo, onViewDetai
     );
   }
 
-  const treeData = buildTree(changes, selectedParent || undefined);
+  // Only show Impact tree when a parent is selected, so "Affected OpCos" is limited to that parent's OpCos.
+  const treeData = selectedParent ? buildTree(changes, selectedParent) : [];
 
   if (treeData.length === 0) {
     return (
@@ -255,7 +269,7 @@ export function ChangesTree({ changes, selectedParent, selectedOpCo, onViewDetai
         <p className="changes-tree-empty">
           {selectedParent
             ? `No changes for the selected parent in the current period.`
-            : 'Select a framework and time period, then click “Show changes” to see the tree.'}
+            : 'Select a Parent Holding to view Impact and affected OpCos for that parent.'}
         </p>
       </section>
     );
@@ -272,6 +286,7 @@ export function ChangesTree({ changes, selectedParent, selectedOpCo, onViewDetai
             children={root.children}
             level={0}
             parentCards={undefined}
+            affectedOpcoNames={undefined}
             changeId={undefined}
             changeTitle={undefined}
             showViewDetails={showViewDetails}

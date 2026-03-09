@@ -2,6 +2,8 @@ import { Router } from 'express';
 import multer from 'multer';
 import { createChatCompletion, isLlmConfigured } from '../services/llm.js';
 import { extractTextFromBuffer } from '../services/text-extract.js';
+import { getSharePointSession } from './auth.js';
+import { fetchFileContentFromUrl } from '../services/sharepoint.js';
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -11,6 +13,17 @@ const upload = multer({
       ['application/pdf', 'image/png', 'image/jpeg', 'image/gif', 'image/webp'].includes(file.mimetype);
     if (allowed) cb(null, true);
     else cb(new Error('Only PDF and image files (PNG, JPG, GIF, WebP) are allowed'), false);
+  },
+});
+
+const uploadLicence = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (_, file, cb) => {
+    const allowed = /\.(pdf|doc|docx)$/i.test(file.originalname) ||
+      ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'].includes(file.mimetype);
+    if (allowed) cb(null, true);
+    else cb(new Error('Only PDF and DOC/DOCX are allowed for licence documents'), false);
   },
 });
 
@@ -1197,6 +1210,89 @@ async function extractOrganizationNameFromLink(url) {
   }
 }
 
+const LICENCE_HEADING = 'Regional Branch Commercial Licence';
+
+/**
+ * Heuristic: extract location from Heading 1 — Document Header (lines 1–3 only).
+ * Looks for "Regional Branch Commercial Licence" followed by location on same line (after - , : or newline) or next line.
+ */
+function heuristicLocationFromHeading(text) {
+  if (!text || typeof text !== 'string') return null;
+  const lines = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n').map((l) => l.trim()).filter(Boolean);
+  const head = lines.slice(0, 3).join('\n');
+  const headingRegex = new RegExp(
+    `Regional\\s+Branch\\s+Commercial\\s+Licen[sc]e\\s*[-–—:,]?\\s*([^\n]+)|` +
+    `Regional\\s+Branch\\s+Commercial\\s+Licen[sc]e\\s*\\n\\s*([^\n]+)`,
+    'i'
+  );
+  const m = head.match(headingRegex);
+  if (m) {
+    const loc = (m[1] || m[2] || '').trim();
+    if (loc && loc.length < 120) return loc;
+  }
+  const headerOnly = lines.slice(0, 3);
+  for (let i = 0; i < headerOnly.length; i++) {
+    if (/Regional\s+Branch\s+Commercial\s+Licen[sc]e/i.test(headerOnly[i])) {
+      const onSameLine = headerOnly[i].replace(/Regional\s+Branch\s+Commercial\s+Licen[sc]e\s*[-–—:,]?\s*/i, '').trim();
+      if (onSameLine && onSameLine.length < 120) return onSameLine;
+      if (headerOnly[i + 1]) {
+        const next = headerOnly[i + 1].trim();
+        if (next && next.length < 120 && !/^\d+$/.test(next)) return next;
+      }
+      break;
+    }
+  }
+  return null;
+}
+
+/**
+ * Use LLM to extract only the location stated in the document heading; falls back to
+ * heuristic parsing when LLM is unavailable or returns empty.
+ */
+async function extractLocationsFromLicenceText(combinedText) {
+  if (!combinedText || typeof combinedText !== 'string' || !combinedText.trim()) {
+    return [];
+  }
+  const lines = combinedText.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n').map((l) => l.trim());
+  const headerLines = lines.slice(0, 3);
+  const documentHeader = headerLines.join('\n');
+  let locs = [];
+
+  if (isLlmConfigured()) {
+    const prompt = `Below is Heading 1 — Document Header (Lines 1–3) from uploaded "Regional Branch Commercial Licence" document(s). Extract ONLY the location (city, region, free zone, or country) from this header. Do not use any text beyond these first 3 lines.
+
+Document Header (Lines 1–3):
+---
+${documentHeader}
+---
+
+Return a JSON object with a single key "locations" whose value is an array of strings. Include only the one location found in this header (e.g. ["Dubai"], ["Abu Dhabi Global Market"], ["JAFZA"]). If no location appears in the header, return {"locations":[]}. Reply with only the JSON object.`;
+    try {
+      const completion = await createChatCompletion({
+        messages: [
+          { role: 'system', content: 'You respond only with a valid JSON object. No markdown, no explanation.' },
+          { role: 'user', content: prompt },
+        ],
+        maxTokens: 2000,
+        responseFormat: 'json',
+      });
+      const text = completion.choices?.[0]?.message?.content?.trim() || '{}';
+      const jsonStr = text.replace(/^```json?\s*|\s*```$/g, '').trim();
+      const obj = JSON.parse(jsonStr);
+      locs = Array.isArray(obj.locations) ? obj.locations.filter((l) => typeof l === 'string' && l.trim()) : [];
+    } catch (e) {
+      console.warn('extractLocationsFromLicenceText LLM:', e.message || e);
+    }
+  }
+
+  if (locs.length === 0) {
+    const heuristic = heuristicLocationFromHeading(combinedText);
+    if (heuristic) locs = [heuristic];
+  }
+
+  return locs;
+}
+
 export const uboRouter = Router();
 
 uboRouter.post('/extract', (req, res, next) => {
@@ -1364,6 +1460,277 @@ uboRouter.post('/extract-org-from-file', (req, res, next) => {
         ? 'Organization name extracted from document title.'
         : 'Could not confidently extract organization name from document.',
     });
+  } catch (e) {
+    res.status(500).json({ error: e.message || 'Extraction failed' });
+  }
+});
+
+/**
+ * POST /api/ubo/extract-locations-from-licence
+ * Multipart: files (one or more PDF/DOCX Regional Branch Commercial Licence documents)
+ * Extracts text from each file, then uses LLM to extract locations and returns { locations: string[] }.
+ */
+uboRouter.post('/extract-locations-from-licence', (req, res, next) => {
+  uploadLicence.array('files', 20)(req, res, (err) => {
+    if (err) {
+      return res.status(400).json({ error: err.message || 'File upload failed' });
+    }
+    next();
+  });
+}, async (req, res) => {
+  try {
+    const files = req.files && Array.isArray(req.files) ? req.files : [];
+    if (files.length === 0) {
+      return res.json({ locations: [] });
+    }
+    const allLocations = [];
+    for (const file of files) {
+      if (!file.buffer) continue;
+      const mime = (file.mimetype || 'application/octet-stream').toLowerCase();
+      const text = await extractTextFromBuffer(file.buffer, mime);
+      let fileLocations = await extractLocationsFromLicenceText(text && text.trim() ? text : '');
+      if (fileLocations.length === 0) {
+        const name = file.originalname || '';
+        const match = name.match(/\b(Regional\s+Branch\s+Commercial\s+Licen[sc]e)\s*[-–—:,]?\s*([^.]+)/i);
+        if (match && match[2]) {
+          const fromName = match[2].trim();
+          if (fromName.length > 0 && fromName.length < 100) fileLocations = [fromName];
+        }
+      }
+      allLocations.push(...fileLocations);
+    }
+    res.json({ locations: allLocations });
+  } catch (e) {
+    res.status(500).json({ error: e.message || 'Extraction failed' });
+  }
+});
+
+const GCC_SECTOR_OPTIONS = [
+  'Banking & Financial Services',
+  'Insurance',
+  'Capital Markets & Asset Management',
+  'Fintech & Payment Services',
+  'Energy & Utilities',
+  'Real Estate & Construction',
+  'Healthcare',
+  'Retail & Consumer Goods',
+  'Telecoms & Technology',
+  'Government & Public Sector',
+];
+
+/**
+ * POST /api/ubo/extract-sectors-from-documents
+ * Body: multipart/form-data with "files" (Regional Branch Commercial Licence or similar).
+ * Uses LLM to extract business sectors in operation across GCC from document text.
+ */
+uboRouter.post('/extract-sectors-from-documents', (req, res, next) => {
+  uploadLicence.array('files', 20)(req, res, (err) => {
+    if (err) {
+      return res.status(400).json({ error: err.message || 'File upload failed' });
+    }
+    next();
+  });
+}, async (req, res) => {
+  try {
+    const files = req.files && Array.isArray(req.files) ? req.files : [];
+    if (files.length === 0) {
+      return res.json({ sectors: [] });
+    }
+    const textParts = [];
+    for (const file of files) {
+      if (!file.buffer) continue;
+      const mime = (file.mimetype || 'application/octet-stream').toLowerCase();
+      const text = await extractTextFromBuffer(file.buffer, mime);
+      if (text && text.trim()) textParts.push(text.trim());
+    }
+    const combinedText = textParts.join('\n\n').slice(0, 15000);
+    let sectors = [];
+    if (combinedText && isLlmConfigured()) {
+      const sectorList = GCC_SECTOR_OPTIONS.map((s) => `"${s}"`).join(', ');
+      const prompt = `Below is text from uploaded Regional Branch Commercial Licence or similar GCC business documents. Identify ALL business sectors that this organization is currently operating in across the GCC, from this fixed list only: ${sectorList}.
+
+Document text (excerpt):
+---
+${combinedText}
+---
+
+Return a JSON object with a single key "sectors" whose value is an array of strings. Use only exact names from the list above. Include every sector that the document indicates the organization operates in. If none clearly apply, return {"sectors":[]}. Reply with only the JSON object.`;
+      try {
+        const completion = await createChatCompletion({
+          messages: [
+            { role: 'system', content: 'You respond only with a valid JSON object. No markdown, no explanation.' },
+            { role: 'user', content: prompt },
+          ],
+          maxTokens: 500,
+          responseFormat: 'json',
+        });
+        const raw = completion.choices?.[0]?.message?.content?.trim() || '{}';
+        const jsonStr = raw.replace(/^```json?\s*|\s*```$/g, '').trim();
+        const obj = JSON.parse(jsonStr);
+        const list = Array.isArray(obj.sectors) ? obj.sectors : [];
+        sectors = list.filter((s) => typeof s === 'string' && GCC_SECTOR_OPTIONS.includes(s));
+      } catch (e) {
+        console.warn('extract-sectors-from-documents LLM:', e.message || e);
+      }
+    }
+    res.json({ sectors });
+  } catch (e) {
+    res.status(500).json({ error: e.message || 'Extraction failed' });
+  }
+});
+
+function guessMimetypeFromUrl(url) {
+  if (!url || typeof url !== 'string') return 'application/octet-stream';
+  const u = url.toLowerCase().split('?')[0];
+  if (u.endsWith('.pdf')) return 'application/pdf';
+  if (u.endsWith('.docx')) return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+  if (u.endsWith('.doc')) return 'application/msword';
+  return 'application/octet-stream';
+}
+
+/**
+ * POST /api/ubo/extract-locations-from-licence-urls
+ * Body: { urls: string[] } (SharePoint or other document URLs). Requires Corporate SharePoint connected (cookie).
+ * Fetches each URL using stored auth, extracts text, runs location extraction. For Application mode.
+ */
+uboRouter.post('/extract-locations-from-licence-urls', async (req, res) => {
+  try {
+    const urls = Array.isArray(req.body?.urls) ? req.body.urls.filter((u) => typeof u === 'string' && u.trim()) : [];
+    if (urls.length === 0) return res.json({ locations: [] });
+    const session = getSharePointSession(req);
+    const accessToken = session?.accessToken || null;
+    const allLocations = [];
+    for (const url of urls) {
+      const buffer = await fetchFileContentFromUrl(url, accessToken);
+      if (!buffer || buffer.length === 0) continue;
+      const mime = guessMimetypeFromUrl(url);
+      const text = await extractTextFromBuffer(buffer, mime);
+      let fileLocations = await extractLocationsFromLicenceText(text && text.trim() ? text : '');
+      if (fileLocations.length === 0) {
+        const match = url.match(/\/([^/?#]+\.(pdf|docx?))$/i);
+        if (match && match[1]) {
+          const fromName = match[1].replace(/\.[^.]+$/, '').trim();
+          if (fromName.length > 0 && fromName.length < 100) fileLocations = [fromName];
+        }
+      }
+      allLocations.push(...fileLocations);
+    }
+    res.json({ locations: allLocations });
+  } catch (e) {
+    res.status(500).json({ error: e.message || 'Extraction failed' });
+  }
+});
+
+/**
+ * POST /api/ubo/extract-sectors-from-documents-urls
+ * Body: { urls: string[] }. Requires Corporate SharePoint connected (cookie). For Application mode.
+ */
+uboRouter.post('/extract-sectors-from-documents-urls', async (req, res) => {
+  try {
+    const urls = Array.isArray(req.body?.urls) ? req.body.urls.filter((u) => typeof u === 'string' && u.trim()) : [];
+    if (urls.length === 0) return res.json({ sectors: [] });
+    const session = getSharePointSession(req);
+    const accessToken = session?.accessToken || null;
+    const textParts = [];
+    for (const url of urls) {
+      const buffer = await fetchFileContentFromUrl(url, accessToken);
+      if (!buffer || buffer.length === 0) continue;
+      const mime = guessMimetypeFromUrl(url);
+      const text = await extractTextFromBuffer(buffer, mime);
+      if (text && text.trim()) textParts.push(text.trim());
+    }
+    const combinedText = textParts.join('\n\n').slice(0, 15000);
+    let sectors = [];
+    if (combinedText && isLlmConfigured()) {
+      const sectorList = GCC_SECTOR_OPTIONS.map((s) => `"${s}"`).join(', ');
+      const prompt = `Below is text from uploaded Regional Branch Commercial Licence or similar GCC business documents. Identify ALL business sectors that this organization is currently operating in across the GCC, from this fixed list only: ${sectorList}.
+
+Document text (excerpt):
+---
+${combinedText}
+---
+
+Return a JSON object with a single key "sectors" whose value is an array of strings. Use only exact names from the list above. Include every sector that the document indicates the organization operates in. If none clearly apply, return {"sectors":[]}. Reply with only the JSON object.`;
+      try {
+        const completion = await createChatCompletion({
+          messages: [
+            { role: 'system', content: 'You respond only with a valid JSON object. No markdown, no explanation.' },
+            { role: 'user', content: prompt },
+          ],
+          maxTokens: 500,
+          responseFormat: 'json',
+        });
+        const raw = completion.choices?.[0]?.message?.content?.trim() || '{}';
+        const jsonStr = raw.replace(/^```json?\s*|\s*```$/g, '').trim();
+        const obj = JSON.parse(jsonStr);
+        const list = Array.isArray(obj.sectors) ? obj.sectors : [];
+        sectors = list.filter((s) => typeof s === 'string' && GCC_SECTOR_OPTIONS.includes(s));
+      } catch (e) {
+        console.warn('extract-sectors-from-documents-urls LLM:', e.message || e);
+      }
+    }
+    res.json({ sectors });
+  } catch (e) {
+    res.status(500).json({ error: e.message || 'Extraction failed' });
+  }
+});
+
+/**
+ * Heuristic: extract country name or code from Registered Address text when LLM is off.
+ */
+function heuristicCountryFromAddress(text) {
+  if (!text || typeof text !== 'string') return '';
+  const t = text.trim().toLowerCase();
+  const patterns = [
+    { re: /\buae\b|united arab emirates|dubai|abu dhabi|sharjah|ajman|ras al khaimah|fujairah|umm al quwain/i, country: 'UAE' },
+    { re: /\bksa\b|saudi arabia|kingdom of saudi|riyadh|jeddah|dammam|saudi\b/i, country: 'Saudi Arabia' },
+    { re: /\bqatar\b|doha/i, country: 'Qatar' },
+    { re: /\bbahrain\b|manama/i, country: 'Bahrain' },
+    { re: /\boman\b|muscat/i, country: 'Oman' },
+    { re: /\bkuwait\b|kuwait city/i, country: 'Kuwait' },
+    { re: /\bsingapore\b/i, country: 'Singapore' },
+    { re: /\bunited kingdom\b|\buk\b|england|london/i, country: 'United Kingdom' },
+  ];
+  for (const { re, country } of patterns) {
+    if (re.test(t)) return country;
+  }
+  return '';
+}
+
+/**
+ * POST /api/ubo/extract-country-from-address
+ * Body: { registeredAddress: string }
+ * Returns: { country: string } — country name or code extracted from the Registered Address (LLM or heuristic).
+ */
+uboRouter.post('/extract-country-from-address', async (req, res) => {
+  try {
+    const registeredAddress = typeof req.body?.registeredAddress === 'string' ? req.body.registeredAddress.trim() : '';
+    if (!registeredAddress) {
+      return res.json({ country: '' });
+    }
+    let country = '';
+    if (isLlmConfigured()) {
+      try {
+        const completion = await createChatCompletion({
+          messages: [
+            { role: 'system', content: 'You extract only the country from an address string. Reply with a JSON object with a single key "country" whose value is the country name (e.g. United Arab Emirates, Saudi Arabia) or standard country code (e.g. UAE, KSA). Use only the country; no city, street, or building. If no country can be identified, use "".' },
+            { role: 'user', content: `Registered Address: ${registeredAddress}\n\nReturn JSON: { "country": "<country name or code>" }` },
+          ],
+          maxTokens: 100,
+          responseFormat: 'json',
+        });
+        const raw = completion.choices?.[0]?.message?.content?.trim() || '{}';
+        const jsonStr = raw.replace(/^```json?\s*|\s*```$/g, '').trim();
+        const obj = JSON.parse(jsonStr);
+        country = typeof obj.country === 'string' ? obj.country.trim() : '';
+      } catch (e) {
+        console.warn('extract-country-from-address LLM:', e.message || e);
+      }
+    }
+    if (!country) {
+      country = heuristicCountryFromAddress(registeredAddress);
+    }
+    res.json({ country });
   } catch (e) {
     res.status(500).json({ error: e.message || 'Extraction failed' });
   }

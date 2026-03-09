@@ -3,6 +3,7 @@ import { readFile, writeFile } from 'fs/promises';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { FRAMEWORKS } from '../constants.js';
+import { getFrameworksBySectorAndLocation } from './governance.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const dataPath = join(__dirname, '../data/companies.json');
@@ -42,7 +43,13 @@ companiesRouter.get('/by-parent', async (req, res) => {
     }
     const onboarding = await readOnboardingOpcos();
     for (const row of onboarding) {
-      if (row.parent === parent && row.opco) opcos.push({ name: row.opco, framework: row.framework || 'Onboarded' });
+      if (row.parent === parent && row.opco) {
+        const item = { name: row.opco, framework: row.framework || 'Onboarded' };
+        if (Array.isArray(row.locations) && row.locations.length > 0) item.locations = row.locations;
+        if (Array.isArray(row.applicableFrameworks) && row.applicableFrameworks.length > 0) item.applicableFrameworks = row.applicableFrameworks;
+        if (Array.isArray(row.applicableFrameworksByLocation) && row.applicableFrameworksByLocation.length > 0) item.applicableFrameworksByLocation = row.applicableFrameworksByLocation;
+        opcos.push(item);
+      }
     }
     res.json({ parent, opcos });
   } catch (e) {
@@ -73,9 +80,7 @@ companiesRouter.get('/roles', async (req, res) => {
       if (row.opco) opcoSet.add(row.opco);
     }
     const parents = Array.from(parentSet).sort();
-    const opcos = Array.from(opcoSet)
-      .filter((name) => !parentSet.has(name))
-      .sort();
+    const opcos = Array.from(opcoSet).sort();
     res.json({ parents, opcos });
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -192,26 +197,51 @@ companiesRouter.get('/multi-shareholder-opcos', async (req, res) => {
   }
 });
 
-/** POST /api/companies/add-opco – add an OpCo linked to a parent (from onboarding). Body: { parentName, organizationName }. Persists to onboarding-opcos.json. */
+/** POST /api/companies/add-opco – add an OpCo linked to a parent (from onboarding). Body: { parentName, organizationName, locations?: string[], sectorOfOperations?: string[], selectedFrameworks?: string[] }. When locations are provided, evaluates applicable frameworks by sector+location; if selectedFrameworks is provided, only those frameworks are stored for Governance Framework Summary and Multi Jurisdiction Matrix. */
 companiesRouter.post('/add-opco', async (req, res) => {
   try {
-    const { parentName, organizationName } = req.body || {};
+    const { parentName, organizationName, locations: rawLocations, sectorOfOperations: rawSectors, selectedFrameworks: rawSelected } = req.body || {};
     const parent = typeof parentName === 'string' ? parentName.trim() : '';
     const opco = typeof organizationName === 'string' ? organizationName.trim() : '';
     if (!parent || !opco) {
       return res.status(400).json({ error: 'parentName and organizationName are required' });
     }
+    const locations = Array.isArray(rawLocations) ? rawLocations.filter((l) => typeof l === 'string' && l.trim()) : [];
+    const sectorOfOperations = Array.isArray(rawSectors) ? rawSectors.filter((s) => typeof s === 'string' && s.trim()) : [];
+    const selectedFrameworks = Array.isArray(rawSelected) ? rawSelected.filter((s) => typeof s === 'string' && s.trim()) : [];
+
+    let applicableFrameworksByLocation = [];
+    if (locations.length > 0) {
+      try {
+        const pairs = await getFrameworksBySectorAndLocation(sectorOfOperations, locations);
+        if (selectedFrameworks.length > 0) {
+          const set = new Set(selectedFrameworks);
+          applicableFrameworksByLocation = pairs.filter((p) => set.has(p.framework));
+        } else {
+          applicableFrameworksByLocation = pairs;
+        }
+      } catch (e) {
+        console.warn('add-opco: getFrameworksBySectorAndLocation failed', e.message || e);
+      }
+    }
+
     const list = await readOnboardingOpcos();
     const existingIndex = list.findIndex((row) => row.parent === parent && row.opco === opco);
-    const entry = { parent, opco, framework: 'Onboarded', addedAt: new Date().toISOString() };
+    const entry = {
+      parent,
+      opco,
+      framework: 'Onboarded',
+      addedAt: new Date().toISOString(),
+      ...(locations.length > 0 && { locations }),
+      ...(applicableFrameworksByLocation.length > 0 && { applicableFrameworksByLocation }),
+    };
     if (existingIndex >= 0) {
-      // Update existing entry instead of creating a duplicate.
       list[existingIndex] = { ...list[existingIndex], ...entry };
     } else {
       list.push(entry);
     }
     await writeFile(onboardingPath, JSON.stringify(list, null, 2), 'utf-8');
-    res.json({ success: true, parent, opco });
+    res.json({ success: true, parent, opco, locations, applicableFrameworksByLocation });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

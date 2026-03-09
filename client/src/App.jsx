@@ -11,9 +11,14 @@ import { Analysis } from './components/Analysis';
 import { DataSovereignty } from './components/DataSovereignty';
 import { DataSecurityCompliance } from './components/DataSecurityCompliance';
 import { Onboarding } from './components/Onboarding';
+import { OrganizationOverview } from './components/OrganizationOverview';
+import { OrganizationDashboard } from './components/OrganizationDashboard';
 import { PlaceholderView } from './components/PlaceholderView';
-
-const ALL_FRAMEWORKS_VALUE = '__ALL__';
+import { PoaManagement } from './components/PoaManagement';
+import { IpManagement } from './components/IpManagement';
+import { LicenceManagement } from './components/LicenceManagement';
+import { LitigationsManagement } from './components/LitigationsManagement';
+import { Help } from './components/Help';
 
 const FRAMEWORKS = [
   'DFSA Rulebook',
@@ -48,8 +53,48 @@ const PERIOD_OPTIONS = [
 
 const PLACEHOLDER_VIEWS = {};
 
+// Role-based module visibility: which top-level module ids each role can see.
+const ROLE_MODULE_IDS = {
+  'legal-team': ['org-overview-module', 'legal-module'],
+  'governance-team': ['org-overview-module', 'governance-module', 'ownership-module'],
+  'data-security-team': ['org-overview-module', 'data-module'],
+  'c-level': null, // null = all modules
+  board: ['org-overview-module', 'analysis-module'],
+};
+
+const ROLE_OPTIONS = [
+  { value: 'legal-team', labelKey: 'roleLegalTeam' },
+  { value: 'governance-team', labelKey: 'roleGovernanceTeam' },
+  { value: 'data-security-team', labelKey: 'roleDataSecurityTeam' },
+  { value: 'c-level', labelKey: 'roleCLevel' },
+  { value: 'board', labelKey: 'roleBoard' },
+];
+
+// First view to show when switching to this role (if current view is not allowed).
+const ROLE_FIRST_VIEW = {
+  'legal-team': 'org-overview',
+  'governance-team': 'org-overview',
+  'data-security-team': 'org-overview',
+  'c-level': 'onboarding',
+  board: 'org-overview',
+};
+
+const GOVERNANCE_FRAMEWORKS_STORAGE_KEY = 'governance_applicable_frameworks';
+
+function loadApplicableFrameworksFromStorage() {
+  try {
+    const s = localStorage.getItem(GOVERNANCE_FRAMEWORKS_STORAGE_KEY);
+    if (s == null) return null;
+    const arr = JSON.parse(s);
+    return Array.isArray(arr) ? arr : null;
+  } catch {
+    return null;
+  }
+}
+
 export default function App() {
   const [language, setLanguage] = useState('en');
+  const [selectedRole, setSelectedRole] = useState('c-level');
   const [currentView, setCurrentView] = useState('onboarding');
   const [framework, setFramework] = useState('');
   const [selectedDays, setSelectedDays] = useState(30);
@@ -57,6 +102,19 @@ export default function App() {
   const [parentHoldingList, setParentHoldingList] = useState([]);
   const [selectedParentHolding, setSelectedParentHolding] = useState('');
   const [companiesRefreshKey, setCompaniesRefreshKey] = useState(0);
+  const [applicableFrameworksForGovernance, setApplicableFrameworksForGovernance] = useState(loadApplicableFrameworksFromStorage);
+  const [frameworksForParent, setFrameworksForParent] = useState([]);
+
+  const setApplicableFrameworksLoaded = (list) => {
+    const arr = Array.isArray(list) ? list : null;
+    setApplicableFrameworksForGovernance(arr);
+    try {
+      if (arr) localStorage.setItem(GOVERNANCE_FRAMEWORKS_STORAGE_KEY, JSON.stringify(arr));
+      else localStorage.removeItem(GOVERNANCE_FRAMEWORKS_STORAGE_KEY);
+    } catch {
+      // ignore
+    }
+  };
 
   useEffect(() => {
     fetch('/api/frameworks')
@@ -82,31 +140,125 @@ export default function App() {
 
   const isGovernanceFramework = currentView === 'governance-framework';
 
+  // Frameworks to show in Governance view: based on the selected Parent Holding's OpCos,
+  // optionally intersected with the global "applicable frameworks" from onboarding.
+  useEffect(() => {
+    if (!selectedParentHolding) {
+      setFrameworksForParent([]);
+      return;
+    }
+    fetch(`/api/companies/by-parent?parent=${encodeURIComponent(selectedParentHolding)}`)
+      .then((r) => r.json())
+      .then((data) => {
+        const opcos = Array.isArray(data.opcos) ? data.opcos : [];
+        const set = new Set();
+        for (const item of opcos) {
+          if (item && item.framework) set.add(item.framework);
+          if (Array.isArray(item?.applicableFrameworks)) {
+            item.applicableFrameworks.forEach((fw) => {
+              if (fw) set.add(fw);
+            });
+          }
+          if (Array.isArray(item?.applicableFrameworksByLocation)) {
+            item.applicableFrameworksByLocation.forEach((p) => {
+              if (p && p.framework) set.add(p.framework);
+            });
+          }
+        }
+        let frameworks = Array.from(set);
+        const gate = Array.isArray(applicableFrameworksForGovernance)
+          ? applicableFrameworksForGovernance
+          : null;
+        if (gate && gate.length > 0) {
+          frameworks = frameworks.filter((fw) => gate.includes(fw));
+        }
+        frameworks.sort();
+        setFrameworksForParent(frameworks);
+      })
+      .catch(() => {
+        setFrameworksForParent([]);
+      });
+  }, [selectedParentHolding, companiesRefreshKey, applicableFrameworksForGovernance]);
+
+  const gatedFrameworks = selectedParentHolding ? frameworksForParent : [];
+
+  const allowedModuleIds = ROLE_MODULE_IDS[selectedRole] || null;
+
+  useEffect(() => {
+    if (selectedRole === 'c-level') return;
+    const allowed = ROLE_MODULE_IDS[selectedRole];
+    if (!allowed) return;
+    const roleViewIds = {
+      'legal-team': ['org-overview', 'org-dashboard', 'poa-management', 'ip-management', 'licence-management', 'litigations-management'],
+      'governance-team': ['onboarding', 'org-overview', 'org-dashboard', 'parent-overview', 'governance-framework', 'multi-jurisdiction', 'ubo'],
+      'data-security-team': ['org-overview', 'org-dashboard', 'data-sovereignty', 'data-security'],
+      board: ['org-overview', 'org-dashboard', 'analysis', 'ma-simulator'],
+    };
+    const ids = roleViewIds[selectedRole];
+    if (ids && !ids.includes(currentView)) {
+      setCurrentView(ROLE_FIRST_VIEW[selectedRole] || ids[0]);
+    }
+  }, [selectedRole]);
+
   const isRtl = language === 'ar';
 
   return (
     <div className="app" dir={isRtl ? 'rtl' : 'ltr'} lang={isRtl ? 'ar' : 'en'}>
       <header className="header">
         <h1>{t(language, 'appTitle')}</h1>
-        <div className="header-lang">
-          <label htmlFor="language-select" className="header-lang-label">{t(language, 'language')}</label>
-          <select
-            id="language-select"
-            className="header-lang-select"
-            value={language}
-            onChange={(e) => setLanguage(e.target.value)}
-            aria-label={t(language, 'language')}
-          >
-            <option value="en">{t(language, 'languageEnglish')}</option>
-            <option value="ar">{t(language, 'languageArabic')}</option>
-          </select>
+        <div className="header-actions">
+          <Help language={language} />
+          <div className="header-roles">
+            <label htmlFor="roles-select" className="header-roles-label">{t(language, 'roles')}</label>
+            <select
+              id="roles-select"
+              className="header-roles-select"
+              value={selectedRole}
+              onChange={(e) => setSelectedRole(e.target.value)}
+              aria-label={t(language, 'roles')}
+            >
+              {ROLE_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>{t(language, opt.labelKey)}</option>
+              ))}
+            </select>
+          </div>
+          <div className="header-lang">
+            <label htmlFor="language-select" className="header-lang-label">{t(language, 'language')}</label>
+            <select
+              id="language-select"
+              className="header-lang-select"
+              value={language}
+              onChange={(e) => setLanguage(e.target.value)}
+              aria-label={t(language, 'language')}
+            >
+              <option value="en">{t(language, 'languageEnglish')}</option>
+              <option value="ar">{t(language, 'languageArabic')}</option>
+            </select>
+          </div>
         </div>
       </header>
       <div className="app-body">
-        <MainNav language={language} currentView={currentView} onSelect={setCurrentView} />
+        <MainNav language={language} currentView={currentView} onSelect={setCurrentView} allowedModuleIds={allowedModuleIds} />
         <div className="app-content">
           {currentView === 'onboarding' && (
-            <Onboarding language={language} onOpcoAdded={refreshCompanies} />
+            <Onboarding
+              language={language}
+              onOpcoAdded={refreshCompanies}
+              onApplicableFrameworksLoaded={setApplicableFrameworksLoaded}
+            />
+          )}
+          {currentView === 'org-overview' && (
+            <OrganizationOverview language={language} onNavigateToView={setCurrentView} selectedRole={selectedRole} />
+          )}
+          {currentView === 'org-dashboard' && (
+            <OrganizationDashboard
+              language={language}
+              parents={parentHoldingList}
+              selectedParentHolding={selectedParentHolding}
+              onParentHoldingChange={setSelectedParentHolding}
+              onNavigateToView={setCurrentView}
+              selectedRole={selectedRole}
+            />
           )}
           {currentView === 'parent-overview' && (
             <ParentHoldingOverview
@@ -118,6 +270,38 @@ export default function App() {
               companiesRefreshKey={companiesRefreshKey}
             />
           )}
+          {currentView === 'poa-management' && (
+            <PoaManagement
+              language={language}
+              parents={parentHoldingList}
+              selectedParentHolding={selectedParentHolding}
+              onParentHoldingChange={setSelectedParentHolding}
+            />
+          )}
+          {currentView === 'ip-management' && (
+            <IpManagement
+              language={language}
+              parents={parentHoldingList}
+              selectedParentHolding={selectedParentHolding}
+              onParentHoldingChange={setSelectedParentHolding}
+            />
+          )}
+          {currentView === 'licence-management' && (
+            <LicenceManagement
+              language={language}
+              parents={parentHoldingList}
+              selectedParentHolding={selectedParentHolding}
+              onParentHoldingChange={setSelectedParentHolding}
+            />
+          )}
+          {currentView === 'litigations-management' && (
+            <LitigationsManagement
+              language={language}
+              parents={parentHoldingList}
+              selectedParentHolding={selectedParentHolding}
+              onParentHoldingChange={setSelectedParentHolding}
+            />
+          )}
           {currentView === 'esg' && (
             <EsgSummary language={language} selectedParentHolding={selectedParentHolding} companiesRefreshKey={companiesRefreshKey} />
           )}
@@ -127,8 +311,8 @@ export default function App() {
           {currentView === 'ubo' && (
             <UltimateBeneficiaryOwner language={language} selectedParentHolding={selectedParentHolding} companiesRefreshKey={companiesRefreshKey} />
           )}
-          {currentView === 'analysis' && (
-            <Analysis language={language} selectedParentHolding={selectedParentHolding} onParentHoldingChange={setSelectedParentHolding} parents={parentHoldingList} companiesRefreshKey={companiesRefreshKey} />
+          {(currentView === 'analysis' || currentView === 'ma-simulator') && (
+            <Analysis language={language} selectedParentHolding={selectedParentHolding} onParentHoldingChange={setSelectedParentHolding} parents={parentHoldingList} companiesRefreshKey={companiesRefreshKey} activeView={currentView} />
           )}
           {currentView === 'data-sovereignty' && (
             <DataSovereignty language={language} selectedParentHolding={selectedParentHolding} companiesRefreshKey={companiesRefreshKey} />
@@ -144,9 +328,8 @@ export default function App() {
             <main className="dashboard-area">
               <Dashboard
                 language={language}
-                allFrameworksValue={ALL_FRAMEWORKS_VALUE}
                 frameworkReferences={frameworkReferences}
-                frameworks={FRAMEWORKS}
+                frameworks={gatedFrameworks}
                 periodOptions={PERIOD_OPTIONS}
                 selectedFramework={framework}
                 selectedDays={selectedDays}

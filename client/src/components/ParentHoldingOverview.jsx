@@ -43,6 +43,25 @@ function buildTrendData(displayStats) {
 }
 
 const API = '/api';
+const UBO_STORAGE_KEY = 'ubo_register';
+
+function getUboKeyFor(parent, opco) {
+  return `${parent || ''}::${opco || ''}`;
+}
+
+function getRegisteredAddressForOpco(parentName, opcoName) {
+  try {
+    const raw = localStorage.getItem(UBO_STORAGE_KEY);
+    if (!raw) return '';
+    const data = JSON.parse(raw);
+    const key = getUboKeyFor(parentName, opcoName);
+    const entry = data[key];
+    const details = entry?.details && typeof entry.details === 'object' ? entry.details : {};
+    return typeof details.registeredAddress === 'string' ? details.registeredAddress.trim() : '';
+  } catch {
+    return '';
+  }
+}
 
 /** Map framework to jurisdiction for display. */
 function frameworkToJurisdiction(framework) {
@@ -145,12 +164,19 @@ export function ParentHoldingOverview({ language = 'en', parents = [], selectedP
   });
   const [opcosForParent, setOpcosForParent] = useState([]);
   const [loadingOpcos, setLoadingOpcos] = useState(false);
+  const [jurisdictionByOpco, setJurisdictionByOpco] = useState({});
+  const [overviewSummary, setOverviewSummary] = useState(null);
+  const [overviewLoading, setOverviewLoading] = useState(false);
+  const [overviewError, setOverviewError] = useState(null);
+  const [overviewKey, setOverviewKey] = useState('');
 
   useEffect(() => {
     if (!selectedParentHolding) {
       setOpcosForParent([]);
+      setJurisdictionByOpco({});
       return;
     }
+    setJurisdictionByOpco({});
     setLoadingOpcos(true);
     fetch(`${API}/companies/by-parent?parent=${encodeURIComponent(selectedParentHolding)}`)
       .then((r) => r.json())
@@ -161,7 +187,57 @@ export function ParentHoldingOverview({ language = 'en', parents = [], selectedP
 
   const COMPLIANCE_THRESHOLD = 80;
 
-  const tableRows = (() => {
+  const opcoMeta = useMemo(() => {
+    const byName = {};
+    for (const { name, framework, locations } of opcosForParent) {
+      if (!byName[name]) byName[name] = { frameworks: [], locations: [] };
+      byName[name].frameworks.push(framework);
+      if (Array.isArray(locations) && locations.length > 0) byName[name].locations = locations;
+    }
+    const isMultiJurisdiction = {};
+    Object.entries(byName).forEach(([name, data]) => {
+      const multiLoc = data.locations.length > 1;
+      const jurSet = new Set((data.frameworks || []).map(frameworkToJurisdiction).filter(Boolean));
+      isMultiJurisdiction[name] = multiLoc || jurSet.size > 1;
+    });
+    return { byName, isMultiJurisdiction };
+  }, [opcosForParent]);
+
+  useEffect(() => {
+    if (!selectedParentHolding || opcosForParent.length === 0) return;
+    const byName = {};
+    for (const { name, framework, locations } of opcosForParent) {
+      if (!byName[name]) byName[name] = { frameworks: [], locations: [] };
+      byName[name].frameworks.push(framework);
+      if (Array.isArray(locations) && locations.length > 0) byName[name].locations = locations;
+    }
+    const multiSet = new Set();
+    Object.entries(byName).forEach(([name, data]) => {
+      if (data.locations.length > 1) multiSet.add(name);
+      else if (new Set((data.frameworks || []).map(frameworkToJurisdiction).filter(Boolean)).size > 1) multiSet.add(name);
+    });
+    let cancelled = false;
+    Object.keys(byName).forEach((opcoName) => {
+      if (multiSet.has(opcoName)) return;
+      const addr = getRegisteredAddressForOpco(selectedParentHolding, opcoName);
+      if (!addr) return;
+      fetch(`${API}/ubo/extract-country-from-address`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ registeredAddress: addr }),
+      })
+        .then((r) => r.json())
+        .then((data) => {
+          if (cancelled) return;
+          const country = (data.country || '').trim();
+          if (country) setJurisdictionByOpco((prev) => ({ ...prev, [opcoName]: country }));
+        })
+        .catch(() => {});
+    });
+    return () => { cancelled = true; };
+  }, [selectedParentHolding, opcosForParent]);
+
+  const tableRows = useMemo(() => {
     const uniqueNames = [];
     const seen = new Set();
     for (const { name } of opcosForParent) {
@@ -176,43 +252,73 @@ export function ParentHoldingOverview({ language = 'en', parents = [], selectedP
     const opcoToIndex = {};
     uniqueNames.forEach((name, i) => { opcoToIndex[name] = i; });
 
-    const seenRow = new Set();
-    return opcosForParent
-      .map(({ name, framework }) => {
-        const jurisdiction = frameworkToJurisdiction(framework);
-        let compliance;
-        if (useSplit) {
-          const idx = opcoToIndex[name];
-          const triplet = idx < nMix
-            ? MIX_SCORE_TRIPLETS[idx % MIX_SCORE_TRIPLETS.length]
-            : ABOVE80_SCORE_TRIPLETS[(idx - nMix) % ABOVE80_SCORE_TRIPLETS.length];
-          compliance = { ...triplet, status: triplet.governanceScore >= COMPLIANCE_THRESHOLD && triplet.policyScore >= COMPLIANCE_THRESHOLD && triplet.dataSovereigntyScore >= COMPLIANCE_THRESHOLD ? 'Compliant' : 'Non-Compliant' };
-        } else {
-          compliance = OPCO_COMPLIANCE_LOOKUP[name] || DEFAULT_COMPLIANCE;
-        }
-        const governanceScore = compliance.governanceScore;
-        const policyScore = compliance.policyScore;
-        const dataSovereigntyScore = compliance.dataSovereigntyScore;
-        const anyBelowThreshold =
-          governanceScore < COMPLIANCE_THRESHOLD ||
-          policyScore < COMPLIANCE_THRESHOLD ||
-          dataSovereigntyScore < COMPLIANCE_THRESHOLD;
-        const status = anyBelowThreshold ? 'Non-Compliant' : (compliance.status || 'Compliant');
-        return {
-          opcoName: name,
-          jurisdiction,
-          governanceScore,
-          policyScore,
-          dataSovereigntyScore,
-          status,
-        };
-      })
-      .filter((row) => {
-        if (seenRow.has(row.opcoName)) return false;
-        seenRow.add(row.opcoName);
-        return true;
+    return uniqueNames.map((name) => {
+      const framework = (opcoMeta.byName[name]?.frameworks || [])[0];
+      const isMulti = !!opcoMeta.isMultiJurisdiction[name];
+      const jurisdictionDisplay = isMulti ? 'multi-jurisdiction' : (jurisdictionByOpco[name] ?? '—');
+      let compliance;
+      if (useSplit) {
+        const idx = opcoToIndex[name];
+        const triplet = idx < nMix
+          ? MIX_SCORE_TRIPLETS[idx % MIX_SCORE_TRIPLETS.length]
+          : ABOVE80_SCORE_TRIPLETS[(idx - nMix) % ABOVE80_SCORE_TRIPLETS.length];
+        compliance = { ...triplet, status: triplet.governanceScore >= COMPLIANCE_THRESHOLD && triplet.policyScore >= COMPLIANCE_THRESHOLD && triplet.dataSovereigntyScore >= COMPLIANCE_THRESHOLD ? 'Compliant' : 'Non-Compliant' };
+      } else {
+        compliance = OPCO_COMPLIANCE_LOOKUP[name] || DEFAULT_COMPLIANCE;
+      }
+      const governanceScore = compliance.governanceScore;
+      const policyScore = compliance.policyScore;
+      const dataSovereigntyScore = compliance.dataSovereigntyScore;
+      const anyBelowThreshold =
+        governanceScore < COMPLIANCE_THRESHOLD ||
+        policyScore < COMPLIANCE_THRESHOLD ||
+        dataSovereigntyScore < COMPLIANCE_THRESHOLD;
+      const status = anyBelowThreshold ? 'Non-Compliant' : (compliance.status || 'Compliant');
+      return {
+        opcoName: name,
+        jurisdiction: jurisdictionDisplay,
+        governanceScore,
+        policyScore,
+        dataSovereigntyScore,
+        status,
+      };
+    });
+  }, [opcosForParent, opcoMeta, jurisdictionByOpco]);
+
+  // Helper: read mandatory UBO / compliance document completion for an OpCo
+  // across all parent–OpCo records in the UBO register. A document is treated
+  // as completed for the OpCo if it is uploaded under any parent for that OpCo.
+  function getUboDocSummary(opcoName) {
+    try {
+      const raw = localStorage.getItem(UBO_STORAGE_KEY);
+      if (!raw) return null;
+      const data = JSON.parse(raw);
+      const docsById = {};
+      const suffix = `::${opcoName}`;
+      Object.entries(data).forEach(([key, rec]) => {
+        if (!key.endsWith(suffix)) return;
+        if (!rec || !Array.isArray(rec.documents)) return;
+        rec.documents.forEach((d) => {
+          if (!d || !d.id) return;
+          const id = d.id;
+          if (!docsById[id]) {
+            docsById[id] = { uploaded: !!d.uploaded };
+          } else if (d.uploaded) {
+            docsById[id].uploaded = true;
+          }
+        });
       });
-  })();
+      const ids = Object.keys(docsById);
+      if (!ids.length) return null;
+      const MANDATORY_TOTAL = 7; // aligns with Mandatory UBO Documents list
+      const total = Math.max(ids.length, MANDATORY_TOTAL);
+      const completed = ids.filter((id) => docsById[id].uploaded).length;
+      if (!total) return null;
+      return { completed, total };
+    } catch {
+      return null;
+    }
+  }
 
   // Card values = averages of the corresponding table column only (so card and column stay in sync; each score distinct).
   const displayStats = (() => {
@@ -277,6 +383,78 @@ export function ParentHoldingOverview({ language = 'en', parents = [], selectedP
     if (s === 'At Risk') return 'atRisk';
     return s;
   };
+
+  // Build LLM-powered overview & summary for the selected parent using current table rows and overdue changes.
+  useEffect(() => {
+    const currentKey = selectedParentHolding
+      ? `${selectedParentHolding}::${tableRows.length}::${overdueForDisplay.length}`
+      : '';
+
+    if (!selectedParentHolding || tableRows.length === 0) {
+      setOverviewSummary(null);
+      setOverviewError(null);
+      setOverviewLoading(false);
+      setOverviewKey('');
+      return;
+    }
+
+    if (overviewKey === currentKey) {
+      return;
+    }
+
+    setOverviewKey(currentKey);
+    const opcosPayload = tableRows.map((row) => ({
+      opcoName: row.opcoName,
+      jurisdiction: row.jurisdiction,
+      governanceScore: row.governanceScore,
+      policyScore: row.policyScore,
+      dataSovereigntyScore: row.dataSovereigntyScore,
+      status: row.status,
+      isMultiJurisdiction: !!opcoMeta.isMultiJurisdiction[row.opcoName],
+      uboDocs: getUboDocSummary(row.opcoName),
+    }));
+    const overduePayload = overdueForDisplay.map((c) => {
+      const opcosForRow = selectedParentHolding
+        ? (c.affectedParents || []).find((p) => p.parent === selectedParentHolding)?.companies
+        : c.affectedCompanies;
+      const opcoList = Array.isArray(opcosForRow)
+        ? opcosForRow
+        : Array.isArray(c.affectedCompanies)
+        ? c.affectedCompanies
+        : [];
+      return {
+        framework: c.framework || '',
+        title: c.title || '',
+        deadline: c.deadline || '',
+        affectedOpcos: opcoList,
+      };
+    });
+    setOverviewLoading(true);
+    setOverviewError(null);
+    fetch(`${API}/analysis/overview-summary`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        parent: selectedParentHolding,
+        opcos: opcosPayload,
+        overdueChanges: overduePayload,
+      }),
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data && !data.error) {
+          setOverviewSummary(data);
+        } else {
+          setOverviewSummary(null);
+          setOverviewError(data.error || 'Failed to build overview summary');
+        }
+      })
+      .catch((e) => {
+        setOverviewSummary(null);
+        setOverviewError(e.message || 'Failed to build overview summary');
+      })
+      .finally(() => setOverviewLoading(false));
+  }, [selectedParentHolding, tableRows.length, overdueForDisplay.length, overviewKey]);
 
   return (
     <div className="parent-overview">
@@ -449,6 +627,58 @@ export function ParentHoldingOverview({ language = 'en', parents = [], selectedP
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+      </section>
+
+      <section className="parent-overview-summary-section">
+        <h3 className="parent-overview-table-title">
+          {t(language, 'overviewAndSummaryTitle')}
+          {selectedParentHolding && (
+            <span className="ph-table-subtitle"> {t(language, 'opcosFor')} {selectedParentHolding}</span>
+          )}
+        </h3>
+        {!selectedParentHolding ? (
+          <p className="ph-table-empty-msg">{t(language, 'selectParentToShow')}</p>
+        ) : overviewLoading ? (
+          <p className="ph-table-loading">{t(language, 'overviewAndSummaryLoading')}</p>
+        ) : overviewError ? (
+          <p className="ph-table-empty-msg">{overviewError}</p>
+        ) : !overviewSummary ? (
+          <p className="ph-table-empty-msg">{t(language, 'overviewAndSummaryEmpty')}</p>
+        ) : (
+          <div className="ph-summary-card">
+            {overviewSummary.overallSummary && (
+              <p className="ph-summary-text">{overviewSummary.overallSummary}</p>
+            )}
+            {overviewSummary.documentScoreSummary && (
+              <p className="ph-summary-text">
+                <strong>{t(language, 'overviewAndSummaryDocuments')} </strong>
+                {overviewSummary.documentScoreSummary}
+              </p>
+            )}
+            {overviewSummary.frameworkComplianceSummary && (
+              <p className="ph-summary-text">
+                <strong>{t(language, 'overviewAndSummaryFrameworks')} </strong>
+                {overviewSummary.frameworkComplianceSummary}
+              </p>
+            )}
+            {overviewSummary.multiJurisdictionRiskSummary && (
+              <p className="ph-summary-text">
+                <strong>{t(language, 'overviewAndSummaryJurisdictions')} </strong>
+                {overviewSummary.multiJurisdictionRiskSummary}
+              </p>
+            )}
+            {Array.isArray(overviewSummary.keyActions) && overviewSummary.keyActions.length > 0 && (
+              <div className="ph-summary-actions">
+                <h4 className="ph-summary-actions-title">{t(language, 'overviewAndSummaryActions')}</h4>
+                <ul>
+                  {overviewSummary.keyActions.map((action, idx) => (
+                    <li key={idx}>{action}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
         )}
       </section>

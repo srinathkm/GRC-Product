@@ -1,41 +1,61 @@
 .main-nav {
   background: var(--surface);
-  border-right: 1px solid var(--border);
-  padding: 1rem 0;
-  min-width: 220px;
+  border-bottom: 1px solid var(--border);
+  padding: 0.75rem 1.5rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
 }
 
-.main-nav-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
+.main-nav-modules {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
 }
 
-.main-nav-list li {
-  margin: 0;
+.main-nav-sections {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
 }
 
-.main-nav-item {
-  display: block;
-  width: 100%;
-  padding: 0.6rem 1.25rem;
-  border: none;
-  background: transparent;
+.main-nav-module-item,
+.main-nav-section-item {
+  border: 1px solid var(--border);
+  background: rgba(15, 20, 25, 0.85);
   color: var(--text-muted);
-  font-size: 0.9rem;
-  text-align: left;
+  font-size: 0.88rem;
+  padding: 0.6rem 1rem;
+  border-radius: 10px;
   cursor: pointer;
-  transition: background 0.15s, color 0.15s;
+  min-width: 140px;
+  text-align: left;
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.28);
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease,
+    box-shadow 0.15s ease,
+    transform 0.1s ease;
 }
 
-.main-nav-item:hover {
+.main-nav-module-item:hover,
+.main-nav-section-item:hover {
   background: var(--surface-hover);
   color: var(--text);
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.4);
+  transform: translateY(-1px);
 }
 
-.main-nav-item.active {
-  background: var(--surface-hover);
+.main-nav-module-item.active {
+  background: linear-gradient(135deg, var(--accent), #0ea5e9);
+  border-color: transparent;
+  color: #fff;
+  font-weight: 600;
+}
+
+.main-nav-section-item.active {
+  background: rgba(59, 130, 246, 0.18);
+  border-color: var(--accent);
   color: var(--accent);
   font-weight: 600;
-  border-left: 3px solid var(--accent);
 }

@@ -9,7 +9,6 @@ const API = '/api';
 
 export function Dashboard({
   language = 'en',
-  allFrameworksValue,
   frameworkReferences,
   frameworks,
   periodOptions,
@@ -28,11 +27,24 @@ export function Dashboard({
   const [expandedChangeId, setExpandedChangeId] = useState(null);
   const [viewDetailsContext, setViewDetailsContext] = useState(null);
   const [selectedOpCo, setSelectedOpCo] = useState('');
+  const [summaryCounts, setSummaryCounts] = useState({});
+  const [opcoAlerts, setOpcoAlerts] = useState({});
+  const [opcoAlertsLoading, setOpcoAlertsLoading] = useState(false);
+  const [opcoAlertsError, setOpcoAlertsError] = useState(null);
   const selectedParent = selectedParentHolding;
   const setSelectedParent = onParentHoldingChange || (() => {});
 
   const hasFrameworkSelection = !!selectedFramework;
-  const isFilteredByFramework = selectedFramework && selectedFramework !== allFrameworksValue;
+  const isFilteredByFramework = !!selectedFramework;
+
+  // Cards always show counts for the last 30 days (this month), independent of the Time period dropdown
+  useEffect(() => {
+    if (frameworks.length === 0) return;
+    fetch(`${API}/changes/summary?days=30`)
+      .then((r) => r.json())
+      .then((data) => setSummaryCounts(typeof data === 'object' && data !== null ? data : {}))
+      .catch(() => setSummaryCounts({}));
+  }, [frameworks.length]);
 
   const loadChanges = () => {
     if (!selectedFramework) return;
@@ -56,7 +68,53 @@ export function Dashboard({
       return;
     }
     loadChanges();
-  }, [selectedFramework, selectedParentHolding]);
+  }, [selectedFramework, selectedDays, selectedParentHolding]);
+
+  // Load OpCo → framework alerts using the same period as the Dashboard.
+  useEffect(() => {
+    if (frameworks.length === 0) {
+      setOpcoAlerts({});
+      setOpcoAlertsError(null);
+      setOpcoAlertsLoading(false);
+      return;
+    }
+    setOpcoAlertsLoading(true);
+    setOpcoAlertsError(null);
+    const q = new URLSearchParams();
+    q.set('days', String(selectedDays));
+    q.set('lookup', '1');
+    fetch(`${API}/changes/opco-alerts?${q}`)
+      .then((r) => r.json())
+      .then((rows) => {
+        const map = {};
+        if (Array.isArray(rows)) {
+          rows.forEach((row) => {
+            if (row && row.opco) {
+              map[row.opco] = row;
+            }
+          });
+        }
+        setOpcoAlerts(map);
+      })
+      .catch((e) => {
+        setOpcoAlerts({});
+        setOpcoAlertsError(e.message || 'Failed to load OpCo alerts');
+      })
+      .finally(() => setOpcoAlertsLoading(false));
+  }, [frameworks.length, selectedDays]);
+
+  const selectedOpcoAlertEntry =
+    selectedOpCo && opcoAlerts[selectedOpCo] ? opcoAlerts[selectedOpCo] : null;
+  const selectedOpcoFrameworkAlerts = selectedOpcoAlertEntry
+    ? (Array.isArray(selectedOpcoAlertEntry.frameworks)
+        ? selectedOpcoAlertEntry.frameworks
+        : []
+      ).filter((fw) => frameworks.includes(fw.framework))
+    : [];
+  const selectedOpcoTotalChanges = selectedOpcoFrameworkAlerts.reduce(
+    (sum, fw) => sum + (fw.changesCount || 0),
+    0,
+  );
 
   const handleDownloadPdf = () => {
     const body = { days: selectedDays, lookup: true };
@@ -118,9 +176,45 @@ export function Dashboard({
 
   return (
     <>
+      {frameworks.length > 0 && (
+        <section className="governance-framework-summary" aria-labelledby="governance-summary-heading">
+          <h2 id="governance-summary-heading" className="governance-summary-title">Governance Framework Summary</h2>
+          <div className="governance-summary-cards">
+            {frameworks.map((fw) => {
+              const ref = frameworkReferences[fw];
+              const abbreviation = ref?.abbreviation ?? fw;
+              const authority = ref?.authority ?? '';
+              const fwSummary = summaryCounts[fw];
+              const count =
+                typeof fwSummary === 'number'
+                  ? fwSummary
+                  : (fwSummary && typeof fwSummary.count === 'number'
+                      ? fwSummary.count
+                      : 0);
+              const isSelected = fw === selectedFramework;
+              return (
+                <button
+                  key={fw}
+                  type="button"
+                  className={`governance-summary-card ${isSelected ? 'governance-summary-card-selected' : ''}`}
+                  onClick={() => onFrameworkChange(fw)}
+                  aria-pressed={isSelected}
+                  aria-label={`${abbreviation}: ${authority || fw}. ${count} updates this month. Select to show change summary.`}
+                >
+                  <span className="governance-summary-card-abbr">{abbreviation}</span>
+                  {authority && <span className="governance-summary-card-authority">{authority}</span>}
+                  <span className="governance-summary-card-updates">
+                    {count} Update{count !== 1 ? 's' : ''} this month
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
       <div className="framework-selector-row">
         <FrameworkSelector
-          allFrameworksValue={allFrameworksValue}
           frameworks={frameworks}
           value={selectedFramework}
           onFrameworkChange={onFrameworkChange}
@@ -149,9 +243,13 @@ export function Dashboard({
         </button>
       </div>
 
-      {!hasFrameworkSelection ? (
+      {frameworks.length === 0 ? (
         <div className="dashboard-no-framework">
-          <p className="dashboard-no-framework-msg">Select a framework above to view <strong>Impact: Framework → Change → Parent Holding company</strong> and the changes below.</p>
+          <p className="dashboard-no-framework-msg">No frameworks loaded. Go to <strong>Onboarding</strong>, set <strong>Sector of Operations</strong> and <strong>Licencing Authorities</strong>, then use &quot;View applicable frameworks&quot; or confirm an organization to load the frameworks that apply. The Framework dropdown will then list only those.</p>
+        </div>
+      ) : !hasFrameworkSelection ? (
+        <div className="dashboard-no-framework">
+          <p className="dashboard-no-framework-msg">Select a framework from the dropdown above or click a framework card in the summary to view <strong>Impact: Framework → Change → Parent Holding company</strong> and the changes below.</p>
         </div>
       ) : (
         <>
@@ -161,6 +259,36 @@ export function Dashboard({
             onParentChange={setSelectedParent}
             onOpCoChange={(v) => setSelectedOpCo(v)}
           />
+
+        {selectedOpCo && (
+          <div
+            className={`dashboard-opco-alert ${
+              selectedOpcoFrameworkAlerts.length > 0
+                ? 'dashboard-opco-alert-has-updates'
+                : 'dashboard-opco-alert-no-updates'
+            }`}
+          >
+            {opcoAlertsLoading ? (
+              <span>Checking recent framework updates for <span className="dashboard-opco-alert-strong">{selectedOpCo}</span>…</span>
+            ) : opcoAlertsError ? (
+              <span>Could not check framework updates for <span className="dashboard-opco-alert-strong">{selectedOpCo}</span>.</span>
+            ) : selectedOpcoFrameworkAlerts.length === 0 ? (
+              <span>
+                No recent changes in the selected time period for frameworks associated with{' '}
+                <span className="dashboard-opco-alert-strong">{selectedOpCo}</span>.
+              </span>
+            ) : (
+              <span>
+                <span className="dashboard-opco-alert-strong">{selectedOpCo}</span> is part of{' '}
+                {selectedOpcoFrameworkAlerts.length} framework
+                {selectedOpcoFrameworkAlerts.length !== 1 ? 's' : ''} with{' '}
+                {selectedOpcoTotalChanges} recent change
+                {selectedOpcoTotalChanges !== 1 ? 's' : ''} in the last {selectedDays} day
+                {selectedDays !== 1 ? 's' : ''}.
+              </span>
+            )}
+          </div>
+        )}
 
           {isFilteredByFramework && frameworkReferences[selectedFramework] && (
             <p className="framework-reference-line">

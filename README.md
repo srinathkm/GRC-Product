@@ -40,6 +40,18 @@ A web application for **Governance, Risk and Compliance** across GCC and Middle 
 
 ---
 
+## Docker deployment (static IP / container)
+
+To deploy as a single Docker container for others to access (e.g. on a static IP):
+
+1. Copy the project to the host (or create a tarball: `npm run docker:package`).
+2. Run `./deploy.sh` (creates `.env` if needed, builds, and starts the container).
+3. Access at **http://\<host-ip\>:3001**.
+
+See **[DEPLOY.md](DEPLOY.md)** for full steps and packaging details.
+
+---
+
 ## Data
 
 - **Changes:** `server/data/changes.json` (regulation changes with deadlines and affected companies).

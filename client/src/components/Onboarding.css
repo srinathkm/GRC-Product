@@ -27,11 +27,78 @@
   color: var(--text);
 }
 
+.onboarding-document-upload .onboarding-upload-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem;
+  background: var(--surface);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+}
+
 .onboarding-uploads {
   display: flex;
   flex-direction: column;
   gap: 1rem;
   max-width: 560px;
+}
+
+.onboarding-documents-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1rem;
+  margin-top: 1rem;
+}
+
+.onboarding-btn-analyze {
+  padding: 0.5rem 1rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  border-radius: 6px;
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+  transition: filter 0.15s ease;
+}
+
+.onboarding-btn-analyze:hover:not(:disabled) {
+  filter: brightness(1.05);
+}
+
+.onboarding-btn-analyze:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.onboarding-analyze-hint {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  max-width: 420px;
+}
+
+.onboarding-document-upload-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.onboarding-doc-mode-toggle {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.onboarding-doc-mode-option {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.85rem;
+  color: var(--text-muted);
 }
 
 .onboarding-upload-row {
@@ -79,6 +146,43 @@
 
 .onboarding-link-input {
   margin-top: 0.25rem;
+}
+
+.onboarding-link-textarea {
+  width: 100%;
+  min-height: 2.5em;
+  resize: vertical;
+}
+
+.onboarding-sharepoint-connect {
+  margin-top: 0.75rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  align-items: center;
+}
+
+.onboarding-sharepoint-link {
+  color: var(--accent);
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.onboarding-sharepoint-link:hover {
+  text-decoration: underline;
+}
+
+.onboarding-sharepoint-status {
+  font-size: 0.9rem;
+  color: var(--text);
+  font-weight: 500;
+}
+
+.onboarding-sharepoint-hint {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin: 0;
+  width: 100%;
 }
 
 .onboarding-upload-file-list {
@@ -650,4 +754,56 @@
   display: flex;
   justify-content: flex-end;
   gap: 0.5rem;
+}
+
+.onboarding-btn-frameworks {
+  margin-top: 0.25rem;
+}
+
+.onboarding-frameworks-hint {
+  margin: 0.35rem 0 0;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.onboarding-modal-frameworks .onboarding-modal-body {
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.onboarding-frameworks-modal-intro {
+  margin-bottom: 0.75rem;
+}
+
+.onboarding-frameworks-empty {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.onboarding-frameworks-list {
+  margin: 0;
+  padding-left: 1.25rem;
+  list-style: disc;
+}
+
+.onboarding-frameworks-list li {
+  margin-bottom: 0.25rem;
+}
+
+.onboarding-locations-intro {
+  margin: 0 0 0.75rem 0;
+  color: var(--text);
+}
+.onboarding-locations-empty {
+  margin: 0;
+  color: var(--text-muted);
+  font-style: italic;
+}
+.onboarding-locations-list {
+  margin: 0;
+  padding-left: 1.25rem;
+  list-style: disc;
+}
+.onboarding-locations-list li {
+  margin-bottom: 0.25rem;
 }

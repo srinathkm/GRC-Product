@@ -725,33 +725,6 @@ export function EsgSummary({ language = 'en', selectedParentHolding = '', compan
       </section>
 
       <section className="esg-section">
-        <h3 className="esg-section-title">ESG frameworks for MENA and the Middle East</h3>
-        <p className="esg-section-desc">
-          Frameworks and standards applicable to ESG reporting and disclosure in the MENA region.
-        </p>
-        <div className="esg-frameworks-table-wrap">
-          <table className="esg-frameworks-table">
-            <thead>
-              <tr>
-                <th>Framework</th>
-                <th>Region</th>
-                <th>Focus</th>
-              </tr>
-            </thead>
-            <tbody>
-              {MENA_FRAMEWORKS.map((fw) => (
-                <tr key={fw.name}>
-                  <td><strong>{fw.name}</strong></td>
-                  <td>{fw.region}</td>
-                  <td>{fw.focus}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      <section className="esg-section">
         <h3 className="esg-section-title">Data visualization & analysis</h3>
 
         <div className="esg-viz-toolbar">

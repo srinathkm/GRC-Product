@@ -7,7 +7,7 @@ import { getDataSecuritySummaryForMa } from './DataSecurityCompliance';
 
 const API = '/api';
 
-export function Analysis({ language = 'en', selectedParentHolding, onParentHoldingChange, parents = [], companiesRefreshKey = 0 }) {
+export function Analysis({ language = 'en', selectedParentHolding, onParentHoldingChange, parents = [], companiesRefreshKey = 0, activeView = 'analysis' }) {
   const [parent, setParent] = useState(selectedParentHolding || '');
   useEffect(() => {
     setParent(selectedParentHolding || '');
@@ -173,8 +173,9 @@ export function Analysis({ language = 'en', selectedParentHolding, onParentHoldi
         Predictive risk analysis for compliance: combine current regulatory deadlines and OpCo data with optional historical compliance data to predict whether compliance will be met in time. The analysis includes <strong>financial penalty</strong> exposure (OpCo and Parent), <strong>capital investment</strong> needed to complete compliance, <strong>compliance gaps</strong> (modules not yet met and missing details), and <strong>business impact</strong> if compliance is not met. Results are shown in graphs, tables, and a detailed explanation for analysts.
       </p>
 
+      {activeView === 'analysis' && (
       <section className="analysis-block analysis-setup">
-        <h3 className="analysis-heading">AI Risk Prediction</h3>
+        <h3 className="analysis-heading">Risk Predictor</h3>
         <p className="analysis-subheading">
           Select a parent holding and optionally upload historical compliance data (CSV or JSON). The model uses current system data (changes, deadlines, OpCos) and historical outcomes to predict compliance risk.
         </p>
@@ -230,7 +231,9 @@ export function Analysis({ language = 'en', selectedParentHolding, onParentHoldi
           </div>
         </div>
       </section>
+      )}
 
+      {activeView === 'ma-simulator' && (
       <section className="analysis-block analysis-ma-simulator">
         <h3 className="analysis-heading">M&amp;A Simulator</h3>
         <p className="analysis-subheading">
@@ -497,6 +500,7 @@ export function Analysis({ language = 'en', selectedParentHolding, onParentHoldi
           </div>
         )}
       </section>
+      )}
 
       {error && (
         <div className="analysis-error">
@@ -504,7 +508,7 @@ export function Analysis({ language = 'en', selectedParentHolding, onParentHoldi
         </div>
       )}
 
-      {result && (
+      {activeView === 'analysis' && result && (
         <>
           <section className="analysis-block analysis-summary-cards">
             <h3 className="analysis-heading">Prediction summary</h3>

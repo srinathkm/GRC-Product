@@ -562,6 +562,211 @@ Write in clear, professional English.`;
 
 export const analysisRouter = Router();
 
+/**
+ * POST /api/analysis/overview-summary
+ * Body: {
+ *   parent: string,
+ *   opcos: [{
+ *     opcoName: string,
+ *     jurisdiction: string,
+ *     governanceScore: number,
+ *     policyScore: number,
+ *     dataSovereigntyScore: number,
+ *     status: string,
+ *     isMultiJurisdiction: boolean,
+ *     uboDocs?: { completed: number, total: number } | null
+ *   }],
+ *   overdueChanges?: [{
+ *     framework: string,
+ *     title: string,
+ *     deadline: string,
+ *     affectedOpcos: string[]
+ *   }]
+ * }
+ *
+ * Returns a JSON summary built by the LLM (when configured) or a heuristic fallback:
+ * {
+ *   overallSummary: string,
+ *   documentScoreSummary: string,
+ *   frameworkComplianceSummary: string,
+ *   multiJurisdictionRiskSummary: string,
+ *   keyActions: string[]
+ * }
+ */
+analysisRouter.post('/overview-summary', async (req, res) => {
+  try {
+    const { parent, opcos, overdueChanges } = req.body || {};
+    const parentName = typeof parent === 'string' ? parent.trim() : '';
+    const opcoList = Array.isArray(opcos) ? opcos : [];
+    const overdueList = Array.isArray(overdueChanges) ? overdueChanges : [];
+
+    if (!parentName || opcoList.length === 0) {
+      return res.status(400).json({ error: 'Parent and at least one OpCo row are required' });
+    }
+
+    // Compute simple metrics to support the LLM and fallback.
+    let totalDocCompleted = 0;
+    let totalDocPossible = 0;
+    let opcosWithDocs = 0;
+    let multiJurisdictionCount = 0;
+    let nonCompliantCount = 0;
+    let atRiskCount = 0;
+    let compliantCount = 0;
+
+    for (const row of opcoList) {
+      const docs = row && row.uboDocs;
+      if (docs && typeof docs.completed === 'number' && typeof docs.total === 'number' && docs.total > 0) {
+        totalDocCompleted += docs.completed;
+        totalDocPossible += docs.total;
+        opcosWithDocs += 1;
+      }
+      if (row && row.isMultiJurisdiction) multiJurisdictionCount += 1;
+      const status = (row && row.status) || '';
+      if (/non[-\s]?compliant/i.test(status)) nonCompliantCount += 1;
+      else if (/at\s*risk/i.test(status)) atRiskCount += 1;
+      else if (/compliant/i.test(status)) compliantCount += 1;
+    }
+
+    const overallDocCompletionPct =
+      totalDocPossible > 0 ? Math.round((totalDocCompleted / totalDocPossible) * 100) : null;
+
+    const frameworkIssuesByOpco = {};
+    for (const c of overdueList) {
+      const affected = Array.isArray(c.affectedOpcos) ? c.affectedOpcos : [];
+      for (const name of affected) {
+        const key = typeof name === 'string' ? name.trim() : '';
+        if (!key) continue;
+        if (!frameworkIssuesByOpco[key]) frameworkIssuesByOpco[key] = [];
+        frameworkIssuesByOpco[key].push({
+          framework: c.framework || '',
+          title: c.title || '',
+          deadline: c.deadline || '',
+        });
+      }
+    }
+
+    const payloadForModel = {
+      parent: parentName,
+      opcos: opcoList,
+      overdueChanges: overdueList,
+      metrics: {
+        overallDocCompletionPct,
+        opcosWithDocs,
+        multiJurisdictionCount,
+        nonCompliantCount,
+        atRiskCount,
+        compliantCount,
+        totalOpcos: opcoList.length,
+      },
+      frameworkIssuesByOpco,
+    };
+
+    if (isLlmConfigured()) {
+      try {
+        const systemPrompt =
+          'You are a senior compliance officer. Given structured data about a parent holding and its OpCos, write a concise, evidence-backed compliance overview and clear, outcome-based remediation steps.';
+        const userPrompt = `Data (JSON):\n${JSON.stringify(payloadForModel)}\n\nRequirements:\n1) Assess the overall compliance posture for the parent group and its OpCos using ONLY the numbers and names provided.\n2) Cover:\n   - Mandatory UBO/compliance document completion per OpCo (uploaded vs total) and an overall score.\n   - Framework or regulatory changes that are overdue or near their deadline, and which OpCos they affect.\n   - Multi-jurisdiction risks where the same OpCo operates in multiple jurisdictions or frameworks.\n3) Provide:\n   - "overallSummary": 2–3 sentences on the situation.\n   - "documentScoreSummary": quantitative summary (include percentages and counts where possible).\n   - "frameworkComplianceSummary": which OpCos/frameworks are driving risk (overdue or near deadlines).\n   - "multiJurisdictionRiskSummary": risks that arise specifically from multi-jurisdiction operations.\n   - "keyActions": 4–8 short, outcome-based steps (each a single sentence starting with a verb).\n\nRespond ONLY with a valid JSON object of the form:\n{\n  "overallSummary": string,\n  "documentScoreSummary": string,\n  "frameworkComplianceSummary": string,\n  "multiJurisdictionRiskSummary": string,\n  "keyActions": string[]\n}`;
+
+        const completion = await createChatCompletion({
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt },
+          ],
+          maxTokens: 800,
+          responseFormat: 'json',
+        });
+
+        const raw = completion.choices?.[0]?.message?.content?.trim() || '{}';
+        const jsonStr = raw.replace(/^```json?\s*|\s*```$/g, '').trim();
+        const parsed = JSON.parse(jsonStr);
+        const summary = {
+          overallSummary: typeof parsed.overallSummary === 'string' ? parsed.overallSummary : '',
+          documentScoreSummary:
+            typeof parsed.documentScoreSummary === 'string'
+              ? parsed.documentScoreSummary
+              : '',
+          frameworkComplianceSummary:
+            typeof parsed.frameworkComplianceSummary === 'string'
+              ? parsed.frameworkComplianceSummary
+              : '',
+          multiJurisdictionRiskSummary:
+            typeof parsed.multiJurisdictionRiskSummary === 'string'
+              ? parsed.multiJurisdictionRiskSummary
+              : '',
+          keyActions: Array.isArray(parsed.keyActions)
+            ? parsed.keyActions.filter((x) => typeof x === 'string' && x.trim())
+            : [],
+          metrics: payloadForModel.metrics,
+        };
+        return res.json(summary);
+      } catch (e) {
+        console.warn('overview-summary LLM error:', e.message || e);
+      }
+    }
+
+    // Fallback when LLM is not configured or fails.
+    const docSummaryPieces = [];
+    if (overallDocCompletionPct != null) {
+      docSummaryPieces.push(
+        `Across ${opcosWithDocs} OpCo(s) with UBO/mandatory document tracking, approximately ${overallDocCompletionPct}% of required documents are marked as uploaded.`,
+      );
+    } else {
+      docSummaryPieces.push(
+        'No UBO or mandatory document tracking data was provided for this parent; document completeness cannot be scored.',
+      );
+    }
+    const documentScoreSummary = docSummaryPieces.join(' ');
+
+    const frameworkSummaryPieces = [];
+    const totalOverdue = overdueList.length;
+    if (totalOverdue > 0) {
+      frameworkSummaryPieces.push(
+        `${totalOverdue} change(s) with deadlines affect this parent, concentrated in ${Object.keys(
+          frameworkIssuesByOpco,
+        ).length} OpCo(s).`,
+      );
+    } else {
+      frameworkSummaryPieces.push('No overdue or near-term framework deadlines were provided for this parent.');
+    }
+    const frameworkComplianceSummary = frameworkSummaryPieces.join(' ');
+
+    const multiSummaryPieces = [];
+    if (multiJurisdictionCount > 0) {
+      multiSummaryPieces.push(
+        `${multiJurisdictionCount} OpCo(s) operate across multiple jurisdictions or frameworks, which increases the coordination needed for timely compliance and consistent control design.`,
+      );
+    } else {
+      multiSummaryPieces.push(
+        'No multi-jurisdiction OpCos were identified from the provided data; jurisdictional risk appears limited in this snapshot.',
+      );
+    }
+    const multiJurisdictionRiskSummary = multiSummaryPieces.join(' ');
+
+    const overallSummary = `For parent "${parentName}", ${opcoList.length} OpCo(s) were analysed with a mix of compliant, at-risk, and non-compliant statuses. Document completeness, regulatory deadlines, and multi-jurisdiction exposure should be used together to prioritise where the compliance team intervenes first.`;
+
+    const keyActions = [
+      'Identify OpCos with the lowest UBO/mandatory document completion percentages and assign owners to close document gaps within 30–60 days.',
+      'For each OpCo with overdue or near-term framework deadlines, create a mini remediation plan covering policy updates, evidence gathering, and regulator submissions.',
+      'Prioritise multi-jurisdiction OpCos for a cross-framework mapping exercise so that overlapping obligations are clearly documented and owned.',
+      'Use the governance framework view to confirm which frameworks are in scope for each OpCo and ensure they are reflected in local compliance plans.',
+      'Run a focused UBO review for high-risk OpCos (those marked At Risk or Non-Compliant) to confirm beneficial ownership records and supporting documents.',
+      'Align board and senior management reporting so that these document scores, deadline exposures, and multi-jurisdiction risks are tracked over time.',
+    ];
+
+    return res.json({
+      overallSummary,
+      documentScoreSummary,
+      frameworkComplianceSummary,
+      multiJurisdictionRiskSummary,
+      keyActions,
+      metrics: payloadForModel.metrics,
+    });
+  } catch (e) {
+    console.error('overview-summary error:', e);
+    res.status(500).json({ error: e.message || 'Overview summary failed' });
+  }
+});
+
 analysisRouter.post('/risk-prediction', upload.single('historical'), async (req, res) => {
   try {
     const parent = (req.body && req.body.parent) ? String(req.body.parent).trim() : null;

@@ -29,12 +29,11 @@ function getUboKeyFor(parent, opco) {
 
 const DOCUMENT_TYPES = [
   { id: 'ubo-certificate', labelKey: 'onboardingDocUboCertificate' },
-  { id: 'regional-branch-licence', labelKey: 'onboardingDocRegionalBranchLicence' },
-  { id: 'individual-commercial-registration', labelKey: 'onboardingDocIndividualCommercialRegistration', multiple: true },
-  { id: 'branch-office-licences', labelKey: 'onboardingDocBranchOfficeLicences' },
+  { id: 'regional-branch-licence', labelKey: 'onboardingDocRegionalBranchLicence', multiple: true },
+  { id: 'branch-office-licences', labelKey: 'onboardingDocBranchOfficeLicences', multiple: true },
+  { id: 'passport', labelKey: 'onboardingDocPassport', multiple: true },
+  { id: 'moa', labelKey: 'onboardingDocMoa', multiple: true },
 ];
-
-const INDIVIDUAL_COMMERCIAL_REGISTRATION_ID = 'individual-commercial-registration';
 
 const SECTOR_OPTIONS = [
   'Banking & Financial Services',
@@ -62,6 +61,23 @@ const LICENCING_AUTHORITY_OPTIONS = [
   'CBB (Central Bank Bahrain)',
   'Oman CMA',
   'Kuwait CMA',
+];
+
+const LOCATION_OPTIONS = [
+  'Dubai International Financial Centre',
+  'Abu Dhabi Global Market',
+  'Jebel Ali Free Zone',
+  'Dubai Multi Commodities Centre',
+  'Dubai (Mainland / Onshore)',
+  'Abu Dhabi (Mainland)',
+  'Sharjah (Free Zones & Mainland)',
+  'Ras Al Khaimah (RAK) Free Zones',
+  'Saudi Arabia (Onshore / National)',
+  'Saudi Giga-Projects (NEOM, Red Sea, etc.)',
+  'Qatar Financial Centre (QFC) & Mainland',
+  'Bahrain (BHB, CBB)',
+  'Oman (CMA, MSM)',
+  'Kuwait (CMA, Boursa Kuwait)',
 ];
 
 function MultiSelectDropdown({ id, label, options, selected, onChange, placeholder }) {
@@ -120,15 +136,25 @@ function MultiSelectDropdown({ id, label, options, selected, onChange, placehold
   );
 }
 
-export function Onboarding({ language = 'en', onOpcoAdded }) {
+export function Onboarding({ language = 'en', onOpcoAdded, onApplicableFrameworksLoaded }) {
   const [uploads, setUploads] = useState({});
   const [uploadMode, setUploadMode] = useState({});
   const [uploadLinks, setUploadLinks] = useState({});
-  const [businessActivities, setBusinessActivities] = useState('');
+  const [documentUploadMode, setDocumentUploadMode] = useState('manual'); // 'manual' | 'application'
+  const [sharepointAccount, setSharepointAccount] = useState('');
+  const [sharepointConnected, setSharepointConnected] = useState(false);
+  const [locations, setLocations] = useState([]);
   const [sectorOfOperations, setSectorOfOperations] = useState([]);
   const [licencingAuthorities, setLicencingAuthorities] = useState([]);
+  const [applicableFrameworksOptions, setApplicableFrameworksOptions] = useState([]);
+  const [applicableFrameworksSelected, setApplicableFrameworksSelected] = useState([]);
+  const [analyzing, setAnalyzing] = useState(false);
   const [parentsList, setParentsList] = useState([]);
   const [showReviewPanel, setShowReviewPanel] = useState(false);
+  const [applicableFrameworksList, setApplicableFrameworksList] = useState([]);
+  const [frameworksModalOpen, setFrameworksModalOpen] = useState(false);
+  const [frameworksLoading, setFrameworksLoading] = useState(false);
+  const [frameworksConfirmModal, setFrameworksConfirmModal] = useState(null); // { parentName, orgName } when showing "frameworks to be added" before confirm
   const [reviewData, setReviewData] = useState({
     organizationName: '',
     uboCertificateNumber: '',
@@ -137,9 +163,10 @@ export function Onboarding({ language = 'en', onOpcoAdded }) {
     tradeLicenceNumber: '',
     certificateJurisdiction: '',
     certificateParentHoldings: [],
-    businessActivities: '',
+    locations: [],
     sectorOfOperations: [],
     licencingAuthorities: [],
+    applicableFrameworksSelected: [],
     parentChoice: 'existing',
     existingParent: '',
     newParentName: '',
@@ -151,8 +178,47 @@ export function Onboarding({ language = 'en', onOpcoAdded }) {
   const [uboCertRequiredModal, setUboCertRequiredModal] = useState(false);
   const [extractedMemberDetailsModal, setExtractedMemberDetailsModal] = useState(null); // [{ fullName, idType, idNumber }, ...]
   const [pendingConfirm, setPendingConfirm] = useState(null); // { parentName, orgName }
+  const [locationsModal, setLocationsModal] = useState(null); // { locations: string[], continue: () => void } when showing locations extracted from Regional Branch Licence
+  const [lastLicenceLocationsForConfirm, setLastLicenceLocationsForConfirm] = useState([]); // locations to send with add-opco when user confirms
   const [expandedMandatoryEntityIndices, setExpandedMandatoryEntityIndices] = useState(() => new Set()); // indices in set = expanded; empty = all collapsed by default
   const fileRefs = useRef({});
+  const hadRegionalBranchLicenceAtConfirm = useRef(false);
+
+  useEffect(() => {
+    // When the global document upload mode changes, force all document types to that mode.
+    setUploadMode((prev) => {
+      const next = { ...prev };
+      DOCUMENT_TYPES.forEach((doc) => {
+        next[doc.id] = documentUploadMode === 'manual' ? 'file' : 'link';
+      });
+      return next;
+    });
+  }, [documentUploadMode]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const connected = params.get('sharepoint_connected');
+    const session = params.get('session');
+    if (connected === '1' && session) {
+      try {
+        sessionStorage.setItem('raqib_sharepoint_session', session);
+      } catch (e) {}
+      const u = new URL(window.location.href);
+      u.searchParams.delete('sharepoint_connected');
+      u.searchParams.delete('session');
+      window.history.replaceState({}, '', u.pathname + u.search + u.hash);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (documentUploadMode !== 'application') return;
+    const session = sessionStorage.getItem('raqib_sharepoint_session');
+    const headers = session ? { 'X-Raqib-Session': session } : {};
+    fetch(`${API}/auth/sharepoint/status`, { credentials: 'include', headers })
+      .then((r) => r.json())
+      .then((data) => setSharepointConnected(!!data.connected))
+      .catch(() => setSharepointConnected(false));
+  }, [documentUploadMode]);
 
   useEffect(() => {
     fetch(`${API}/companies/roles`)
@@ -167,6 +233,49 @@ export function Onboarding({ language = 'en', onOpcoAdded }) {
       .then((data) => setConfirmedList(data.list || []))
       .catch(() => setConfirmedList([]));
   }, [showReviewPanel]);
+
+  useEffect(() => {
+    if (locations.length === 0 && sectorOfOperations.length === 0) {
+      setApplicableFrameworksOptions([]);
+      setApplicableFrameworksSelected([]);
+      return;
+    }
+    fetch(`${API}/governance/frameworks-by-sector-and-location`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ locations, sectorOfOperations }),
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        const pairs = Array.isArray(data.frameworkLocationPairs) ? data.frameworkLocationPairs : [];
+        const names = [...new Set(pairs.map((p) => p.framework).filter(Boolean))];
+        setApplicableFrameworksOptions(names);
+        setApplicableFrameworksSelected((prev) => {
+          if (prev.length === 0) return names;
+          return prev.filter((f) => names.includes(f));
+        });
+      })
+      .catch(() => {
+        setApplicableFrameworksOptions([]);
+      });
+  }, [locations, sectorOfOperations]);
+
+  const handleSharepointConnect = () => {
+    const returnUrl = encodeURIComponent(window.location.href);
+    const base = window.location.origin + (import.meta.env.VITE_API_BASE || '');
+    window.location.href = `${base}${API}/auth/sharepoint?returnUrl=${returnUrl}`;
+  };
+
+  const handleSharepointDisconnect = () => {
+    const session = sessionStorage.getItem('raqib_sharepoint_session');
+    const headers = session ? { 'X-Raqib-Session': session } : {};
+    fetch(`${API}/auth/sharepoint/disconnect`, { method: 'POST', credentials: 'include', headers })
+      .then(() => {
+        sessionStorage.removeItem('raqib_sharepoint_session');
+        setSharepointConnected(false);
+      })
+      .catch(() => {});
+  };
 
   const handleAddClick = () => {
     const uboFile = uploads['ubo-certificate'];
@@ -199,9 +308,10 @@ export function Onboarding({ language = 'en', onOpcoAdded }) {
       tradeLicenceNumber: '',
       certificateJurisdiction: '',
       certificateParentHoldings: [],
-      businessActivities,
+      locations: [...locations],
       sectorOfOperations: [...sectorOfOperations],
       licencingAuthorities: [...licencingAuthorities],
+      applicableFrameworksSelected: [...applicableFrameworksSelected],
       parentChoice: 'existing',
       existingParent: parentsList[0] || '',
       newParentName: '',
@@ -328,13 +438,25 @@ export function Onboarding({ language = 'en', onOpcoAdded }) {
   };
 
   const performConfirm = async (parentName, orgName) => {
+    const locsToSend = lastLicenceLocationsForConfirm.length > 0 ? lastLicenceLocationsForConfirm : (Array.isArray(reviewData.locations) ? reviewData.locations : []);
+    if (Array.isArray(reviewData.applicableFrameworksSelected) && reviewData.applicableFrameworksSelected.length > 0 && onApplicableFrameworksLoaded) {
+      onApplicableFrameworksLoaded(reviewData.applicableFrameworksSelected);
+    }
     setConfirming(true);
     try {
+      const body = {
+        parentName,
+        organizationName: orgName,
+        ...(locsToSend.length > 0 && { locations: locsToSend }),
+        ...(Array.isArray(reviewData.sectorOfOperations) && reviewData.sectorOfOperations.length > 0 && { sectorOfOperations: reviewData.sectorOfOperations }),
+        ...(Array.isArray(reviewData.applicableFrameworksSelected) && reviewData.applicableFrameworksSelected.length > 0 && { selectedFrameworks: reviewData.applicableFrameworksSelected }),
+      };
       await fetch(`${API}/companies/add-opco`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ parentName, organizationName: orgName }),
+        body: JSON.stringify(body),
       });
+      setLastLicenceLocationsForConfirm([]);
       const listRes = await fetch(`${API}/companies/onboarding-list`);
       const listJson = await listRes.json();
       setConfirmedList(listJson.list || []);
@@ -442,6 +564,12 @@ export function Onboarding({ language = 'en', onOpcoAdded }) {
             };
             if (idxDoc >= 0) existingDocs[idxDoc] = declDoc;
             else existingDocs.push(declDoc);
+            if (hadRegionalBranchLicenceAtConfirm.current) {
+              const idxCompany = existingDocs.findIndex((d) => d.id === 'company_extract');
+              const companyDoc = { id: 'company_extract', uploaded: true, fileName: 'Regional Branch Commercial Licence', uploadedAt: today };
+              if (idxCompany >= 0) existingDocs[idxCompany] = { ...existingDocs[idxCompany], ...companyDoc };
+              else existingDocs.push(companyDoc);
+            }
             next[key] = {
               percentage: pctValue,
               status: existing.status || 'Updated',
@@ -452,6 +580,7 @@ export function Onboarding({ language = 'en', onOpcoAdded }) {
             };
           });
           saveUboRegisterSafe(next);
+          hadRegionalBranchLicenceAtConfirm.current = false;
         } else if (parentName && opcoName) {
           const key = getUboKeyFor(parentName, opcoName);
           // Replace Holding Structure for this OpCo: only this parent-opco remains.
@@ -481,6 +610,12 @@ export function Onboarding({ language = 'en', onOpcoAdded }) {
           };
           if (idxDoc >= 0) existingDocs[idxDoc] = declDoc;
           else existingDocs.push(declDoc);
+          if (hadRegionalBranchLicenceAtConfirm.current) {
+            const idxCompany = existingDocs.findIndex((d) => d.id === 'company_extract');
+            const companyDoc = { id: 'company_extract', uploaded: true, fileName: 'Regional Branch Commercial Licence', uploadedAt: today };
+            if (idxCompany >= 0) existingDocs[idxCompany] = { ...existingDocs[idxCompany], ...companyDoc };
+            else existingDocs.push(companyDoc);
+          }
           next[key] = {
             percentage: existing.percentage ?? 100,
             status: existing.status || 'Updated',
@@ -491,6 +626,7 @@ export function Onboarding({ language = 'en', onOpcoAdded }) {
           };
           saveUboRegisterSafe(next);
         }
+        hadRegionalBranchLicenceAtConfirm.current = false;
       } catch {
         // ignore sync errors
       }
@@ -499,6 +635,36 @@ export function Onboarding({ language = 'en', onOpcoAdded }) {
     } finally {
       setConfirming(false);
     }
+  };
+
+  const fetchApplicableFrameworks = async (sectors, authorities) => {
+    setFrameworksLoading(true);
+    try {
+      const res = await fetch(`${API}/governance/applicable-frameworks`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sectorOfOperations: Array.isArray(sectors) ? sectors : [],
+          licencingAuthorities: Array.isArray(authorities) ? authorities : [],
+        }),
+      });
+      if (!res.ok) return [];
+      const data = await res.json();
+      return Array.isArray(data.frameworks) ? data.frameworks : [];
+    } catch {
+      return [];
+    } finally {
+      setFrameworksLoading(false);
+    }
+  };
+
+  const openViewFrameworksModal = async () => {
+    const sectors = reviewData.sectorOfOperations || [];
+    const authorities = reviewData.licencingAuthorities || [];
+    const list = await fetchApplicableFrameworks(sectors, authorities);
+    setApplicableFrameworksList(list);
+    setFrameworksModalOpen(true);
+    if (list.length > 0 && onApplicableFrameworksLoaded) onApplicableFrameworksLoaded(list);
   };
 
   const runConfirmFlow = (parentName, orgName) => {
@@ -522,7 +688,7 @@ export function Onboarding({ language = 'en', onOpcoAdded }) {
       });
   };
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     const parentName = reviewData.parentChoice === 'new'
       ? reviewData.newParentName.trim()
       : reviewData.existingParent;
@@ -533,8 +699,6 @@ export function Onboarding({ language = 'en', onOpcoAdded }) {
       return;
     }
 
-    // Build member details from current Review & Confirm data so we can show
-    // the extracted values before proceeding with new/update.
     const rows = Array.isArray(reviewData.certificateParentHoldings)
       ? reviewData.certificateParentHoldings
       : [];
@@ -547,17 +711,148 @@ export function Onboarding({ language = 'en', onOpcoAdded }) {
       }))
       .filter((row) => row.fullName || row.idType || row.idNumber);
 
-    if (memberDetails.length > 0) {
-      setPendingConfirm({ parentName, orgName });
-      setExtractedMemberDetailsModal(memberDetails);
+    const hasSectorOrLicencing = (reviewData.sectorOfOperations?.length > 0) || (reviewData.licencingAuthorities?.length > 0);
+
+    const proceedAfterLocations = async () => {
+      if (memberDetails.length > 0) {
+        setPendingConfirm({ parentName, orgName });
+        setExtractedMemberDetailsModal(memberDetails);
+        return;
+      }
+      if (Array.isArray(reviewData.applicableFrameworksSelected) && reviewData.applicableFrameworksSelected.length > 0 && onApplicableFrameworksLoaded) {
+        onApplicableFrameworksLoaded(reviewData.applicableFrameworksSelected);
+        runConfirmFlow(parentName, orgName);
+        return;
+      }
+      if (hasSectorOrLicencing && onApplicableFrameworksLoaded) {
+        try {
+          const list = await fetchApplicableFrameworks(reviewData.sectorOfOperations || [], reviewData.licencingAuthorities || []);
+          setApplicableFrameworksList(list);
+          setFrameworksConfirmModal({ parentName, orgName });
+        } catch {
+          setFrameworksConfirmModal({ parentName, orgName });
+        }
+        return;
+      }
+      runConfirmFlow(parentName, orgName);
+    };
+
+    const licenceFiles = uploads['regional-branch-licence'];
+    const licenceFileList = Array.isArray(licenceFiles) ? licenceFiles : (licenceFiles ? [licenceFiles] : []);
+    if (licenceFileList.length > 0) {
+      hadRegionalBranchLicenceAtConfirm.current = true;
+      setConfirming(true);
+      try {
+        const formData = new FormData();
+        licenceFileList.forEach((file) => formData.append('files', file));
+        const res = await fetch(`${API}/ubo/extract-locations-from-licence`, {
+          method: 'POST',
+          body: formData,
+        });
+        let locations = [];
+        if (res.ok) {
+          const data = await res.json();
+          locations = Array.isArray(data?.locations) ? [...data.locations] : [];
+        }
+        setLastLicenceLocationsForConfirm(locations);
+        setLocationsModal({
+          locations,
+          continue: () => {
+            setLocationsModal(null);
+            proceedAfterLocations();
+          },
+        });
+      } catch {
+        setLocationsModal({
+          locations: [],
+          continue: () => {
+            setLocationsModal(null);
+            proceedAfterLocations();
+          },
+        });
+      } finally {
+        setConfirming(false);
+      }
       return;
     }
 
-    runConfirmFlow(parentName, orgName);
+    proceedAfterLocations();
+  };
+
+  const handleFrameworksConfirmOk = () => {
+    if (applicableFrameworksList.length > 0 && onApplicableFrameworksLoaded) onApplicableFrameworksLoaded(applicableFrameworksList);
+    const info = frameworksConfirmModal;
+    setFrameworksConfirmModal(null);
+    if (info?.parentName && info?.orgName) runConfirmFlow(info.parentName, info.orgName);
+  };
+
+  const handleAnalyzeDocuments = async () => {
+    if (documentUploadMode === 'application') {
+      const linkRaw = uploadLinks['regional-branch-licence'] || '';
+      const urls = linkRaw.trim().split(/[\n\s]+/).filter(Boolean);
+      if (urls.length === 0) return;
+      setAnalyzing(true);
+      try {
+        const session = sessionStorage.getItem('raqib_sharepoint_session');
+        const headers = {
+          'Content-Type': 'application/json',
+          ...(session ? { 'X-Raqib-Session': session } : {}),
+        };
+        const body = JSON.stringify({ urls });
+        const [locRes, sectorRes] = await Promise.all([
+          fetch(`${API}/ubo/extract-locations-from-licence-urls`, { method: 'POST', credentials: 'include', headers, body }),
+          fetch(`${API}/ubo/extract-sectors-from-documents-urls`, { method: 'POST', credentials: 'include', headers, body }),
+        ]);
+        const locData = locRes.ok ? await locRes.json() : {};
+        const sectorData = sectorRes.ok ? await sectorRes.json() : {};
+        const extractedLocations = Array.isArray(locData.locations) ? locData.locations : [];
+        const extractedSectors = Array.isArray(sectorData.sectors) ? sectorData.sectors : [];
+        setLocations((prev) => {
+          const combined = [...new Set([...extractedLocations, ...prev])];
+          return combined.length ? combined : prev;
+        });
+        if (extractedSectors.length > 0) {
+          setSectorOfOperations((prev) => [...new Set([...extractedSectors, ...prev])]);
+        }
+      } finally {
+        setAnalyzing(false);
+      }
+      return;
+    }
+    const licenceFiles = uploads['regional-branch-licence'];
+    const fileList = Array.isArray(licenceFiles) ? licenceFiles : (licenceFiles ? [licenceFiles] : []);
+    if (fileList.length === 0) return;
+    setAnalyzing(true);
+    try {
+      const formDataLoc = new FormData();
+      const formDataSector = new FormData();
+      fileList.forEach((file) => {
+        formDataLoc.append('files', file);
+        formDataSector.append('files', file);
+      });
+      const [locRes, sectorRes] = await Promise.all([
+        fetch(`${API}/ubo/extract-locations-from-licence`, { method: 'POST', body: formDataLoc }),
+        fetch(`${API}/ubo/extract-sectors-from-documents`, { method: 'POST', body: formDataSector }),
+      ]);
+      const locData = locRes.ok ? await locRes.json() : {};
+      const sectorData = sectorRes.ok ? await sectorRes.json() : {};
+      const extractedLocations = Array.isArray(locData.locations) ? locData.locations : [];
+      const extractedSectors = Array.isArray(sectorData.sectors) ? sectorData.sectors : [];
+      setLocations((prev) => {
+        const combined = [...new Set([...extractedLocations, ...prev])];
+        return combined.length ? combined : prev;
+      });
+      if (extractedSectors.length > 0) {
+        setSectorOfOperations((prev) => [...new Set([...extractedSectors, ...prev])]);
+      }
+    } finally {
+      setAnalyzing(false);
+    }
   };
 
   const handleFileChange = (docId, filesOrFile) => {
-    if (docId === INDIVIDUAL_COMMERCIAL_REGISTRATION_ID) {
+    const doc = DOCUMENT_TYPES.find((d) => d.id === docId);
+    if (doc && doc.multiple) {
       const list = filesOrFile && Array.isArray(filesOrFile) ? [...filesOrFile] : (filesOrFile ? [filesOrFile] : []);
       setUploads((prev) => ({ ...prev, [docId]: list }));
     } else {
@@ -579,84 +874,328 @@ export function Onboarding({ language = 'en', onOpcoAdded }) {
       <h2 className="onboarding-title">{t(language, 'onboardingTitle')}</h2>
       <p className="onboarding-intro">{t(language, 'onboardingIntro')}</p>
 
-      <section className="onboarding-section onboarding-documents">
-        <h3 className="onboarding-section-title">{t(language, 'onboardingDocumentsTitle')}</h3>
-        <div className="onboarding-uploads">
-          {DOCUMENT_TYPES.map((doc) => {
-            const isMultiple = doc.id === INDIVIDUAL_COMMERCIAL_REGISTRATION_ID;
-            const value = uploads[doc.id];
-            const fileList = isMultiple && Array.isArray(value) ? value : [];
-            const mode = uploadMode[doc.id] || 'file';
-            return (
-              <div key={doc.id} className="onboarding-upload-row">
-                <label className="onboarding-upload-label">{t(language, doc.labelKey)}</label>
-                <div className="onboarding-upload-control">
-                  <div className="onboarding-upload-mode">
-                    <button
-                      type="button"
-                      className={`onboarding-upload-mode-btn ${mode === 'file' ? 'active' : ''}`}
-                      onClick={() => setUploadMode((prev) => ({ ...prev, [doc.id]: 'file' }))}
-                    >
-                      {t(language, 'onboardingUploadModeFile')}
-                    </button>
-                    <button
-                      type="button"
-                      className={`onboarding-upload-mode-btn ${mode === 'link' ? 'active' : ''}`}
-                      onClick={() => setUploadMode((prev) => ({ ...prev, [doc.id]: 'link' }))}
-                    >
-                      {t(language, 'onboardingUploadModeLink')}
-                    </button>
-                  </div>
-
-                  {mode === 'file' && (
-                    <>
-                      <input
-                        ref={(el) => { fileRefs.current[doc.id] = el; }}
-                        type="file"
-                        accept=".pdf,.doc,.docx,image/*,application/pdf"
-                        className="onboarding-file-input"
-                        multiple={isMultiple}
-                        onChange={(e) => {
-                          if (isMultiple) {
-                            const files = e.target.files ? Array.from(e.target.files) : [];
-                            handleFileChange(doc.id, files);
-                          } else {
-                            handleFileChange(doc.id, e.target.files?.[0]);
-                          }
-                        }}
-                        aria-label={t(language, doc.labelKey)}
-                      />
-                      <button
-                        type="button"
-                        className="onboarding-upload-btn"
-                        onClick={() => fileRefs.current[doc.id]?.click()}
+      <section className="onboarding-section onboarding-document-upload">
+        <div className="onboarding-document-upload-header">
+          <h3 className="onboarding-section-title">Document Upload</h3>
+          <div className="onboarding-doc-mode-toggle">
+            <label className="onboarding-doc-mode-option">
+              <input
+                type="radio"
+                name="onboarding-doc-mode"
+                value="manual"
+                checked={documentUploadMode === 'manual'}
+                onChange={() => setDocumentUploadMode('manual')}
+              />
+              <span>Manual</span>
+            </label>
+            <label className="onboarding-doc-mode-option">
+              <input
+                type="radio"
+                name="onboarding-doc-mode"
+                value="application"
+                checked={documentUploadMode === 'application'}
+                onChange={() => setDocumentUploadMode('application')}
+              />
+              <span>Application</span>
+            </label>
+          </div>
+        </div>
+        <div className="onboarding-upload-rows">
+          <div className="onboarding-upload-row">
+            <label className="onboarding-upload-label">{t(language, 'onboardingDocUboCertificate')}</label>
+            <div className="onboarding-upload-control">
+              {documentUploadMode === 'manual' && (
+                <>
+                  <input
+                    ref={(el) => {
+                      fileRefs.current['ubo-certificate'] = el;
+                    }}
+                    type="file"
+                    accept=".pdf,.doc,.docx,image/*,application/pdf"
+                    className="onboarding-file-input"
+                    onChange={(e) => handleFileChange('ubo-certificate', e.target.files?.[0])}
+                    aria-label={t(language, 'onboardingDocUboCertificate')}
+                  />
+                  <button
+                    type="button"
+                    className="onboarding-upload-btn"
+                    onClick={() => fileRefs.current['ubo-certificate']?.click()}
+                  >
+                    {uploads['ubo-certificate']?.name ?? t(language, 'onboardingUploadChoose')}
+                  </button>
+                </>
+              )}
+              {documentUploadMode === 'application' && (
+                <textarea
+                  className="onboarding-input onboarding-link-input onboarding-link-textarea"
+                  placeholder={t(language, 'onboardingLinkPlaceholder')}
+                  value={uploadLinks['ubo-certificate'] || ''}
+                  onChange={(e) => setUploadLinks((prev) => ({ ...prev, 'ubo-certificate': e.target.value }))}
+                  aria-label={t(language, 'onboardingDocUboCertificate')}
+                  rows={2}
+                />
+              )}
+            </div>
+          </div>
+          <div className="onboarding-upload-row">
+            <label className="onboarding-upload-label">{t(language, 'onboardingDocRegionalBranchLicence')}</label>
+            <div className="onboarding-upload-control">
+              {documentUploadMode === 'manual' && (
+                <>
+                  <input
+                    ref={(el) => {
+                      fileRefs.current['regional-branch-licence'] = el;
+                    }}
+                    type="file"
+                    accept=".pdf,.doc,.docx,image/*,application/pdf"
+                    className="onboarding-file-input"
+                    multiple
+                    onChange={(e) =>
+                      handleFileChange(
+                        'regional-branch-licence',
+                        e.target.files ? Array.from(e.target.files) : [],
+                      )
+                    }
+                    aria-label={t(language, 'onboardingDocRegionalBranchLicence')}
+                  />
+                  <button
+                    type="button"
+                    className="onboarding-upload-btn"
+                    onClick={() => fileRefs.current['regional-branch-licence']?.click()}
+                  >
+                    {Array.isArray(uploads['regional-branch-licence']) && uploads['regional-branch-licence'].length > 0
+                      ? `${uploads['regional-branch-licence'].length} ${t(language, 'onboardingUploadFilesChosen')}`
+                      : t(language, 'onboardingUploadChoose')}
+                  </button>
+                  {Array.isArray(uploads['regional-branch-licence']) && uploads['regional-branch-licence'].length > 0 && (
+                    <ul className="onboarding-upload-file-list" aria-label={t(language, 'onboardingDocRegionalBranchLicence')}>
+                      {uploads['regional-branch-licence'].map((file, i) => (
+                        <li key={`${file.name}-${i}`}>{file.name}</li>
+                      ))}
+                    </ul>
+                  )}
+                </>
+              )}
+              {documentUploadMode === 'application' && (
+                <textarea
+                  className="onboarding-input onboarding-link-input onboarding-link-textarea"
+                  placeholder={t(language, 'onboardingLinkPlaceholder')}
+                  value={uploadLinks['regional-branch-licence'] || ''}
+                  onChange={(e) =>
+                    setUploadLinks((prev) => ({ ...prev, 'regional-branch-licence': e.target.value }))
+                  }
+                  aria-label={t(language, 'onboardingDocRegionalBranchLicence')}
+                  rows={2}
+                />
+              )}
+            </div>
+          </div>
+          <div className="onboarding-upload-row">
+            <label className="onboarding-upload-label">{t(language, 'onboardingDocBranchOfficeLicences')}</label>
+            <div className="onboarding-upload-control">
+              {documentUploadMode === 'manual' && (
+                <>
+                  <input
+                    ref={(el) => {
+                      fileRefs.current['branch-office-licences'] = el;
+                    }}
+                    type="file"
+                    accept=".pdf,.doc,.docx,image/*,application/pdf"
+                    className="onboarding-file-input"
+                    multiple
+                    onChange={(e) =>
+                      handleFileChange(
+                        'branch-office-licences',
+                        e.target.files ? Array.from(e.target.files) : [],
+                      )
+                    }
+                    aria-label={t(language, 'onboardingDocBranchOfficeLicences')}
+                  />
+                  <button
+                    type="button"
+                    className="onboarding-upload-btn"
+                    onClick={() => fileRefs.current['branch-office-licences']?.click()}
+                  >
+                    {Array.isArray(uploads['branch-office-licences']) &&
+                    uploads['branch-office-licences'].length > 0
+                      ? `${uploads['branch-office-licences'].length} ${t(language, 'onboardingUploadFilesChosen')}`
+                      : t(language, 'onboardingUploadChoose')}
+                  </button>
+                  {Array.isArray(uploads['branch-office-licences']) &&
+                    uploads['branch-office-licences'].length > 0 && (
+                      <ul
+                        className="onboarding-upload-file-list"
+                        aria-label={t(language, 'onboardingDocBranchOfficeLicences')}
                       >
-                        {getUploadDisplay(doc)}
-                      </button>
-                      {isMultiple && fileList.length > 0 && (
-                        <ul className="onboarding-upload-file-list" aria-label={t(language, doc.labelKey)}>
-                          {fileList.map((file, i) => (
-                            <li key={`${file.name}-${i}`}>{file.name}</li>
-                          ))}
-                        </ul>
-                      )}
-                    </>
+                        {uploads['branch-office-licences'].map((file, i) => (
+                          <li key={`${file.name}-${i}`}>{file.name}</li>
+                        ))}
+                      </ul>
+                    )}
+                </>
+              )}
+              {documentUploadMode === 'application' && (
+                <textarea
+                  className="onboarding-input onboarding-link-input onboarding-link-textarea"
+                  placeholder={t(language, 'onboardingLinkPlaceholder')}
+                  value={uploadLinks['branch-office-licences'] || ''}
+                  onChange={(e) =>
+                    setUploadLinks((prev) => ({ ...prev, 'branch-office-licences': e.target.value }))
+                  }
+                  aria-label={t(language, 'onboardingDocBranchOfficeLicences')}
+                  rows={2}
+                />
+              )}
+            </div>
+          </div>
+          <div className="onboarding-upload-row">
+            <label className="onboarding-upload-label">{t(language, 'onboardingDocPassport')}</label>
+            <div className="onboarding-upload-control">
+              {documentUploadMode === 'manual' && (
+                <>
+                  <input
+                    ref={(el) => {
+                      fileRefs.current['passport'] = el;
+                    }}
+                    type="file"
+                    accept=".pdf,.doc,.docx,image/*,application/pdf"
+                    className="onboarding-file-input"
+                    multiple
+                    onChange={(e) =>
+                      handleFileChange('passport', e.target.files ? Array.from(e.target.files) : [])
+                    }
+                    aria-label={t(language, 'onboardingDocPassport')}
+                  />
+                  <button
+                    type="button"
+                    className="onboarding-upload-btn"
+                    onClick={() => fileRefs.current['passport']?.click()}
+                  >
+                    {Array.isArray(uploads['passport']) && uploads['passport'].length > 0
+                      ? `${uploads['passport'].length} ${t(language, 'onboardingUploadFilesChosen')}`
+                      : t(language, 'onboardingUploadChoose')}
+                  </button>
+                  {Array.isArray(uploads['passport']) && uploads['passport'].length > 0 && (
+                    <ul className="onboarding-upload-file-list" aria-label={t(language, 'onboardingDocPassport')}>
+                      {uploads['passport'].map((file, i) => (
+                        <li key={`${file.name}-${i}`}>{file.name}</li>
+                      ))}
+                    </ul>
                   )}
+                </>
+              )}
+              {documentUploadMode === 'application' && (
+                <textarea
+                  className="onboarding-input onboarding-link-input onboarding-link-textarea"
+                  placeholder={t(language, 'onboardingLinkPlaceholder')}
+                  value={uploadLinks['passport'] || ''}
+                  onChange={(e) => setUploadLinks((prev) => ({ ...prev, passport: e.target.value }))}
+                  aria-label={t(language, 'onboardingDocPassport')}
+                  rows={2}
+                />
+              )}
+            </div>
+          </div>
+          <div className="onboarding-upload-row">
+            <label className="onboarding-upload-label">{t(language, 'onboardingDocMoa')}</label>
+            <div className="onboarding-upload-control">
+              {documentUploadMode === 'manual' && (
+                <>
+                  <input
+                    ref={(el) => {
+                      fileRefs.current['moa'] = el;
+                    }}
+                    type="file"
+                    accept=".pdf,.doc,.docx,image/*,application/pdf"
+                    className="onboarding-file-input"
+                    multiple
+                    onChange={(e) => handleFileChange('moa', e.target.files ? Array.from(e.target.files) : [])}
+                    aria-label={t(language, 'onboardingDocMoa')}
+                  />
+                  <button
+                    type="button"
+                    className="onboarding-upload-btn"
+                    onClick={() => fileRefs.current['moa']?.click()}
+                  >
+                    {Array.isArray(uploads['moa']) && uploads['moa'].length > 0
+                      ? `${uploads['moa'].length} ${t(language, 'onboardingUploadFilesChosen')}`
+                      : t(language, 'onboardingUploadChoose')}
+                  </button>
+                  {Array.isArray(uploads['moa']) && uploads['moa'].length > 0 && (
+                    <ul className="onboarding-upload-file-list" aria-label={t(language, 'onboardingDocMoa')}>
+                      {uploads['moa'].map((file, i) => (
+                        <li key={`${file.name}-${i}`}>{file.name}</li>
+                      ))}
+                    </ul>
+                  )}
+                </>
+              )}
+              {documentUploadMode === 'application' && (
+                <textarea
+                  className="onboarding-input onboarding-link-input onboarding-link-textarea"
+                  placeholder={t(language, 'onboardingLinkPlaceholder')}
+                  value={uploadLinks['moa'] || ''}
+                  onChange={(e) => setUploadLinks((prev) => ({ ...prev, moa: e.target.value }))}
+                  aria-label={t(language, 'onboardingDocMoa')}
+                  rows={2}
+                />
+              )}
+            </div>
+          </div>
+        </div>
+        {documentUploadMode === 'application' && (
+          <div className="onboarding-sharepoint-connect">
+            {sharepointConnected ? (
+              <>
+                <span className="onboarding-sharepoint-status">Connected to Corporate SharePoint</span>
+                <button
+                  type="button"
+                  className="onboarding-btn onboarding-btn-secondary"
+                  onClick={handleSharepointDisconnect}
+                >
+                  Disconnect
+                </button>
+              </>
+            ) : (
+              <>
+                <a
+                  href="#"
+                  className="onboarding-sharepoint-link"
+                  onClick={(e) => { e.preventDefault(); setSharepointAccount('corp'); handleSharepointConnect(); }}
+                >
+                  Add Corporate SharePoint
+                </a>
+                <p className="onboarding-sharepoint-hint">
+                  Sign in with Corp SSO so Raqib can read the files from the links above for Analyze and Add.
+                </p>
+              </>
+            )}
+          </div>
+        )}
 
-                  {mode === 'link' && (
-                    <input
-                      type="url"
-                      className="onboarding-input onboarding-link-input"
-                      placeholder={t(language, 'onboardingLinkPlaceholder')}
-                      value={uploadLinks[doc.id] || ''}
-                      onChange={(e) => setUploadLinks((prev) => ({ ...prev, [doc.id]: e.target.value }))}
-                      aria-label={t(language, doc.labelKey)}
-                    />
-                  )}
-                </div>
-              </div>
-            );
-          })}
+        <div className="onboarding-documents-actions">
+          <button
+            type="button"
+            className="onboarding-btn onboarding-btn-analyze"
+            onClick={handleAnalyzeDocuments}
+            disabled={
+              analyzing ||
+              (documentUploadMode === 'manual'
+                ? !(
+                    Array.isArray(uploads['regional-branch-licence'])
+                      ? uploads['regional-branch-licence'].length
+                      : uploads['regional-branch-licence']
+                      ? 1
+                      : 0
+                  )
+                : !(uploadLinks['regional-branch-licence'] || '').trim())
+            }
+          >
+            {analyzing ? 'Analyzing…' : 'Analyze'}
+          </button>
+          <span className="onboarding-analyze-hint">
+            Extract locations and sectors from Regional Branch Commercial Licence documents to populate Location and Sector of Operations below.
+          </span>
         </div>
       </section>
 
@@ -664,14 +1203,13 @@ export function Onboarding({ language = 'en', onOpcoAdded }) {
         <h3 className="onboarding-section-title">{t(language, 'onboardingDetailsTitle')}</h3>
         <div className="onboarding-details-grid">
           <div className="onboarding-field">
-            <label htmlFor="onboarding-business-activities">{t(language, 'onboardingBusinessActivities')}</label>
-            <textarea
-              id="onboarding-business-activities"
-              className="onboarding-textarea"
-              rows={3}
-              placeholder={t(language, 'onboardingBusinessActivitiesPlaceholder')}
-              value={businessActivities}
-              onChange={(e) => setBusinessActivities(e.target.value)}
+            <MultiSelectDropdown
+              id="onboarding-location"
+              label="Location"
+              options={[...new Set([...LOCATION_OPTIONS, ...locations])]}
+              selected={locations}
+              onChange={setLocations}
+              placeholder="Select mainland and free zones (GCC & Middle East)"
             />
           </div>
           <div className="onboarding-field">
@@ -692,6 +1230,16 @@ export function Onboarding({ language = 'en', onOpcoAdded }) {
               selected={licencingAuthorities}
               onChange={setLicencingAuthorities}
               placeholder={t(language, 'onboardingLicencingAuthoritiesPlaceholder')}
+            />
+          </div>
+          <div className="onboarding-field">
+            <MultiSelectDropdown
+              id="onboarding-applicable-frameworks"
+              label="Applicable Compliance Frameworks"
+              options={applicableFrameworksOptions}
+              selected={applicableFrameworksSelected}
+              onChange={setApplicableFrameworksSelected}
+              placeholder="Based on Location and Sector of Operations"
             />
           </div>
         </div>
@@ -928,13 +1476,13 @@ export function Onboarding({ language = 'en', onOpcoAdded }) {
               </div>
             </div>
             <div className="onboarding-field">
-              <label htmlFor="review-business-activities">{t(language, 'onboardingBusinessActivities')}</label>
-              <textarea
-                id="review-business-activities"
-                className="onboarding-textarea"
-                rows={3}
-                value={reviewData.businessActivities}
-                onChange={(e) => setReviewData((p) => ({ ...p, businessActivities: e.target.value }))}
+              <MultiSelectDropdown
+                id="review-location"
+                label="Location"
+                options={[...new Set([...LOCATION_OPTIONS, ...(reviewData.locations || [])])]}
+                selected={reviewData.locations || []}
+                onChange={(v) => setReviewData((p) => ({ ...p, locations: v }))}
+                placeholder="Select mainland and free zones (GCC & Middle East)"
               />
             </div>
             <div className="onboarding-field">
@@ -956,6 +1504,17 @@ export function Onboarding({ language = 'en', onOpcoAdded }) {
                 onChange={(v) => setReviewData((p) => ({ ...p, licencingAuthorities: v }))}
                 placeholder={t(language, 'onboardingLicencingAuthoritiesPlaceholder')}
               />
+            </div>
+            <div className="onboarding-field">
+              <MultiSelectDropdown
+                id="review-applicable-frameworks"
+                label="Applicable Compliance Frameworks"
+                options={applicableFrameworksOptions}
+                selected={reviewData.applicableFrameworksSelected || []}
+                onChange={(v) => setReviewData((p) => ({ ...p, applicableFrameworksSelected: v }))}
+                placeholder="Based on Location and Sector of Operations"
+              />
+              <p className="onboarding-frameworks-hint">Strictly based on Location and Sector of Operations (multi-combinations). These will be shown in Governance Framework Summary.</p>
             </div>
             <div className="onboarding-field onboarding-parent-choice">
               <span className="onboarding-field-label">{t(language, 'onboardingLinkToParent')}</span>
@@ -1070,6 +1629,132 @@ export function Onboarding({ language = 'en', onOpcoAdded }) {
                 onClick={() => setUboCertRequiredModal(false)}
               >
                 OK
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {locationsModal && (
+        <div className="onboarding-modal-backdrop" role="dialog" aria-modal="true">
+          <div className="onboarding-modal">
+            <div className="onboarding-modal-header">
+              <h4 className="onboarding-modal-title">Locations from Regional Branch Commercial Licence</h4>
+              <button
+                type="button"
+                className="onboarding-modal-close"
+                aria-label="Close"
+                onClick={() => {
+                  locationsModal.continue();
+                }}
+              >
+                ×
+              </button>
+            </div>
+            <div className="onboarding-modal-body">
+              <p className="onboarding-locations-intro">The following locations were extracted from the uploaded Regional Branch Commercial Licence document(s) using the app&apos;s LLM:</p>
+              {!(locationsModal.locations && locationsModal.locations.length) ? (
+                <p className="onboarding-locations-empty">No locations could be extracted. You can still continue to confirm.</p>
+              ) : (
+                <ul className="onboarding-locations-list">
+                  {(locationsModal.locations || []).map((loc, idx) => (
+                    <li key={idx}>{loc != null ? String(loc) : ''}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
+            <div className="onboarding-modal-actions">
+              <button
+                type="button"
+                className="onboarding-btn onboarding-btn-confirm"
+                onClick={() => locationsModal.continue()}
+              >
+                OK — Continue
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {frameworksModalOpen && (
+        <div className="onboarding-modal-backdrop" role="dialog" aria-modal="true">
+          <div className="onboarding-modal onboarding-modal-frameworks">
+            <div className="onboarding-modal-header">
+              <h4 className="onboarding-modal-title">Applicable governance frameworks</h4>
+              <button
+                type="button"
+                className="onboarding-modal-close"
+                aria-label="Close"
+                onClick={() => setFrameworksModalOpen(false)}
+              >
+                ×
+              </button>
+            </div>
+            <div className="onboarding-modal-body">
+              <p className="onboarding-frameworks-modal-intro">Based on the selected Sector of Operations and Licencing Authorities, the following governance compliance frameworks apply. The Framework dropdown in Governance Framework Summary will show only these.</p>
+              {applicableFrameworksList.length === 0 ? (
+                <p className="onboarding-frameworks-empty">No frameworks matched. Select at least one Sector of Operations or Licencing Authority and try again.</p>
+              ) : (
+                <ul className="onboarding-frameworks-list">
+                  {applicableFrameworksList.map((f) => (
+                    <li key={f}>{f}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
+            <div className="onboarding-modal-actions">
+              <button
+                type="button"
+                className="onboarding-btn onboarding-btn-confirm"
+                onClick={() => setFrameworksModalOpen(false)}
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {frameworksConfirmModal && (
+        <div className="onboarding-modal-backdrop" role="dialog" aria-modal="true">
+          <div className="onboarding-modal onboarding-modal-frameworks">
+            <div className="onboarding-modal-header">
+              <h4 className="onboarding-modal-title">Frameworks to be added for this organization</h4>
+              <button
+                type="button"
+                className="onboarding-modal-close"
+                aria-label="Close"
+                onClick={() => setFrameworksConfirmModal(null)}
+              >
+                ×
+              </button>
+            </div>
+            <div className="onboarding-modal-body">
+              <p className="onboarding-frameworks-modal-intro">The following governance compliance frameworks will be applied based on Sector of Operations and Licencing Authorities. They will be used to filter the Framework dropdown in Governance Framework Summary.</p>
+              {applicableFrameworksList.length === 0 ? (
+                <p className="onboarding-frameworks-empty">No frameworks matched the current selection.</p>
+              ) : (
+                <ul className="onboarding-frameworks-list">
+                  {applicableFrameworksList.map((f) => (
+                    <li key={f}>{f}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
+            <div className="onboarding-modal-actions">
+              <button
+                type="button"
+                className="onboarding-btn onboarding-btn-secondary"
+                onClick={() => setFrameworksConfirmModal(null)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="onboarding-btn onboarding-btn-confirm"
+                onClick={handleFrameworksConfirmOk}
+              >
+                OK — Continue to confirm
               </button>
             </div>
           </div>

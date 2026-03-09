@@ -244,6 +244,20 @@ export function UltimateBeneficiaryOwner({ language = 'en', selectedParentHoldin
     setMultiShareholderOpcos(result);
   }, [uboData]);
 
+  // Only show "OpCos with multiple shareholders" that are actually related to the
+  // currently selected parent holding (i.e. where this parent is one of the ≥25% shareholders),
+  // and only for OpCos that belong to this parent group.
+  const multiShareholderOpcosForParent = useMemo(() => {
+    if (!selectedParentHolding) return [];
+    if (!Array.isArray(multiShareholderOpcos) || multiShareholderOpcos.length === 0) return [];
+    const opcoSet = new Set(opcos || []);
+    return multiShareholderOpcos
+      .filter((item) => opcoSet.has(item.opco))
+      .filter((item) =>
+        (item.shareholders || []).some((s) => s.parent === selectedParentHolding),
+      );
+  }, [multiShareholderOpcos, selectedParentHolding, opcos]);
+
   useEffect(() => {
     // Derive parent → OpCos map directly from UBO register so onboarding entries are included.
     const map = {};
@@ -770,6 +784,14 @@ export function UltimateBeneficiaryOwner({ language = 'en', selectedParentHoldin
     });
   };
 
+  const filteredUboChanges = useMemo(
+    () =>
+      selectedParentHolding
+        ? (uboChanges || []).filter((entry) => entry.parent === selectedParentHolding)
+        : (uboChanges || []),
+    [uboChanges, selectedParentHolding],
+  );
+
   if (!selectedParentHolding) {
     return (
       <div className="ubo-section">
@@ -1287,14 +1309,14 @@ export function UltimateBeneficiaryOwner({ language = 'en', selectedParentHoldin
             </table>
           </div>
 
-          {parentOpcoCount > 10 && multiShareholderOpcos.length > 0 && (
+          {parentOpcoCount > 10 && multiShareholderOpcosForParent.length > 0 && (
             <div className="ubo-multi-shareholder">
               <h3 className="ubo-multi-shareholder-title">OpCos with multiple shareholders (≥25%)</h3>
               <p className="ubo-multi-shareholder-intro">
                 The following OpCos have more than one shareholder holding ≥25%. UBO register status is shown per parent.
               </p>
               <div className="ubo-multi-shareholder-trees">
-                {multiShareholderOpcos.map((item) => (
+                {multiShareholderOpcosForParent.map((item) => (
                   <div key={item.opco} className="ubo-multi-tree-card">
                     <div className="ubo-multi-tree-opco ubo-multi-tree-node-root">
                       <span className="ubo-multi-tree-entity">{item.opco}</span>
@@ -1839,11 +1861,11 @@ export function UltimateBeneficiaryOwner({ language = 'en', selectedParentHoldin
             <button type="button" className="ubo-modal-close" onClick={() => setShowViewChanges(false)} aria-label="Close" title="Close">×</button>
             <h3 className="ubo-modal-title">View Changes</h3>
             <p className="ubo-modal-subtitle">Recent UBO register and mandatory document changes.</p>
-            {uboChanges.length === 0 ? (
+            {filteredUboChanges.length === 0 ? (
               <p className="ubo-changes-empty">No changes recorded yet.</p>
             ) : (
               <ul className="ubo-changes-list">
-                {uboChanges.map((entry, i) => (
+                {filteredUboChanges.map((entry, i) => (
                   <li key={i} className="ubo-changes-item">
                     <span className="ubo-changes-time">{entry.at ? new Date(entry.at).toLocaleString() : ''}</span>
                     <span className="ubo-changes-message">{entry.message || ''}</span>

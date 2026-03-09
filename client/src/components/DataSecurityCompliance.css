@@ -234,6 +234,12 @@
 
 .data-security-opco-name {
   font-size: 1rem;
+}
+
+.data-security-opco-defender-score {
+  font-size: 0.8rem;
+  font-weight: 600;
+  margin-left: auto;
   color: var(--text);
 }
 
@@ -276,6 +282,23 @@
 .data-security-severity-medium {
   background: rgba(59, 130, 246, 0.2);
   color: var(--accent);
+}
+
+.data-security-defender-sps-inline {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.data-security-llm-summary {
+  margin: 0.5rem 0 0 0;
+  padding: 0.75rem 1rem;
+  background: var(--surface-hover, #f8f9fa);
+  border-radius: var(--radius, 6px);
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: var(--text);
 }
 
 .data-security-failing-details {
@@ -442,6 +465,13 @@
   color: var(--accent);
   background: var(--surface-hover);
   border-bottom: 1px solid var(--border);
+}
+
+.data-security-framework-coverage-from-evidence {
+  margin: 0 1rem 0.5rem 1rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  font-style: italic;
 }
 
 .data-security-framework-table {
