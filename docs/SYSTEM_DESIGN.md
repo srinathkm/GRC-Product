@@ -176,6 +176,90 @@ OpCos with multiple parents above a threshold (e.g. 25%).
 - **Rule table (or config):** Map (jurisdiction + free_zone/mainland + sector) → list of **framework_id**.
 - **Output:** List of applicable frameworks per OpCo for Governance Framework and “Companies by framework” views. Onboarding extraction populates locations and sector so this logic runs without manual framework selection first.
 
+### 1.5 Defender Integration Data Model (Target)
+
+The current implementation uses JSON files for Defender integration; the target state is to persist this into the DB with the following tables.
+
+#### Defender_Evidence_Uploads
+
+Tracks each evidence file uploaded per OpCo.
+
+| Column       | Type         | Constraints / Notes                          |
+|-------------|--------------|----------------------------------------------|
+| id          | UUID         | PK                                           |
+| opco_id     | UUID         | FK → opcos(id)                               |
+| parent_id   | UUID         | FK → organizations(id)                       |
+| filename    | VARCHAR(512) | Original file name                           |
+| mime_type   | VARCHAR(128) | Detected MIME                                |
+| report_type | VARCHAR(64)  | e.g. `secure_score`, `recommendations`, `regulatory_compliance` |
+| storage_url | VARCHAR(1024)| Pointer to object storage (S3/Blob)          |
+| status      | VARCHAR(32)  | `processing`, `completed`, `failed`          |
+| error       | TEXT         | Error message if failed                      |
+| uploaded_at | TIMESTAMPTZ  | DEFAULT now()                                |
+
+#### Defender_Snapshots
+
+Normalised time‑series values derived from evidence (secure score %, compliance %, etc.).
+
+| Column       | Type         | Constraints / Notes                        |
+|--------------|--------------|--------------------------------------------|
+| id           | UUID         | PK                                         |
+| opco_id      | UUID         | FK → opcos(id)                             |
+| parent_id    | UUID         | FK → organizations(id)                     |
+| upload_id    | UUID         | FK → defender_evidence_uploads(id)        |
+| metric_type  | VARCHAR(64)  | `secure_score`, `regulatory_compliance`, `vulnerability`, `alert` |
+| value        | NUMERIC(5,2) | Percentage or normalised metric            |
+| value_type   | VARCHAR(32)  | `percentage`, `count`, etc.                |
+| effective_at | TIMESTAMPTZ  | Report date (from evidence)                |
+| created_at   | TIMESTAMPTZ  | DEFAULT now()                              |
+
+#### Defender_Findings
+
+Individual findings extracted from Defender recommendations / reports.
+
+| Column       | Type         | Constraints / Notes                         |
+|--------------|--------------|---------------------------------------------|
+| id           | UUID         | PK                                          |
+| opco_id      | UUID         | FK → opcos(id)                              |
+| upload_id    | UUID         | FK → defender_evidence_uploads(id)         |
+| title        | VARCHAR(512) | Finding or recommendation title             |
+| severity     | VARCHAR(16)  | `Critical`, `High`, `Medium`, `Low`        |
+| status       | VARCHAR(32)  | `open`, `resolved`, etc.                    |
+| source       | VARCHAR(64)  | `defender_recommendations`, `compliance_pdf` |
+| raw_payload  | JSONB        | Optional raw JSON for traceability          |
+| created_at   | TIMESTAMPTZ  | DEFAULT now()                               |
+| updated_at   | TIMESTAMPTZ  | DEFAULT now()                               |
+
+#### Defender_Scores
+
+Aggregate **Security Posture Score (Defender)** and evidence snapshot.
+
+| Column            | Type         | Constraints / Notes               |
+|-------------------|--------------|-----------------------------------|
+| id                | UUID         | PK                                |
+| opco_id           | UUID         | FK → opcos(id)                    |
+| score             | NUMERIC(5,2) | 0–100 Security Posture Score      |
+| band              | VARCHAR(32)  | `Exemplary`, `Compliant`, etc.    |
+| band_color        | VARCHAR(16)  | Hex or token for UI colour        |
+| framework_cov_pct | NUMERIC(5,2) | Derived framework coverage %      |
+| secure_score_pct  | NUMERIC(5,2) | Defender secure score % (if known)|
+| open_critical     | INTEGER      | Count of open critical findings   |
+| open_high         | INTEGER      | Count of open high findings       |
+| penalty           | NUMERIC(6,2) | Penalty applied in scoring        |
+| computed_at       | TIMESTAMPTZ  | DEFAULT now()                     |
+
+#### Defender_Summaries
+
+LLM‑generated summaries for “Failing areas and details” per OpCo.
+
+| Column     | Type         | Constraints / Notes          |
+|------------|--------------|-----------------------------|
+| opco_id    | UUID         | PK, FK → opcos(id)          |
+| summary    | TEXT         | Latest generated summary    |
+| updated_at | TIMESTAMPTZ  | DEFAULT now()               |
+
+Add indexes (by `opco_id`, `computed_at`, `severity`) to support fast group summaries, trend charts, and filtering by severity.
+
 ---
 
 ## 2. Front-End Design
@@ -198,7 +282,7 @@ OpCos with multiple parents above a threshold (e.g. 25%).
 | ubo                 | UltimateBeneficiaryOwner.jsx | UBO register, document upload with extraction, holding structure. |
 | esg                 | EsgSummary.jsx           | ESG scores, pillars, entity comparison, simulation. |
 | data-sovereignty    | DataSovereignty.jsx      | Per-OpCo data sovereignty compliance (severity, sections). |
-| data-security      | DataSecurityCompliance.jsx | Per-OpCo data security compliance. |
+| data-security       | DataSecurityCompliance.jsx | Per-OpCo data security compliance, including Azure Defender integration (evidence upload, Security Posture (Defender) dashboard, LLM summaries, framework‑mapped coverage). |
 | analysis            | Analysis.jsx             | Risk prediction (historical upload), M&A simulator; parent/OpCo selectors. |
 
 ### 2.3 Shared / Reusable Components
@@ -281,6 +365,20 @@ OpCos with multiple parents above a threshold (e.g. 25%).
 | POST   | /api/analysis/ma-simulator | Document upload + parent/target. |
 | GET    | /api/health | `{ status: 'ok' }`. |
 
+#### Defender (Security Posture and Evidence)
+
+These endpoints are currently file‑backed and should be migrated to DB‑backed implementations using the Defender_* tables described above.
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST   | /api/defender/upload | Multipart file upload for Defender evidence (CSV/Excel/PDF) per OpCo/Parent; asynchronously parses and persists snapshots/findings; recomputes Security Posture Score (Defender); generates/updates LLM summary. |
+| GET    | /api/defender/upload/:uploadId/status | Returns upload processing status and simple metrics (secure score %, compliance %, findings count). |
+| GET    | /api/defender/score/:opcoName        | Returns current Defender score and history for an OpCo, including evidence breakdown. |
+| GET    | /api/defender/group-summary/:parentId | Returns group‑level Defender summary for a Parent Holding: score, band, LLM summary, and framework‑mapped coverage per OpCo. |
+| GET    | /api/defender/findings/:opcoName     | Returns Defender findings for an OpCo. |
+| PATCH  | /api/defender/findings/:id/status    | Updates finding status (e.g. `open` → `resolved`). |
+| GET    | /api/defender/uploads/:opcoName      | Returns evidence upload history per OpCo. |
+
 ### 3.3 Configuration
 
 - All secrets and env-specific config via environment variables (no hardcoded keys): `PORT`, `NODE_ENV`, `DATABASE_URL`, `SMTP_*`, `LLM_*`.
@@ -316,6 +414,7 @@ The AI layer must be **agnostic to the specific LLM provider**. The provider is 
 3. **UBO extraction:** Image/PDF → structured UBO fields. → `extractUboFromDocument(buffer, mimetype)`.
 4. **Onboarding document extraction:** Multiple docs → single structured payload (organization name, business activities, sector, licensing authorities, locations). → `extractOnboardingPayload(files[])`.
 5. **Analysis (risk prediction / M&A):** Refactor existing prompts to use the same LLM client built from URL + key.
+6. **Defender failing‑areas summaries:** Use Defender scores, evidence, and findings to generate concise “Failing areas and details” summaries per OpCo for the Data Security Compliance view.
 
 ---
 
@@ -358,6 +457,61 @@ The AI layer must be **agnostic to the specific LLM provider**. The provider is 
 - **Health:** `GET /api/health` returns 200; optionally include DB connectivity check.
 - **Logging:** Structured logs (JSON); configurable log level; no secrets in logs.
 - **Metrics (optional):** Prometheus-compatible metrics for the API.
+
+### 5.8 Azure Reference Architecture
+
+For a production deployment on **Azure**, a reference design is:
+
+- **Front end:**
+  - Build React app and deploy to **Azure Static Web Apps** or host from an **Azure Storage Static Website** fronted by **Azure Front Door** or **Azure CDN**.
+- **Backend API:**
+  - Deploy Node/Express as:
+    - **Azure App Service** (Web App for Containers) with autoscale, or
+    - **AKS** (Azure Kubernetes Service) if you need multi‑service orchestration.
+  - Expose `/api/*` behind **Azure Application Gateway** or **Azure Front Door**, terminating TLS.
+- **Database:**
+  - **Azure Database for PostgreSQL** (Flexible Server) for all relational data, including Defender_* tables.
+  - Use private endpoints and VNet integration for App Service / AKS.
+- **Object storage:**
+  - **Azure Blob Storage** for uploaded evidence and documents; keep only metadata and pointers in DB.
+- **Secrets & config:**
+  - **Azure Key Vault** for DB connection strings, LLM keys, SMTP credentials, and other secrets.
+  - App Service / AKS reads secrets via managed identity or at deploy time.
+- **LLM provider:**
+  - Azure OpenAI or any OpenAI‑compatible endpoint configured via `LLM_BASE_URL` and `LLM_API_KEY`.
+- **Observability:**
+  - **Azure Monitor / Application Insights** for logs, metrics, and distributed traces.
+
+### 5.9 AWS Reference Architecture
+
+For a production deployment on **AWS**, a reference design is:
+
+- **Front end:**
+  - Build React app and host static assets in **S3** with **CloudFront** as CDN and TLS termination.
+- **Backend API:**
+  - Run Node/Express as:
+    - **AWS Fargate** (ECS) service behind an **Application Load Balancer (ALB)**, or
+    - **EKS** cluster if you prefer Kubernetes.
+  - ALB routes `/api/*` and terminates TLS.
+- **Database:**
+  - **Amazon RDS for PostgreSQL** (or Aurora PostgreSQL) for relational data including Defender_* tables.
+  - Place DB in private subnets; access via ECS/EKS tasks.
+- **Object storage:**
+  - **Amazon S3** buckets for evidence and uploaded documents; store URLs/keys in DB.
+- **Secrets & config:**
+  - **AWS Secrets Manager** or **SSM Parameter Store** for DB passwords, LLM keys, and SMTP credentials.
+  - ECS/EKS tasks read secrets via IAM roles.
+- **LLM provider:**
+  - OpenAI, Azure OpenAI, or any provider reachable from the VPC using the LLM abstraction layer.
+- **Observability:**
+  - **CloudWatch Logs / Metrics**, optional **X‑Ray** for tracing.
+
+Across both Azure and AWS, production‑grade requirements include:
+
+- Separate **dev / test / prod** environments and databases.
+- Automated **CI/CD** (GitHub Actions, Azure DevOps, or CodePipeline) to build, test, and deploy client + server.
+- Database migrations as part of the release pipeline.
+- WAF and rate limiting at the edge (Front Door / CloudFront + WAF) for protection against common attacks.
 
 ---
 
