@@ -1655,6 +1655,38 @@ a:hover {
   max-width: 260px;
 }
 
+.poa-scope-preview {
+  display: block;
+  font-size: 0.85rem;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.poa-scope-toggle {
+  margin-top: 0.25rem;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--accent);
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.poa-scope-toggle:hover {
+  text-decoration: underline;
+}
+
+.poa-scope-expanded {
+  margin-top: 0.35rem;
+  padding: 0.4rem 0.5rem;
+  border-radius: var(--radius-sm, 4px);
+  background: var(--surface-hover);
+  font-size: 0.85rem;
+  color: var(--text);
+  white-space: pre-wrap;
+}
+
 .poa-status-badge {
   display: inline-block;
   padding: 0.15rem 0.5rem;

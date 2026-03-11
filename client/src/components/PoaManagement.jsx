@@ -35,6 +35,7 @@ export function PoaManagement({ language = 'en', parents = [], selectedParentHol
   const [editingId, setEditingId] = useState(null);
   const [readOnlyPoa, setReadOnlyPoa] = useState(false);
   const [extractionPayload, setExtractionPayload] = useState(null);
+  const [expandedScopeId, setExpandedScopeId] = useState(null);
 
   const [form, setForm] = useState({
     fileId: '',
@@ -673,7 +674,33 @@ export function PoaManagement({ language = 'en', parents = [], selectedParentHol
                       </div>
                     </td>
                     <td>{r.jurisdiction || '—'}</td>
-                    <td className="poa-scope-cell">{r.scope}</td>
+                    <td className="poa-scope-cell">
+                      {r.scope && r.scope.length > 140 ? (
+                        <>
+                          <span className="poa-scope-preview">
+                            {r.scope.slice(0, 140)}
+                            {'…'}
+                          </span>
+                          <button
+                            type="button"
+                            className="poa-scope-toggle"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setExpandedScopeId((prev) => (prev === r.id ? null : r.id));
+                            }}
+                          >
+                            {expandedScopeId === r.id ? 'Hide' : 'Show full scope'}
+                          </button>
+                          {expandedScopeId === r.id && (
+                            <div className="poa-scope-expanded">
+                              {r.scope}
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <span className="poa-scope-preview">{r.scope || '—'}</span>
+                      )}
+                    </td>
                     <td>{r.validUntil || '—'}</td>
                     <td>
                       <span className={`poa-status-badge poa-status-${computeStatus(r).toLowerCase().replace(/\s+/g, '-')}`}>
