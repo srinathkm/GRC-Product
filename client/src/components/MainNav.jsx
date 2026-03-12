@@ -44,6 +44,14 @@ const MODULES = [
     ],
   },
   {
+    id: 'contracts-module',
+    labelKey: 'navModuleContracts',
+    sections: [
+      { id: 'contracts-management', labelKey: 'navContractsManagement' },
+      { id: 'contracts-upload', labelKey: 'navContractsUpload' },
+    ],
+  },
+  {
     id: 'data-module',
     labelKey: 'navModuleData',
     sections: [

@@ -18,6 +18,7 @@ import { PoaManagement } from './components/PoaManagement';
 import { IpManagement } from './components/IpManagement';
 import { LicenceManagement } from './components/LicenceManagement';
 import { LitigationsManagement } from './components/LitigationsManagement';
+import { ContractsManagement } from './components/ContractsManagement';
 import { Help } from './components/Help';
 
 const FRAMEWORKS = [
@@ -55,7 +56,7 @@ const PLACEHOLDER_VIEWS = {};
 
 // Role-based module visibility: which top-level module ids each role can see.
 const ROLE_MODULE_IDS = {
-  'legal-team': ['org-overview-module', 'legal-module'],
+  'legal-team': ['org-overview-module', 'legal-module', 'contracts-module'],
   'governance-team': ['org-overview-module', 'governance-module', 'ownership-module'],
   'data-security-team': ['org-overview-module', 'data-module'],
   'c-level': null, // null = all modules
@@ -189,7 +190,7 @@ export default function App() {
     const allowed = ROLE_MODULE_IDS[selectedRole];
     if (!allowed) return;
     const roleViewIds = {
-      'legal-team': ['org-overview', 'org-dashboard', 'poa-management', 'ip-management', 'licence-management', 'litigations-management'],
+      'legal-team': ['org-overview', 'org-dashboard', 'poa-management', 'ip-management', 'licence-management', 'litigations-management', 'contracts-management', 'contracts-upload'],
       'governance-team': ['onboarding', 'org-overview', 'org-dashboard', 'parent-overview', 'governance-framework', 'multi-jurisdiction', 'ubo'],
       'data-security-team': ['org-overview', 'org-dashboard', 'data-sovereignty', 'data-security'],
       board: ['org-overview', 'org-dashboard', 'analysis', 'ma-simulator'],
@@ -300,6 +301,15 @@ export default function App() {
               parents={parentHoldingList}
               selectedParentHolding={selectedParentHolding}
               onParentHoldingChange={setSelectedParentHolding}
+            />
+          )}
+          {(currentView === 'contracts-management' || currentView === 'contracts-upload') && (
+            <ContractsManagement
+              language={language}
+              parents={parentHoldingList}
+              selectedParentHolding={selectedParentHolding}
+              onParentHoldingChange={setSelectedParentHolding}
+              currentView={currentView}
             />
           )}
           {currentView === 'esg' && (

@@ -19,6 +19,7 @@ import { poaRouter } from './routes/poa.js';
 import { ipRouter } from './routes/ip.js';
 import { licencesRouter } from './routes/licences.js';
 import { litigationsRouter } from './routes/litigations.js';
+import { contractsRouter } from './routes/contracts.js';
 import { governanceRouter } from './routes/governance.js';
 import { defenderIntegrationRouter } from './routes/defenderIntegration.js';
 
@@ -42,6 +43,7 @@ app.use('/api/poa', poaRouter);
 app.use('/api/ip', ipRouter);
 app.use('/api/licences', licencesRouter);
 app.use('/api/litigations', litigationsRouter);
+app.use('/api/contracts', contractsRouter);
 app.use('/api/defender', defenderIntegrationRouter);
 
 app.get('/api/health', (_, res) => res.json({ status: 'ok' }));

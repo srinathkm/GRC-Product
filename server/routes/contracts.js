@@ -1,0 +1,297 @@
+import { Router } from 'express';
+import multer from 'multer';
+import { readFile, writeFile, mkdir } from 'fs/promises';
+import { dirname, join } from 'path';
+import { fileURLToPath } from 'url';
+import { createChatCompletion, isLlmConfigured } from '../services/llm.js';
+import { extractTextFromBuffer } from '../services/text-extract.js';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const DATA_PATH = join(__dirname, '../data/contracts.json');
+const UPLOADS_DIR = join(__dirname, '../data/contract-uploads');
+
+const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25 MB
+const contractUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: MAX_FILE_SIZE },
+  fileFilter: (_, file, cb) => {
+    const allowed =
+      /\.(pdf|doc|docx|jpg|jpeg|png|tiff|tif)$/i.test(file.originalname) ||
+      [
+        'application/pdf',
+        'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'image/jpeg',
+        'image/png',
+        'image/tiff',
+        'image/jpg',
+      ].includes(file.mimetype);
+    if (allowed) cb(null, true);
+    else cb(new Error('Only PDF, DOC, DOCX, JPG, PNG, TIFF are allowed (max 25MB)'), false);
+  },
+});
+
+async function ensureUploadsDir() {
+  try {
+    await mkdir(UPLOADS_DIR, { recursive: true });
+  } catch {
+    // ignore
+  }
+}
+
+async function loadContracts() {
+  try {
+    const raw = await readFile(DATA_PATH, 'utf-8');
+    const arr = JSON.parse(raw);
+    return Array.isArray(arr) ? arr : [];
+  } catch {
+    return [];
+  }
+}
+
+async function saveContracts(list) {
+  await writeFile(DATA_PATH, JSON.stringify(list, null, 2), 'utf-8');
+}
+
+export const contractsRouter = Router();
+
+// Extract VAT/tax, net/total, dates and counterparty from contract text using LLM (if configured).
+async function extractContractFieldsFromText(text) {
+  if (!text || !isLlmConfigured()) return null;
+  const snippet = text.length > 12000 ? text.slice(0, 12000) : text;
+  const systemPrompt =
+    'You are a contracts analyst. Read the contract text and extract key commercial fields as JSON. ' +
+    'If a field is not clearly present, return null for that field. ' +
+    'When dealing with renewal/notice language, you MUST convert the language into offsets in days relative to the expiry date: ' +
+    'negative numbers mean days BEFORE expiry, positive numbers mean days AFTER expiry. ' +
+    'IMPORTANT DISTINCTION: (1) Phrases like "at least 90 days BEFORE expiry to renew" describe a pre-expiry NOTICE window and should be encoded as negative offsets (e.g. -90). ' +
+    '(2) Phrases like "for 12 months FROM expiry", "renewal term of 1 year from the Expiry Date", or "renews for 12 months after the initial term" describe a new renewal TERM that begins AFTER expiry; these must be encoded as POSITIVE offsets so that renewalStartOffsetDays is a positive number of days AFTER expiry (e.g. approx +365 for 12 months).';
+  const userPrompt =
+    `Contract text (may be partial):\n\n${snippet}\n\n` +
+    'Return a JSON object with the following keys:\n' +
+    '- title: string or null (short descriptive title of the contract, e.g. \"Master Services Agreement - IT Infrastructure\").\n' +
+    '- vatAmount: number or null (VAT amount, e.g. 2500.00).\n' +
+    '- taxAmount: number or null (other taxes, if any).\n' +
+    '- netAmount: number or null (net amount before VAT/taxes).\n' +
+    '- totalAmount: number or null (total contract value including VAT/taxes if specified).\n' +
+    '- effectiveDate: string or null (YYYY-MM-DD; the date the contract becomes effective or start date).\n' +
+    '- expiryDate: string or null (YYYY-MM-DD; end/expiry date or term end).\n' +
+    '- renewalStart: string or null (YYYY-MM-DD or best approximation of when renewal window opens; if the exact date is not stated, you may leave this null and instead use renewalStartOffsetDays).\n' +
+    '- renewalEnd: string or null (YYYY-MM-DD or best approximation of when renewal window closes; if the exact date is not stated, you may leave this null and instead use renewalEndOffsetDays).\n' +
+    '- renewalStartOffsetDays: integer or null (number of days RELATIVE TO expiryDate when the renewal window or renewal term starts; negative means before expiry, positive means after. Examples: \"no later than 90 days before expiry\" => -90; \"within 30 days after expiry\" => +30; \"for 12 months from expiry\" or \"renewal term of 1 year from the Expiry Date\" => use a POSITIVE offset approximating that period in days, e.g. +365 for 12 months / 1 year).\n' +
+    '- renewalEndOffsetDays: integer or null (number of days RELATIVE TO expiryDate when the renewal window or renewal term ends; same sign convention as renewalStartOffsetDays).\n' +
+    '- counterparty: string or null (counterparty or vendor name, excluding the client organization).';
+  try {
+    const completion = await createChatCompletion({
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+      ],
+      maxTokens: 700,
+      responseFormat: 'json',
+    });
+    const raw = completion.choices?.[0]?.message?.content?.trim() || '{}';
+    const jsonStr = raw.replace(/^```json?\s*|\s*```$/g, '').trim();
+    const parsed = JSON.parse(jsonStr || '{}');
+
+    let effectiveDate = parsed.effectiveDate ?? null;
+    let expiryDate = parsed.expiryDate ?? null;
+    let renewalStart = parsed.renewalStart ?? null;
+    let renewalEnd = parsed.renewalEnd ?? null;
+
+    // Override renewal window calculation with a fixed 12-month rule:
+    // Renewal window start = expiry date + 12 months
+    // Renewal window end   = renewal window start + 12 months
+    if (expiryDate) {
+      const base = new Date(expiryDate);
+      if (!Number.isNaN(base.getTime())) {
+        const toIsoDate = (dt) => dt.toISOString().slice(0, 10);
+        const start = new Date(base.getTime());
+        start.setMonth(start.getMonth() + 12);
+        const end = new Date(start.getTime());
+        end.setMonth(end.getMonth() + 12);
+        renewalStart = toIsoDate(start);
+        renewalEnd = toIsoDate(end);
+      }
+    }
+
+    return {
+      title: parsed.title ?? null,
+      vatAmount: parsed.vatAmount ?? null,
+      taxAmount: parsed.taxAmount ?? null,
+      netAmount: parsed.netAmount ?? null,
+      totalAmount: parsed.totalAmount ?? null,
+      effectiveDate,
+      expiryDate,
+      renewalStart,
+      renewalEnd,
+      counterparty: parsed.counterparty ?? null,
+    };
+  } catch (e) {
+    console.error('Contract extract LLM error:', e.message);
+    return null;
+  }
+}
+
+async function extractContractFieldsFromBuffer(buffer, mimetype) {
+  try {
+    const text = await extractTextFromBuffer(buffer, mimetype || 'application/octet-stream');
+    if (!text) return null;
+    return await extractContractFieldsFromText(text);
+  } catch (e) {
+    console.error('Contract text extract error:', e.message);
+    return null;
+  }
+}
+
+// Generate a human-readable Contract ID (key for lookup)
+function generateContractId() {
+  const t = Date.now().toString(36).slice(-6).toUpperCase();
+  const r = Math.random().toString(36).slice(2, 6).toUpperCase();
+  return `CON-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${t}-${r}`;
+}
+
+// GET /api/contracts?parent=&opco=&contractId= — contractId optional for lookup
+contractsRouter.get('/', async (req, res) => {
+  try {
+    const all = await loadContracts();
+    const parent = typeof req.query.parent === 'string' ? req.query.parent.trim() : '';
+    const opco = typeof req.query.opco === 'string' ? req.query.opco.trim() : '';
+    const contractId = typeof req.query.contractId === 'string' ? req.query.contractId.trim() : '';
+    const filtered = all.filter((r) => {
+      if (contractId) {
+        const key = (r.contractId || r.documentLink || '').toString().toLowerCase();
+        if (key !== contractId.toLowerCase()) return false;
+      }
+      if (parent && r.parent !== parent) return false;
+      if (opco && String(r.opco || '').trim() !== opco) return false;
+      return true;
+    });
+    res.json(filtered);
+  } catch (e) {
+    res.status(500).json({ error: e.message || 'Failed to load contract records' });
+  }
+});
+
+// GET /api/contracts/file/:fileId — serve uploaded contract file
+contractsRouter.get('/file/:fileId', async (req, res) => {
+  try {
+    const fileId = (req.params.fileId || '').trim();
+    if (!fileId || /[^a-zA-Z0-9_.-]/.test(fileId)) {
+      return res.status(400).json({ error: 'Invalid file id' });
+    }
+    if (fileId.includes('..')) return res.status(400).json({ error: 'Invalid file id' });
+    const path = join(UPLOADS_DIR, fileId);
+    const raw = await readFile(path);
+    const ext = fileId.split('.').pop()?.toLowerCase();
+    const mime = { pdf: 'application/pdf', doc: 'application/msword', docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', tiff: 'image/tiff', tif: 'image/tiff' }[ext] || 'application/octet-stream';
+    res.setHeader('Content-Type', mime);
+    res.send(raw);
+  } catch (e) {
+    if (e.code === 'ENOENT') return res.status(404).json({ error: 'File not found' });
+    res.status(500).json({ error: e.message || 'Failed to serve file' });
+  }
+});
+
+// POST /api/contracts — create or update
+contractsRouter.post('/', async (req, res) => {
+  try {
+    const body = req.body || {};
+    const parent = (body.parent || '').trim();
+    const opco = (body.opco || '').trim();
+    const contractType = (body.contractType || '').trim();
+    const title = (body.title || '').trim();
+    if (!parent || !contractType) {
+      return res.status(400).json({ error: 'parent and contractType are required' });
+    }
+    const nowIso = new Date().toISOString();
+    const all = await loadContracts();
+    let updated;
+    if (body.id) {
+      updated = all.map((r) =>
+        r.id === body.id
+          ? {
+              ...r,
+              ...body,
+              parent,
+              opco: opco || r.opco,
+              contractType,
+              title: title || r.title,
+              updatedAt: nowIso,
+            }
+          : r
+      );
+    } else {
+      const rec = {
+        id: `con-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        createdAt: nowIso,
+        updatedAt: nowIso,
+        ...body,
+        parent,
+        opco: opco || '',
+        contractType,
+        title: title || '',
+      };
+      updated = [rec, ...all];
+    }
+    await saveContracts(updated);
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message || 'Failed to save contract record' });
+  }
+});
+
+// PATCH /api/contracts/:id — workflow (status, pendingApprovalFrom, reviewDueBy, assignedTo)
+contractsRouter.patch('/:id', async (req, res) => {
+  try {
+    const id = (req.params.id || '').trim();
+    const body = req.body || {};
+    const all = await loadContracts();
+    const idx = all.findIndex((r) => r.id === id);
+    if (idx === -1) return res.status(404).json({ error: 'Contract not found' });
+    const allowed = ['status', 'pendingApprovalFrom', 'reviewDueBy', 'assignedTo'];
+    const updates = {};
+    for (const key of allowed) {
+      if (body[key] !== undefined) updates[key] = body[key];
+    }
+    const nowIso = new Date().toISOString();
+    all[idx] = { ...all[idx], ...updates, updatedAt: nowIso };
+    await saveContracts(all);
+    res.json({ ok: true, contract: all[idx] });
+  } catch (e) {
+    res.status(500).json({ error: e.message || 'Failed to update workflow' });
+  }
+});
+
+// POST /api/contracts/upload — multipart "files" (multiple); stores each, returns fileId + contractId per file
+// When LLM is configured, also extracts VAT/tax, net/total, dates and counterparty for each document.
+contractsRouter.post('/upload', contractUpload.array('files', 20), async (req, res) => {
+  try {
+    const files = req.files && Array.isArray(req.files) ? req.files : [];
+    if (files.length === 0) {
+      return res.status(400).json({ error: 'No files uploaded' });
+    }
+    await ensureUploadsDir();
+    const results = [];
+    const baseTime = Date.now();
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const ext = (file.originalname || '').split('.').pop()?.toLowerCase() || 'bin';
+      const safeExt = ['pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png', 'tiff', 'tif'].includes(ext) ? ext : 'bin';
+      const fileId = `contract-${baseTime}-${i}-${Math.random().toString(36).slice(2, 8)}.${safeExt}`;
+      const contractId = generateContractId();
+      const path = join(UPLOADS_DIR, fileId);
+      await writeFile(path, file.buffer);
+      const extracted = await extractContractFieldsFromBuffer(file.buffer, file.mimetype || 'application/octet-stream');
+      results.push({
+        fileId,
+        contractId,
+        originalName: file.originalname || 'document',
+        extracted: extracted || null,
+      });
+    }
+    res.json({ ok: true, results });
+  } catch (e) {
+    res.status(500).json({ error: e.message || 'Upload failed' });
+  }
+});
