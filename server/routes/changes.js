@@ -5,6 +5,7 @@ import { dirname, join } from 'path';
 import { FRAMEWORKS } from '../constants.js';
 import { lookupChangesForFramework } from '../services/ai.js';
 import { createChatCompletion, isLlmConfigured } from '../services/llm.js';
+import { runFeed, getFeedMeta } from '../services/regulatoryFeed.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const dataPath = join(__dirname, '../data/changes.json');
@@ -486,6 +487,26 @@ changesRouter.get('/summary', async (req, res) => {
       }
     }
     res.json(summary);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+/** POST /api/changes/refresh — manually trigger a regulatory feed refresh. */
+changesRouter.post('/refresh', async (req, res) => {
+  try {
+    const result = await runFeed();
+    res.json({ ok: true, ...result });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+/** GET /api/changes/feed-meta — metadata about the last scheduled feed run. */
+changesRouter.get('/feed-meta', async (req, res) => {
+  try {
+    const meta = await getFeedMeta();
+    res.json(meta || { lastRun: null, message: 'No feed run recorded yet.' });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

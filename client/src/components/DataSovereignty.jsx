@@ -196,6 +196,41 @@ export function DataSovereignty({ language = 'en', selectedParentHolding, compan
   const [loading, setLoading] = useState(false);
   const [filterSeverity, setFilterSeverity] = useState('all'); // all | Critical | Medium | Low | met
 
+  // Dynamic checks loaded from API (falls back to CHECK_DEFINITIONS if unavailable)
+  const [checks, setChecks] = useState(CHECK_DEFINITIONS);
+  const [checksMeta, setChecksMeta] = useState({ dynamic: false, fromCache: false });
+  const [checksRefreshing, setChecksRefreshing] = useState(false);
+
+  useEffect(() => {
+    fetch(`${API}/data-sovereignty/checks`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (Array.isArray(data.checks) && data.checks.length > 0) {
+          setChecks(data.checks);
+          setChecksMeta({ dynamic: data.dynamic, fromCache: data.fromCache, fetchedAt: data.fetchedAt });
+        }
+      })
+      .catch(() => { /* keep static fallback */ });
+  }, []);
+
+  const handleRefreshChecks = () => {
+    setChecksRefreshing(true);
+    fetch(`${API}/data-sovereignty/checks/refresh`, { method: 'POST' })
+      .then((r) => r.json())
+      .then(() =>
+        fetch(`${API}/data-sovereignty/checks?force=1`)
+          .then((r) => r.json())
+          .then((data) => {
+            if (Array.isArray(data.checks) && data.checks.length > 0) {
+              setChecks(data.checks);
+              setChecksMeta({ dynamic: data.dynamic, fromCache: false, fetchedAt: data.fetchedAt });
+            }
+          })
+      )
+      .catch(() => {})
+      .finally(() => setChecksRefreshing(false));
+  };
+
   useEffect(() => {
     if (!selectedParentHolding) {
       setOpcos([]);
@@ -224,10 +259,10 @@ export function DataSovereignty({ language = 'en', selectedParentHolding, compan
 
   const opcoWithNonCompliance = useMemo(() => {
     return opcos.map(({ name }) => {
-      const nonCompliances = getOpcoNonCompliances(name, CHECK_DEFINITIONS);
+      const nonCompliances = getOpcoNonCompliances(name, checks);
       return { opco: name, nonCompliances };
     });
-  }, [opcos]);
+  }, [opcos, checks]);
 
   const grouped = useMemo(() => {
     const opcosWithCritical = opcoWithNonCompliance.filter(({ nonCompliances }) =>
@@ -327,7 +362,26 @@ export function DataSovereignty({ language = 'en', selectedParentHolding, compan
 
   return (
     <div className="data-sovereignty-section">
-      <h2 className="data-sovereignty-title">Data Sovereignty</h2>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.25rem' }}>
+        <h2 className="data-sovereignty-title" style={{ margin: 0 }}>Data Sovereignty</h2>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+          {checksMeta.dynamic && (
+            <span style={{ fontSize: '0.72rem', background: 'rgba(34,197,94,0.15)', color: '#22c55e', border: '1px solid #22c55e44', borderRadius: '4px', padding: '2px 7px', fontWeight: 600 }}>
+              AI-updated {checksMeta.fetchedAt ? `· ${new Date(checksMeta.fetchedAt).toLocaleDateString()}` : ''}
+            </span>
+          )}
+          <button
+            type="button"
+            className="btn btn-secondary"
+            style={{ fontSize: '0.75rem', padding: '4px 10px' }}
+            onClick={handleRefreshChecks}
+            disabled={checksRefreshing}
+            title="Refresh compliance checks using AI"
+          >
+            {checksRefreshing ? 'Refreshing…' : 'Refresh Checks'}
+          </button>
+        </div>
+      </div>
       <p className="data-sovereignty-intro">
         Per-OpCo compliance with data residency, localisation, cross-border transfer, and UAE/KSA/GCC frameworks. Select a severity card or use the dropdown to see which OpCos have not met compliance and which sections are not updated.
       </p>

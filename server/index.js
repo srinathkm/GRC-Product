@@ -22,6 +22,9 @@ import { litigationsRouter } from './routes/litigations.js';
 import { contractsRouter } from './routes/contracts.js';
 import { governanceRouter } from './routes/governance.js';
 import { defenderIntegrationRouter } from './routes/defenderIntegration.js';
+import { dataSovereigntyRouter } from './routes/dataSovereignty.js';
+import { dashboardRouter } from './routes/dashboard.js';
+import { startFeedScheduler } from './services/regulatoryFeed.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -45,6 +48,8 @@ app.use('/api/licences', licencesRouter);
 app.use('/api/litigations', litigationsRouter);
 app.use('/api/contracts', contractsRouter);
 app.use('/api/defender', defenderIntegrationRouter);
+app.use('/api/data-sovereignty', dataSovereigntyRouter);
+app.use('/api/dashboard', dashboardRouter);
 
 app.get('/api/health', (_, res) => res.json({ status: 'ok' }));
 app.get('/api/frameworks', (_, res) => res.json({ frameworks: FRAMEWORKS, references: FRAMEWORK_REFERENCES }));
@@ -59,4 +64,5 @@ app.get('*', (req, res, next) => {
 const bind = process.env.BIND || '127.0.0.1';
 app.listen(PORT, bind, () => {
   console.log(`Server running at http://${bind}:${PORT}`);
+  startFeedScheduler();
 });

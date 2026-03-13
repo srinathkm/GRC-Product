@@ -20,6 +20,7 @@ import { LicenceManagement } from './components/LicenceManagement';
 import { LitigationsManagement } from './components/LitigationsManagement';
 import { ContractsManagement } from './components/ContractsManagement';
 import { Help } from './components/Help';
+import { ManagementDashboard } from './components/ManagementDashboard';
 
 const FRAMEWORKS = [
   'DFSA Rulebook',
@@ -63,6 +64,14 @@ const ROLE_MODULE_IDS = {
   board: ['org-overview-module', 'analysis-module'],
 };
 
+// Views accessible per role (for redirect when switching roles)
+const ROLE_VIEW_IDS = {
+  'legal-team': ['mgmt-dashboard', 'org-overview', 'org-dashboard', 'poa-management', 'ip-management', 'licence-management', 'litigations-management', 'contracts-management', 'contracts-upload'],
+  'governance-team': ['mgmt-dashboard', 'onboarding', 'org-overview', 'org-dashboard', 'parent-overview', 'governance-framework', 'multi-jurisdiction', 'ubo'],
+  'data-security-team': ['mgmt-dashboard', 'org-overview', 'org-dashboard', 'data-sovereignty', 'data-security'],
+  board: ['mgmt-dashboard', 'org-overview', 'org-dashboard', 'analysis', 'ma-simulator'],
+};
+
 const ROLE_OPTIONS = [
   { value: 'legal-team', labelKey: 'roleLegalTeam' },
   { value: 'governance-team', labelKey: 'roleGovernanceTeam' },
@@ -73,11 +82,11 @@ const ROLE_OPTIONS = [
 
 // First view to show when switching to this role (if current view is not allowed).
 const ROLE_FIRST_VIEW = {
-  'legal-team': 'org-overview',
-  'governance-team': 'org-overview',
-  'data-security-team': 'org-overview',
-  'c-level': 'onboarding',
-  board: 'org-overview',
+  'legal-team': 'mgmt-dashboard',
+  'governance-team': 'mgmt-dashboard',
+  'data-security-team': 'mgmt-dashboard',
+  'c-level': 'mgmt-dashboard',
+  board: 'mgmt-dashboard',
 };
 
 const GOVERNANCE_FRAMEWORKS_STORAGE_KEY = 'governance_applicable_frameworks';
@@ -96,7 +105,7 @@ function loadApplicableFrameworksFromStorage() {
 export default function App() {
   const [language, setLanguage] = useState('en');
   const [selectedRole, setSelectedRole] = useState('c-level');
-  const [currentView, setCurrentView] = useState('onboarding');
+  const [currentView, setCurrentView] = useState('mgmt-dashboard');
   const [framework, setFramework] = useState('');
   const [selectedDays, setSelectedDays] = useState(30);
   const [frameworkReferences, setFrameworkReferences] = useState({});
@@ -189,13 +198,7 @@ export default function App() {
     if (selectedRole === 'c-level') return;
     const allowed = ROLE_MODULE_IDS[selectedRole];
     if (!allowed) return;
-    const roleViewIds = {
-      'legal-team': ['org-overview', 'org-dashboard', 'poa-management', 'ip-management', 'licence-management', 'litigations-management', 'contracts-management', 'contracts-upload'],
-      'governance-team': ['onboarding', 'org-overview', 'org-dashboard', 'parent-overview', 'governance-framework', 'multi-jurisdiction', 'ubo'],
-      'data-security-team': ['org-overview', 'org-dashboard', 'data-sovereignty', 'data-security'],
-      board: ['org-overview', 'org-dashboard', 'analysis', 'ma-simulator'],
-    };
-    const ids = roleViewIds[selectedRole];
+    const ids = ROLE_VIEW_IDS[selectedRole];
     if (ids && !ids.includes(currentView)) {
       setCurrentView(ROLE_FIRST_VIEW[selectedRole] || ids[0]);
     }
@@ -241,6 +244,9 @@ export default function App() {
       <div className="app-body">
         <MainNav language={language} currentView={currentView} onSelect={setCurrentView} allowedModuleIds={allowedModuleIds} />
         <div className="app-content">
+          {currentView === 'mgmt-dashboard' && (
+            <ManagementDashboard onNavigateToView={setCurrentView} />
+          )}
           {currentView === 'onboarding' && (
             <Onboarding
               language={language}
