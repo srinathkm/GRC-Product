@@ -2,6 +2,334 @@
   padding-bottom: 2rem;
 }
 
+/* ── Wizard layout ── */
+.onboarding-wizard {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding-bottom: 0;
+  height: 100%;
+}
+
+.onboarding-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.9rem 1.5rem;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.onboarding-breadcrumb-item {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.onboarding-breadcrumb-step {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: none;
+  border: none;
+  padding: 0.3rem 0.5rem;
+  border-radius: 6px;
+  cursor: default;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  transition: color 0.12s, background 0.12s;
+}
+
+.onboarding-breadcrumb-step.active {
+  color: var(--accent);
+}
+
+.onboarding-breadcrumb-step.done {
+  color: #22c55e;
+  cursor: pointer;
+}
+
+.onboarding-breadcrumb-step.done:not(:disabled):hover {
+  background: rgba(34, 197, 94, 0.08);
+}
+
+.onboarding-breadcrumb-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  font-size: 0.72rem;
+  font-weight: 800;
+  background: rgba(148, 163, 184, 0.15);
+  color: var(--text-muted);
+  transition: background 0.12s;
+}
+
+.onboarding-breadcrumb-step.active .onboarding-breadcrumb-num {
+  background: var(--accent);
+  color: #fff;
+}
+
+.onboarding-breadcrumb-step.done .onboarding-breadcrumb-num {
+  background: #22c55e;
+  color: #fff;
+}
+
+.onboarding-breadcrumb-arrow {
+  color: var(--text-muted);
+  font-size: 1rem;
+  opacity: 0.4;
+}
+
+.onboarding-wizard-layout {
+  display: flex;
+  flex: 1;
+  gap: 0;
+  overflow: hidden;
+}
+
+.onboarding-wizard-main {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.5rem;
+}
+
+.onboarding-wizard-nav {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+
+/* ── Right panel ── */
+.onboarding-wizard-panel {
+  width: 300px;
+  flex-shrink: 0;
+  border-left: 1px solid var(--border);
+  background: var(--surface);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+@media (max-width: 900px) {
+  .onboarding-wizard-panel { display: none; }
+}
+
+.onboarding-panel-header {
+  padding: 1rem 1rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.onboarding-panel-title {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.onboarding-panel-empty {
+  padding: 2rem 1rem;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.onboarding-panel-empty-icon {
+  font-size: 2.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.onboarding-panel-hint {
+  font-size: 0.72rem;
+  opacity: 0.7;
+  margin-top: 0.25rem;
+}
+
+.onboarding-panel-section-title {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  padding: 0.75rem 1rem 0.35rem;
+}
+
+.onboarding-panel-docs {
+  display: flex;
+  flex-direction: column;
+}
+
+.onboarding-panel-doc {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1rem;
+  cursor: pointer;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.08);
+  transition: background 0.1s;
+}
+
+.onboarding-panel-doc:hover, .onboarding-panel-doc.active {
+  background: rgba(59, 130, 246, 0.07);
+}
+
+.onboarding-panel-doc-icon {
+  font-size: 1.2rem;
+  flex-shrink: 0;
+}
+
+.onboarding-panel-doc-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.onboarding-panel-doc-name {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.onboarding-panel-doc-meta {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  margin-top: 0.1rem;
+}
+
+.onboarding-panel-doc-check {
+  font-size: 0.75rem;
+  color: #22c55e;
+  flex-shrink: 0;
+}
+
+/* ── AI extraction progress ── */
+.onboarding-ai-progress {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border);
+  background: rgba(59, 130, 246, 0.04);
+}
+
+.onboarding-ai-progress-title {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+  margin-bottom: 0.5rem;
+}
+
+.onboarding-ai-step {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.78rem;
+  padding: 0.2rem 0;
+  color: var(--text-muted);
+}
+
+.onboarding-ai-step-icon {
+  font-size: 0.8rem;
+  width: 16px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.onboarding-ai-step-running {
+  color: var(--accent);
+}
+
+.onboarding-ai-step-running .onboarding-ai-step-icon {
+  animation: spin 1.2s linear infinite;
+}
+
+.onboarding-ai-step-done {
+  color: #22c55e;
+}
+
+.onboarding-ai-step-pending {
+  opacity: 0.45;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* ── Extracted data panel ── */
+.onboarding-panel-extracted {
+  display: flex;
+  flex-direction: column;
+}
+
+.onboarding-panel-field {
+  display: flex;
+  flex-direction: column;
+  padding: 0.45rem 1rem;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.07);
+}
+
+.onboarding-panel-field-label {
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.onboarding-panel-field-value {
+  font-size: 0.78rem;
+  color: var(--text);
+  margin-top: 0.1rem;
+  word-break: break-word;
+}
+
+/* ── Success banner ── */
+.onboarding-success-banner {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  background: rgba(34, 197, 94, 0.1);
+  border: 1px solid #22c55e;
+  border-radius: var(--radius);
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.onboarding-success-check {
+  font-size: 1.8rem;
+  color: #22c55e;
+  flex-shrink: 0;
+}
+
+.onboarding-success-text {
+  flex: 1;
+}
+
+.onboarding-success-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.onboarding-success-sub {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-top: 0.15rem;
+}
+
 .onboarding-title {
   margin: 0 0 0.5rem 0;
   font-size: 1.5rem;

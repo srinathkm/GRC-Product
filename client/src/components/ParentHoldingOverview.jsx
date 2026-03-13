@@ -165,6 +165,8 @@ export function ParentHoldingOverview({ language = 'en', parents = [], selectedP
   const [opcosForParent, setOpcosForParent] = useState([]);
   const [loadingOpcos, setLoadingOpcos] = useState(false);
   const [jurisdictionByOpco, setJurisdictionByOpco] = useState({});
+  // Live compliance scores from API (keyed by opco name)
+  const [liveScores, setLiveScores] = useState({});
   const [overviewSummary, setOverviewSummary] = useState(null);
   const [overviewLoading, setOverviewLoading] = useState(false);
   const [overviewError, setOverviewError] = useState(null);
@@ -183,6 +185,18 @@ export function ParentHoldingOverview({ language = 'en', parents = [], selectedP
       .then((data) => setOpcosForParent(data.opcos || []))
       .catch(() => setOpcosForParent([]))
       .finally(() => setLoadingOpcos(false));
+  }, [selectedParentHolding, companiesRefreshKey]);
+
+  useEffect(() => {
+    if (!selectedParentHolding) { setLiveScores({}); return; }
+    fetch(`${API}/companies/compliance-scores?parent=${encodeURIComponent(selectedParentHolding)}`)
+      .then((r) => r.json())
+      .then((data) => {
+        const map = {};
+        (data.scores || []).forEach((s) => { map[s.name] = s; });
+        setLiveScores(map);
+      })
+      .catch(() => setLiveScores({}));
   }, [selectedParentHolding, companiesRefreshKey]);
 
   const COMPLIANCE_THRESHOLD = 80;
@@ -257,7 +271,10 @@ export function ParentHoldingOverview({ language = 'en', parents = [], selectedP
       const isMulti = !!opcoMeta.isMultiJurisdiction[name];
       const jurisdictionDisplay = isMulti ? 'multi-jurisdiction' : (jurisdictionByOpco[name] ?? '—');
       let compliance;
-      if (useSplit) {
+      if (liveScores[name]) {
+        // Use real data-driven scores from the API
+        compliance = liveScores[name];
+      } else if (useSplit) {
         const idx = opcoToIndex[name];
         const triplet = idx < nMix
           ? MIX_SCORE_TRIPLETS[idx % MIX_SCORE_TRIPLETS.length]
@@ -283,7 +300,21 @@ export function ParentHoldingOverview({ language = 'en', parents = [], selectedP
         status,
       };
     });
-  }, [opcosForParent, opcoMeta, jurisdictionByOpco]);
+  }, [opcosForParent, opcoMeta, jurisdictionByOpco, liveScores]);
+
+  // Derive aggregate stats from live scores when available
+  useEffect(() => {
+    const scoreValues = Object.values(liveScores);
+    if (scoreValues.length === 0) return;
+    const avg = (key) => Math.round(scoreValues.reduce((s, v) => s + (v[key] || 0), 0) / scoreValues.length);
+    setStats((prev) => ({
+      ...prev,
+      governanceComplianceScore: avg('governanceScore'),
+      policyComplianceScore: avg('policyScore'),
+      dataSovereigntyComplianceScore: avg('dataSovereigntyScore'),
+      operatingCompaniesCount: scoreValues.length || prev.operatingCompaniesCount,
+    }));
+  }, [liveScores]);
 
   // Helper: read mandatory UBO / compliance document completion for an OpCo
   // across all parent–OpCo records in the UBO register. A document is treated

@@ -1,4 +1,4 @@
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 import { parse } from 'csv-parse/sync';
 import { extractTextFromBuffer } from './text-extract.js';
 import * as store from './defenderStore.js';
@@ -28,17 +28,32 @@ function parseCsv(buffer) {
   return parse(text, { columns: true, skip_empty_lines: true, trim: true });
 }
 
-function parseExcel(buffer) {
-  const workbook = XLSX.read(buffer, { type: 'buffer' });
-  const first = workbook.SheetNames[0];
-  const sheet = workbook.Sheets[first];
-  return XLSX.utils.sheet_to_json(sheet);
+async function parseExcel(buffer) {
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(buffer);
+  const worksheet = workbook.worksheets[0];
+  if (!worksheet) return [];
+  const headers = [];
+  const rows = [];
+  worksheet.eachRow((row, rowNumber) => {
+    if (rowNumber === 1) {
+      row.eachCell({ includeEmpty: true }, (cell) => headers.push(String(cell.value ?? '')));
+    } else {
+      const obj = {};
+      row.eachCell({ includeEmpty: false }, (cell, colNumber) => {
+        const key = headers[colNumber - 1];
+        if (key) obj[key] = cell.value;
+      });
+      if (Object.keys(obj).length > 0) rows.push(obj);
+    }
+  });
+  return rows;
 }
 
-function parseRows(buffer, filename) {
+async function parseRows(buffer, filename) {
   const lower = (filename || '').toLowerCase();
   if (lower.endsWith('.csv')) return parseCsv(buffer);
-  if (lower.endsWith('.xlsx') || lower.endsWith('.xls')) return parseExcel(buffer);
+  if (lower.endsWith('.xlsx') || lower.endsWith('.xls')) return await parseExcel(buffer);
   return parseCsv(buffer);
 }
 
@@ -328,7 +343,7 @@ export async function processUpload(buffer, filename, opcoName, parentName, repo
     return processUploadPdf(buffer, filename, opcoName, parentName, reportDate);
   }
 
-  const rows = parseRows(buffer, filename);
+  const rows = await parseRows(buffer, filename);
   const headers = rows.length ? Object.keys(rows[0]) : [];
   const reportType = detectReportType(filename, headers);
 
