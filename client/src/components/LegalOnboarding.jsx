@@ -351,8 +351,13 @@ function FormField({ field, value, onChange }) {
     );
   }
 
+  // Textarea and full-width fields span both grid columns
+  const isWide = field.type === 'textarea';
   return (
-    <div className={`lo-field ${field.required ? 'lo-field--required' : ''}`}>
+    <div
+      className={`lo-field ${field.required ? 'lo-field--required' : ''}`}
+      style={isWide ? { gridColumn: '1 / -1' } : undefined}
+    >
       <label className="lo-field-label" htmlFor={`field-${field.key}`}>
         {field.label}
         {field.required && <span className="lo-field-required-star" aria-hidden>*</span>}
@@ -393,6 +398,100 @@ function FormField({ field, value, onChange }) {
       )}
     </div>
   );
+}
+
+// ─────────────────────────────────────────────
+// LegalOnboardingPanel — right-panel component (top-level to keep Fast Refresh happy)
+// ─────────────────────────────────────────────
+function LegalOnboardingPanel({ wizardStep, config, aiProgress, uploadedFiles, activeMapping, formData, savedMappings }) {
+  if (wizardStep === 1) {
+    return (
+      <div className="lo-panel-content">
+        <h3 className="lo-panel-title">About {config.label}</h3>
+        <p className="lo-panel-desc">{config.description}</p>
+        <div className="lo-panel-section">
+          <h4>Accepted Formats</h4>
+          <ul className="lo-panel-list">
+            {config.aiExtract && <li><span className="lo-badge lo-badge--ai">AI</span> PDF, JPG, PNG, TIFF — AI-extracted</li>}
+            {config.acceptBulk && <li><span className="lo-badge lo-badge--bulk">BULK</span> CSV, XLSX — Field mapping supported</li>}
+          </ul>
+        </div>
+        <div className="lo-panel-section">
+          <h4>Expected Fields</h4>
+          <ul className="lo-panel-list lo-panel-fields">
+            {config.fields.map((f) => (
+              <li key={f.key}>
+                {f.label}
+                {f.required && <span className="lo-panel-required">required</span>}
+              </li>
+            ))}
+          </ul>
+        </div>
+        {savedMappings.length > 0 && (
+          <div className="lo-panel-section">
+            <h4>Saved Custom Mappings</h4>
+            <ul className="lo-panel-list">
+              {savedMappings.map((m) => (
+                <li key={m.id} className="lo-panel-mapping-item">
+                  <span className="lo-badge lo-badge--custom">Custom</span>
+                  {m.name}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  if (wizardStep === 2) {
+    return (
+      <div className="lo-panel-content">
+        {aiProgress.length > 0 && <AIProgressPanel steps={aiProgress} />}
+        {uploadedFiles.length > 0 && (
+          <div className="lo-panel-section">
+            <h4>Uploaded Files</h4>
+            <ul className="lo-panel-list">
+              {uploadedFiles.map((f, i) => (
+                <li key={i} className="lo-panel-file-item">
+                  <span className="lo-panel-file-icon">📄</span>
+                  <span>
+                    <strong>{f.name}</strong>
+                    <br />
+                    <small>{(f.size / 1024).toFixed(1)} KB</small>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {activeMapping && (
+          <div className="lo-panel-section">
+            <div className="lo-panel-mapping-active">
+              <span className="lo-badge lo-badge--custom">Custom Mapping</span>
+              <span className="lo-panel-mapping-name">"{activeMapping.name}"</span>
+              <p className="lo-panel-mapping-note">
+                The source file uses non-standard column names. This mapping translates them to the application fields.
+              </p>
+            </div>
+          </div>
+        )}
+        <div className="lo-panel-section">
+          <h4>Completion</h4>
+          <div className="lo-panel-progress">
+            {config.fields.map((f) => (
+              <div key={f.key} className={`lo-panel-progress-row ${formData[f.key] ? 'lo-panel-progress-row--done' : ''}`}>
+                <span>{f.required ? '* ' : ''}{f.label}</span>
+                <span>{formData[f.key] ? '✓' : '–'}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return null;
 }
 
 // ─────────────────────────────────────────────
@@ -640,97 +739,6 @@ export function LegalOnboarding({ language = 'en', parents = [] }) {
     { n: 3, label: 'Confirm & Save' },
   ];
 
-  // ── Right panel content ──
-  function RightPanel() {
-    if (wizardStep === 1) {
-      return (
-        <div className="lo-panel-content">
-          <h3 className="lo-panel-title">About {config.label}</h3>
-          <p className="lo-panel-desc">{config.description}</p>
-          <div className="lo-panel-section">
-            <h4>Accepted Formats</h4>
-            <ul className="lo-panel-list">
-              {config.aiExtract && <li><span className="lo-badge lo-badge--ai">AI</span> PDF, JPG, PNG, TIFF — AI-extracted</li>}
-              {config.acceptBulk && <li><span className="lo-badge lo-badge--bulk">BULK</span> CSV, XLSX — Field mapping supported</li>}
-            </ul>
-          </div>
-          <div className="lo-panel-section">
-            <h4>Expected Fields</h4>
-            <ul className="lo-panel-list lo-panel-fields">
-              {config.fields.map((f) => (
-                <li key={f.key}>
-                  {f.label}
-                  {f.required && <span className="lo-panel-required">required</span>}
-                </li>
-              ))}
-            </ul>
-          </div>
-          {savedMappings.length > 0 && (
-            <div className="lo-panel-section">
-              <h4>Saved Custom Mappings</h4>
-              <ul className="lo-panel-list">
-                {savedMappings.map((m) => (
-                  <li key={m.id} className="lo-panel-mapping-item">
-                    <span className="lo-badge lo-badge--custom">Custom</span>
-                    {m.name}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </div>
-      );
-    }
-
-    if (wizardStep === 2) {
-      return (
-        <div className="lo-panel-content">
-          {aiProgress.length > 0 && <AIProgressPanel steps={aiProgress} />}
-          {uploadedFiles.length > 0 && (
-            <div className="lo-panel-section">
-              <h4>Uploaded Files</h4>
-              <ul className="lo-panel-list">
-                {uploadedFiles.map((f, i) => (
-                  <li key={i} className="lo-panel-file-item">
-                    <span className="lo-panel-file-icon">📄</span>
-                    <span>
-                      <strong>{f.name}</strong><br />
-                      <small>{(f.size / 1024).toFixed(1)} KB</small>
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-          {activeMapping && (
-            <div className="lo-panel-section">
-              <div className="lo-panel-mapping-active">
-                <span className="lo-badge lo-badge--custom">Custom Mapping</span>
-                <span className="lo-panel-mapping-name">"{activeMapping.name}"</span>
-                <p className="lo-panel-mapping-note">
-                  The source file uses non-standard column names. This mapping translates them to the application fields.
-                </p>
-              </div>
-            </div>
-          )}
-          <div className="lo-panel-section">
-            <h4>Completion</h4>
-            <div className="lo-panel-progress">
-              {config.fields.map((f) => (
-                <div key={f.key} className={`lo-panel-progress-row ${formData[f.key] ? 'lo-panel-progress-row--done' : ''}`}>
-                  <span>{f.required ? '* ' : ''}{f.label}</span>
-                  <span>{formData[f.key] ? '✓' : '–'}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      );
-    }
-
-    return null;
-  }
-
   // ── Render ──
   return (
     <div className="lo-wizard">
@@ -943,7 +951,15 @@ export function LegalOnboarding({ language = 'en', parents = [] }) {
         {/* ── Right panel ── */}
         {wizardStep < 3 && !justSaved && (
           <aside className="lo-wizard-panel">
-            <RightPanel />
+            <LegalOnboardingPanel
+              wizardStep={wizardStep}
+              config={config}
+              aiProgress={aiProgress}
+              uploadedFiles={uploadedFiles}
+              activeMapping={activeMapping}
+              formData={formData}
+              savedMappings={savedMappings}
+            />
           </aside>
         )}
       </div>

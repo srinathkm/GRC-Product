@@ -501,10 +501,7 @@
   gap: 0.3rem;
 }
 
-/* Textarea and scope fields take full width */
-.lo-field:has(.lo-field-textarea) {
-  grid-column: 1 / -1;
-}
+/* Textarea fields span full width via inline style set in FormField */
 
 .lo-field--required .lo-field-label {
   font-weight: 600;
