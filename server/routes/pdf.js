@@ -125,62 +125,194 @@ pdfRouter.post('/', async (req, res) => {
     const doc = await PDFDocument.create();
     const font = await doc.embedFont(StandardFonts.Helvetica);
     const bold = await doc.embedFont(StandardFonts.HelveticaBold);
-    const size = 11;
-    const margin = 50;
-    const maxWidth = 500;
-    const pageWidth = 595;
-    const pageHeight = 842;
-    const contentYStart = 750;
-    let y = contentYStart;
-    const lineHeight = size * 1.3;
+    const italic = await doc.embedFont(StandardFonts.HelveticaOblique);
 
-    const addPage = () => doc.addPage([pageWidth, pageHeight]);
+    const PAGE_W = 595;
+    const PAGE_H = 842;
+    const MARGIN = 50;
+    const CONTENT_W = PAGE_W - MARGIN * 2;
+    const HEADER_H = 60;          // top coloured header strip height
+    const FOOTER_H = 28;
+    const BODY_Y_START = PAGE_H - HEADER_H - 24;
+    const BODY_Y_END = FOOTER_H + 16;
+
+    const BRAND_DARK   = rgb(0.10, 0.16, 0.26);  // #1a2942
+    const BRAND_ACCENT = rgb(0.23, 0.51, 0.96);  // #3b82f6
+    const BRAND_LIGHT  = rgb(0.90, 0.93, 0.97);
+    const GRAY_MID     = rgb(0.45, 0.45, 0.50);
+    const GRAY_LIGHT   = rgb(0.88, 0.90, 0.93);
+
+    // Category badge colours
+    const CAT_COLORS = {
+      Banking:       rgb(0.13, 0.55, 0.91),
+      Cybersecurity: rgb(0.60, 0.18, 0.80),
+      Disclosure:    rgb(0.90, 0.45, 0.10),
+      AML:           rgb(0.80, 0.20, 0.20),
+      ESG:           rgb(0.12, 0.65, 0.35),
+      Governance:    rgb(0.25, 0.50, 0.75),
+      General:       rgb(0.40, 0.40, 0.50),
+    };
+
+    let pageNum = 0;
+    const pages = [];
+
+    const addPage = () => {
+      const p = doc.addPage([PAGE_W, PAGE_H]);
+      pageNum++;
+      pages.push({ page: p, num: pageNum });
+
+      // Header strip
+      p.drawRectangle({ x: 0, y: PAGE_H - HEADER_H, width: PAGE_W, height: HEADER_H, color: BRAND_DARK });
+      p.drawRectangle({ x: 0, y: PAGE_H - HEADER_H - 3, width: PAGE_W, height: 3, color: BRAND_ACCENT });
+      p.drawText('RAQIB', { x: MARGIN, y: PAGE_H - 38, font: bold, size: 18, color: BRAND_ACCENT });
+      p.drawText('Compliance Intelligence Platform', { x: MARGIN + 72, y: PAGE_H - 38, font, size: 9, color: BRAND_LIGHT });
+      const dtStr = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+      const dtW = font.widthOfTextAtSize(dtStr, 8);
+      p.drawText(dtStr, { x: PAGE_W - MARGIN - dtW, y: PAGE_H - 38, font, size: 8, color: BRAND_LIGHT });
+
+      // Footer strip
+      p.drawRectangle({ x: 0, y: 0, width: PAGE_W, height: FOOTER_H, color: BRAND_DARK });
+      p.drawText('Confidential – for authorised recipients only', { x: MARGIN, y: 10, font: italic, size: 7, color: BRAND_LIGHT });
+      const pLabel = `Page ${pageNum}`;
+      const pW = font.widthOfTextAtSize(pLabel, 7);
+      p.drawText(pLabel, { x: PAGE_W - MARGIN - pW, y: 10, font, size: 7, color: BRAND_LIGHT });
+
+      return p;
+    };
+
+    // ── COVER PAGE ────────────────────────────────────────────────────────────
     let page = addPage();
+    // Big accent band
+    page.drawRectangle({ x: 0, y: 280, width: PAGE_W, height: 220, color: BRAND_DARK });
+    page.drawRectangle({ x: 0, y: 276, width: PAGE_W, height: 4, color: BRAND_ACCENT });
+    page.drawRectangle({ x: 0, y: 500, width: PAGE_W, height: 4, color: BRAND_ACCENT });
 
-    const reportTitle = sanitizePdfText(`${framework || 'All frameworks'} changes for the last ${periodLabel(days)}`);
-    page.drawText(reportTitle, { x: margin, y, font: bold, size: 14, color: rgb(0.2, 0.3, 0.5) });
-    y -= lineHeight * 1.5;
-
-    if (framework && FRAMEWORK_REFERENCES[framework]) {
-      const ref = FRAMEWORK_REFERENCES[framework];
-      page.drawText(sanitizePdfText('Official rulebook: ' + ref.url), { x: margin, y, font, size: 9, color: rgb(0.2, 0.4, 0.6) });
-      y -= lineHeight;
-      page.drawText(sanitizePdfText(ref.description), { x: margin, y, font, size: 8, color: rgb(0.35, 0.35, 0.35) });
-      y -= lineHeight * 1.2;
-    } else if (changes.length > 0) {
-      const frameworksInReport = [...new Set(changes.map((c) => c.framework))];
-      page.drawText('Framework references (in this report):', { x: margin, y, font: bold, size: 9, color: rgb(0.2, 0.3, 0.5) });
-      y -= lineHeight;
-      for (const fw of frameworksInReport) {
-        if (FRAMEWORK_REFERENCES[fw]) {
-          page.drawText(sanitizePdfText(fw + ': ' + FRAMEWORK_REFERENCES[fw].url), { x: margin, y, font, size: 8, color: rgb(0.2, 0.4, 0.6) });
-          y -= lineHeight;
-        }
-      }
-      y -= lineHeight * 0.5;
+    const coverTitle = sanitizePdfText(framework ? `${framework} Compliance Report` : 'Regulatory Changes Report');
+    const coverTitleLines = wrapText(coverTitle, CONTENT_W - 20, bold, 22);
+    let coverY = 480;
+    for (const ln of coverTitleLines) {
+      page.drawText(ln, { x: MARGIN + 10, y: coverY, font: bold, size: 22, color: rgb(1, 1, 1) });
+      coverY -= 28;
     }
 
-    for (const c of changes) {
-      if (y < 100) {
-        page = addPage();
-        y = contentYStart;
-      }
-      page.drawText(sanitizePdfText(c.framework), { x: margin, y, font: bold, size: 12, color: rgb(0.2, 0.3, 0.5) });
-      y -= lineHeight;
-      page.drawText(sanitizePdfText(c.title), { x: margin, y, font: bold, size });
-      y -= lineHeight;
-      page.drawText(sanitizePdfText(`Date: ${c.date || ''} | Category: ${c.category || ''}`), { x: margin, y, font, size: 9, color: rgb(0.4, 0.4, 0.4) });
-      y -= lineHeight;
-      const bodyLines = wrapText(c.fullText, maxWidth, font, size);
-      for (const line of bodyLines) {
-        if (y < 80) {
-          page = addPage();
-          y = contentYStart;
+    const periodStr = sanitizePdfText(`Period: Last ${periodLabel(days)}`);
+    page.drawText(periodStr, { x: MARGIN + 10, y: coverY - 6, font, size: 12, color: BRAND_LIGHT });
+
+    // Summary stats box
+    const criticalCount = changes.filter((c) => {
+      if (!c.deadline) return false;
+      const d = new Date(c.deadline);
+      return !isNaN(d) && (d - new Date()) / (1000 * 60 * 60 * 24) <= 90;
+    }).length;
+    const frameworksInReport = [...new Set(changes.map((c) => c.framework))];
+
+    const statsY = 240;
+    page.drawRectangle({ x: MARGIN, y: statsY - 70, width: CONTENT_W, height: 100, color: rgb(0.95, 0.97, 1.0) });
+    page.drawRectangle({ x: MARGIN, y: statsY - 70, width: 4, height: 100, color: BRAND_ACCENT });
+
+    const statItems = [
+      { label: 'Total Changes', value: String(changes.length) },
+      { label: 'Frameworks Covered', value: String(frameworksInReport.length) },
+      { label: 'Critical Deadlines (≤90d)', value: String(criticalCount) },
+      { label: 'Generated', value: new Date().toISOString().slice(0, 10) },
+    ];
+    const colW = CONTENT_W / statItems.length;
+    statItems.forEach((s, i) => {
+      const sx = MARGIN + 12 + colW * i;
+      page.drawText(s.value, { x: sx, y: statsY + 14, font: bold, size: 18, color: BRAND_DARK });
+      page.drawText(s.label, { x: sx, y: statsY - 4, font, size: 8, color: GRAY_MID });
+    });
+
+    // Framework references on cover
+    if (frameworksInReport.length > 0) {
+      let refY = statsY - 90;
+      page.drawText('Framework References', { x: MARGIN, y: refY, font: bold, size: 9, color: BRAND_DARK });
+      refY -= 14;
+      page.drawLine({ start: { x: MARGIN, y: refY }, end: { x: PAGE_W - MARGIN, y: refY }, thickness: 0.5, color: GRAY_LIGHT });
+      refY -= 14;
+      for (const fw of frameworksInReport) {
+        if (refY < 60) break;
+        const ref = FRAMEWORK_REFERENCES[fw];
+        page.drawText(sanitizePdfText(`${fw}${ref ? ` – ${ref.authority}` : ''}`), { x: MARGIN, y: refY, font: bold, size: 8, color: BRAND_DARK });
+        if (ref) {
+          const urlW = font.widthOfTextAtSize(ref.url, 7.5);
+          page.drawText(ref.url, { x: PAGE_W - MARGIN - urlW, y: refY, font, size: 7.5, color: BRAND_ACCENT });
         }
-        page.drawText(line, { x: margin, y, font, size });
-        y -= lineHeight;
+        refY -= 14;
       }
-      y -= lineHeight;
+    }
+
+    // ── CHANGES PAGES ─────────────────────────────────────────────────────────
+    let y = BODY_Y_START;
+    page = addPage();
+
+    // Section heading
+    page.drawText('Regulatory Changes', { x: MARGIN, y, font: bold, size: 14, color: BRAND_DARK });
+    page.drawLine({ start: { x: MARGIN, y: y - 4 }, end: { x: PAGE_W - MARGIN, y: y - 4 }, thickness: 1, color: BRAND_ACCENT });
+    y -= 22;
+
+    for (let idx = 0; idx < changes.length; idx++) {
+      const c = changes[idx];
+
+      // Estimate height needed for this item (heading + meta + body)
+      const bodyLines = wrapText(c.fullText || c.snippet || '', CONTENT_W - 8, font, 10);
+      const itemHeight = 14 + 12 + 12 + bodyLines.length * 13 + 16;
+
+      if (y - itemHeight < BODY_Y_END) {
+        page = addPage();
+        y = BODY_Y_START;
+      }
+
+      // Card background
+      page.drawRectangle({ x: MARGIN - 2, y: y - itemHeight + 6, width: CONTENT_W + 4, height: itemHeight, color: rgb(0.97, 0.98, 1.0) });
+      // Left accent bar — colour by category
+      const catColor = CAT_COLORS[c.category] || CAT_COLORS.General;
+      page.drawRectangle({ x: MARGIN - 2, y: y - itemHeight + 6, width: 3, height: itemHeight, color: catColor });
+
+      // Change number + framework
+      page.drawText(sanitizePdfText(`${idx + 1}. ${c.framework}`), { x: MARGIN + 6, y, font: bold, size: 11, color: BRAND_DARK });
+
+      // Category badge (drawn as coloured box + white text simulation)
+      const catLabel = sanitizePdfText(c.category || 'General');
+      const badgeX = PAGE_W - MARGIN - font.widthOfTextAtSize(catLabel, 8) - 10;
+      page.drawRectangle({ x: badgeX - 2, y: y - 10, width: font.widthOfTextAtSize(catLabel, 8) + 10, height: 14, color: catColor });
+      page.drawText(catLabel, { x: badgeX + 2, y: y - 7, font: bold, size: 8, color: rgb(1, 1, 1) });
+
+      y -= 14;
+
+      // Title
+      const titleLines = wrapText(c.title || '', CONTENT_W - 12, bold, 10);
+      for (const tl of titleLines) {
+        if (y < BODY_Y_END) { page = addPage(); y = BODY_Y_START; }
+        page.drawText(sanitizePdfText(tl), { x: MARGIN + 6, y, font: bold, size: 10, color: BRAND_DARK });
+        y -= 13;
+      }
+
+      // Meta: date + deadline
+      const metaParts = [`Date: ${c.date || '—'}`];
+      if (c.deadline) metaParts.push(`Deadline: ${c.deadline}`);
+      page.drawText(sanitizePdfText(metaParts.join('   |   ')), { x: MARGIN + 6, y, font: italic, size: 8.5, color: GRAY_MID });
+      y -= 12;
+
+      // Separator line
+      page.drawLine({ start: { x: MARGIN + 6, y }, end: { x: PAGE_W - MARGIN - 6, y }, thickness: 0.3, color: GRAY_LIGHT });
+      y -= 10;
+
+      // Body text
+      for (const bl of bodyLines) {
+        if (y < BODY_Y_END) { page = addPage(); y = BODY_Y_START; }
+        page.drawText(sanitizePdfText(bl), { x: MARGIN + 6, y, font, size: 10, color: rgb(0.2, 0.2, 0.2) });
+        y -= 13;
+      }
+
+      // Source URL if available
+      if (c.sourceUrl) {
+        if (y < BODY_Y_END) { page = addPage(); y = BODY_Y_START; }
+        page.drawText(sanitizePdfText(`Source: ${c.sourceUrl}`), { x: MARGIN + 6, y, font: italic, size: 8, color: BRAND_ACCENT });
+        y -= 12;
+      }
+
+      y -= 10; // gap between cards
     }
 
     const pdfBytes = await doc.save();
@@ -287,6 +419,127 @@ pdfRouter.post('/ubo-registration', async (req, res) => {
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     res.send(Buffer.from(pdfBytes));
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// XBRL Export
+// POST /api/pdf/xbrl
+// Generates an XBRL-compatible XML document from regulatory changes data.
+// Uses a simplified Raqib namespace taxonomy.
+// Body: { framework?, days?, ids?, lookup? } — same filters as PDF export.
+// ─────────────────────────────────────────────────────────────────────────────
+
+function escXml(str) {
+  if (str == null) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+}
+
+pdfRouter.post('/xbrl', async (req, res) => {
+  try {
+    const raw = await readFile(dataPath, 'utf-8');
+    const all = normalizeDatesForDemo(JSON.parse(raw));
+    const { ids, framework, days: daysParam } = req.body || {};
+    const days = parseDays(daysParam);
+
+    let changes = all;
+    if (ids && Array.isArray(ids) && ids.length > 0) {
+      changes = all.filter((c) => ids.includes(c.id));
+    } else if (framework) {
+      changes = all.filter((c) => c.framework === framework);
+    }
+    const fromDate = new Date();
+    fromDate.setDate(fromDate.getDate() - days);
+    changes = changes.filter((c) => new Date(c.date) >= fromDate);
+
+    const useLookup = req.body.lookup === true || req.body.lookup === '1';
+    if (useLookup && isLlmConfigured()) {
+      try {
+        const existingIds = new Set(changes.map((c) => c.id));
+        const fws = framework ? [framework] : FRAMEWORKS;
+        for (const fw of fws) {
+          const lookedUp = await lookupChangesForFramework(fw, days);
+          for (const c of lookedUp) {
+            if (!existingIds.has(c.id)) { changes.push(c); existingIds.add(c.id); }
+          }
+        }
+        changes.sort((a, b) => new Date(b.date) - new Date(a.date));
+      } catch (_) { /* use static */ }
+    }
+
+    const reportDate = new Date().toISOString().slice(0, 10);
+    const periodEnd = reportDate;
+    const periodStart = new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
+    const frameworksInReport = [...new Set(changes.map((c) => c.framework))];
+    const critCount = changes.filter((c) => {
+      if (!c.deadline) return false;
+      const d = new Date(c.deadline);
+      return !isNaN(d) && (d - new Date()) / 86400000 <= 90;
+    }).length;
+
+    const lines = [];
+    lines.push('<?xml version="1.0" encoding="UTF-8"?>');
+    lines.push('<xbrl');
+    lines.push('  xmlns="http://www.xbrl.org/2003/instance"');
+    lines.push('  xmlns:link="http://www.xbrl.org/2003/linkbase"');
+    lines.push('  xmlns:xlink="http://www.w3.org/1999/xlink"');
+    lines.push('  xmlns:xbrli="http://www.xbrl.org/2003/instance"');
+    lines.push('  xmlns:raqib="http://raqib.com/xbrl/grc/2024"');
+    lines.push('>');
+
+    // Report-level context
+    lines.push('  <context id="reportContext">');
+    lines.push('    <entity><identifier scheme="http://raqib.com">RAQIB-GRC</identifier></entity>');
+    lines.push('    <period>');
+    lines.push(`      <startDate>${escXml(periodStart)}</startDate>`);
+    lines.push(`      <endDate>${escXml(periodEnd)}</endDate>`);
+    lines.push('    </period>');
+    lines.push('  </context>');
+
+    // Per-change contexts
+    changes.forEach((c, i) => {
+      lines.push(`  <context id="change-${i}">`);
+      lines.push(`    <entity><identifier scheme="http://raqib.com">${escXml(c.id || `change-${i}`)}</identifier></entity>`);
+      lines.push(`    <period><instant>${escXml(c.date || reportDate)}</instant></period>`);
+      lines.push('  </context>');
+    });
+
+    // Report-level facts
+    lines.push('  <raqib:reportTitle contextRef="reportContext">' + escXml(framework ? `${framework} Regulatory Changes` : 'All Frameworks Regulatory Changes') + '</raqib:reportTitle>');
+    lines.push(`  <raqib:reportPeriodLabel contextRef="reportContext">${escXml(periodLabel(days))}</raqib:reportPeriodLabel>`);
+    lines.push(`  <raqib:reportGeneratedDate contextRef="reportContext">${escXml(reportDate)}</raqib:reportGeneratedDate>`);
+    lines.push(`  <raqib:totalChangesCount contextRef="reportContext" xbrli:decimals="0">${changes.length}</raqib:totalChangesCount>`);
+    lines.push(`  <raqib:frameworksCount contextRef="reportContext" xbrli:decimals="0">${frameworksInReport.length}</raqib:frameworksCount>`);
+    lines.push(`  <raqib:criticalDeadlineChangesCount contextRef="reportContext" xbrli:decimals="0">${critCount}</raqib:criticalDeadlineChangesCount>`);
+
+    // Per-change facts
+    changes.forEach((c, i) => {
+      const ctx = `change-${i}`;
+      lines.push(`  <raqib:changeId contextRef="${ctx}">${escXml(c.id || '')}</raqib:changeId>`);
+      lines.push(`  <raqib:changeFramework contextRef="${ctx}">${escXml(c.framework || '')}</raqib:changeFramework>`);
+      lines.push(`  <raqib:changeTitle contextRef="${ctx}">${escXml(c.title || '')}</raqib:changeTitle>`);
+      lines.push(`  <raqib:changeCategory contextRef="${ctx}">${escXml(c.category || '')}</raqib:changeCategory>`);
+      lines.push(`  <raqib:changeDate contextRef="${ctx}">${escXml(c.date || '')}</raqib:changeDate>`);
+      if (c.deadline) lines.push(`  <raqib:changeDeadline contextRef="${ctx}">${escXml(c.deadline)}</raqib:changeDeadline>`);
+      lines.push(`  <raqib:changeSummary contextRef="${ctx}">${escXml((c.snippet || c.fullText || '').slice(0, 800))}</raqib:changeSummary>`);
+      if (c.sourceUrl) lines.push(`  <raqib:changeSourceUrl contextRef="${ctx}">${escXml(c.sourceUrl)}</raqib:changeSourceUrl>`);
+    });
+
+    lines.push('</xbrl>');
+
+    const xbrlDate = reportDate;
+    const baseNameXbrl = sanitizeFilename(framework || 'All_frameworks');
+    const filenameXbrl = `${baseNameXbrl}_${xbrlDate}.xbrl`;
+    res.setHeader('Content-Type', 'application/xml; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${filenameXbrl}"`);
+    res.send(lines.join('\n'));
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

@@ -116,6 +116,36 @@ export function Dashboard({
     0,
   );
 
+  const handleDownloadXbrl = () => {
+    const body = { days: selectedDays, lookup: false };
+    if (isFilteredByFramework) body.framework = selectedFramework;
+    fetch(`${API}/pdf/xbrl`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+      .then(async (r) => {
+        if (!r.ok) {
+          const err = await r.json().catch(() => ({ error: r.statusText }));
+          throw new Error(err.error || r.statusText);
+        }
+        const disp = r.headers.get('Content-Disposition');
+        const match = disp && disp.match(/filename="?([^";\n]+)"?/);
+        const filename = match ? match[1].trim() : 'regulatory-changes.xbrl';
+        const blob = await r.blob();
+        return { blob, filename };
+      })
+      .then(({ blob, filename }) => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(url);
+      })
+      .catch((e) => alert('XBRL export failed: ' + (e.message || String(e))));
+  };
+
   const handleDownloadPdf = () => {
     const body = { days: selectedDays, lookup: true };
     if (isFilteredByFramework) body.framework = selectedFramework;
@@ -351,6 +381,15 @@ export function Dashboard({
           <div className="actions-row">
             <button type="button" className="btn btn-primary" onClick={handleDownloadPdf}>
               Download as PDF
+            </button>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={handleDownloadXbrl}
+              title="Download XBRL regulatory data file"
+              style={{ marginLeft: '0.5rem' }}
+            >
+              Export XBRL
             </button>
           </div>
         </>

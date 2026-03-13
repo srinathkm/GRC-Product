@@ -7,6 +7,7 @@ const MODULES = [
     id: 'org-overview-module',
     labelKey: 'navOrgOverview',
     sections: [
+      { id: 'mgmt-dashboard', labelKey: 'navMgmtDashboard' },
       { id: 'org-overview', labelKey: 'navOrgOverview' },
       { id: 'org-dashboard', labelKey: 'navOrgDashboard' },
     ],
