@@ -26,6 +26,7 @@ import { dataSovereigntyRouter } from './routes/dataSovereignty.js';
 import { dashboardRouter } from './routes/dashboard.js';
 import { auditRouter } from './routes/audit.js';
 import { tasksRouter } from './routes/tasks.js';
+import { fieldMappingsRouter } from './routes/fieldMappings.js';
 import { startFeedScheduler } from './services/regulatoryFeed.js';
 
 const app = express();
@@ -54,6 +55,7 @@ app.use('/api/data-sovereignty', dataSovereigntyRouter);
 app.use('/api/dashboard', dashboardRouter);
 app.use('/api/audit', auditRouter);
 app.use('/api/tasks', tasksRouter);
+app.use('/api/field-mappings', fieldMappingsRouter);
 
 app.get('/api/health', (_, res) => res.json({ status: 'ok' }));
 app.get('/api/frameworks', (_, res) => res.json({ frameworks: FRAMEWORKS, references: FRAMEWORK_REFERENCES }));

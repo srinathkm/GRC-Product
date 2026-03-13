@@ -22,6 +22,7 @@ import { ContractsManagement } from './components/ContractsManagement';
 import { Help } from './components/Help';
 import { ManagementDashboard } from './components/ManagementDashboard';
 import { TaskTracker } from './components/TaskTracker';
+import { LegalOnboarding } from './components/LegalOnboarding';
 
 const FRAMEWORKS = [
   'DFSA Rulebook',
@@ -67,7 +68,7 @@ const ROLE_MODULE_IDS = {
 
 // Views accessible per role (for redirect when switching roles)
 const ROLE_VIEW_IDS = {
-  'legal-team': ['mgmt-dashboard', 'task-tracker', 'org-overview', 'org-dashboard', 'poa-management', 'ip-management', 'licence-management', 'litigations-management', 'contracts-management', 'contracts-upload'],
+  'legal-team': ['mgmt-dashboard', 'task-tracker', 'org-overview', 'org-dashboard', 'legal-onboarding', 'poa-management', 'ip-management', 'licence-management', 'litigations-management', 'contracts-management', 'contracts-upload'],
   'governance-team': ['mgmt-dashboard', 'task-tracker', 'onboarding', 'org-overview', 'org-dashboard', 'parent-overview', 'governance-framework', 'multi-jurisdiction', 'ubo'],
   'data-security-team': ['mgmt-dashboard', 'task-tracker', 'org-overview', 'org-dashboard', 'data-sovereignty', 'data-security'],
   board: ['mgmt-dashboard', 'task-tracker', 'org-overview', 'org-dashboard', 'analysis', 'ma-simulator'],
@@ -276,6 +277,12 @@ export default function App() {
               onParentHoldingChange={setSelectedParentHolding}
               onNavigateToView={setCurrentView}
               companiesRefreshKey={companiesRefreshKey}
+            />
+          )}
+          {currentView === 'legal-onboarding' && (
+            <LegalOnboarding
+              language={language}
+              parents={parentHoldingList}
             />
           )}
           {currentView === 'poa-management' && (

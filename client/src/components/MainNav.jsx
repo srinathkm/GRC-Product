@@ -39,6 +39,7 @@ const MODULES = [
     id: 'legal-module',
     labelKey: 'navModuleLegal',
     sections: [
+      { id: 'legal-onboarding', labelKey: 'navLegalOnboarding' },
       { id: 'poa-management', labelKey: 'navPoaManagement' },
       { id: 'ip-management', labelKey: 'navIpManagement' },
       { id: 'licence-management', labelKey: 'navLicenceManagement' },

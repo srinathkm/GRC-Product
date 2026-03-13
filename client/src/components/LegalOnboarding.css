@@ -1,0 +1,856 @@
+/* ─────────────────────────────────────────────
+   Legal Onboarding Wizard — LegalOnboarding.css
+   ───────────────────────────────────────────── */
+
+/* Wizard wrapper */
+.lo-wizard {
+  padding: 1.5rem 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  color: var(--text-primary, #e2e8f0);
+}
+
+/* ─── Breadcrumb ─── */
+.lo-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  margin-bottom: 1.75rem;
+}
+
+.lo-breadcrumb-step {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1.25rem;
+  font-size: 0.82rem;
+  color: var(--text-muted, #9baec8);
+  border-bottom: 2px solid var(--border, #2a3a5c);
+  flex: 1;
+  transition: color 0.2s, border-color 0.2s;
+}
+
+.lo-breadcrumb-step--active {
+  color: var(--accent, #4f8ef7);
+  border-bottom-color: var(--accent, #4f8ef7);
+  font-weight: 600;
+}
+
+.lo-breadcrumb-step--done {
+  color: var(--success, #4ade80);
+  border-bottom-color: var(--success, #4ade80);
+}
+
+.lo-breadcrumb-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 50%;
+  background: var(--surface-raised, #1e2d4a);
+  border: 1.5px solid currentColor;
+  font-size: 0.75rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.lo-breadcrumb-step--active .lo-breadcrumb-num {
+  background: var(--accent, #4f8ef7);
+  color: #fff;
+  border-color: var(--accent, #4f8ef7);
+}
+
+.lo-breadcrumb-step--done .lo-breadcrumb-num {
+  background: var(--success, #4ade80);
+  color: #0f172a;
+  border-color: var(--success, #4ade80);
+}
+
+/* ─── Two-column layout ─── */
+.lo-wizard-layout {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 1.5rem;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .lo-wizard-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ─── Main column ─── */
+.lo-wizard-main {
+  background: var(--surface, #132035);
+  border: 1px solid var(--border, #2a3a5c);
+  border-radius: 10px;
+  padding: 1.75rem;
+}
+
+/* ─── Right panel ─── */
+.lo-wizard-panel {
+  background: var(--surface-raised, #1e2d4a);
+  border: 1px solid var(--border, #2a3a5c);
+  border-radius: 10px;
+  padding: 1.25rem;
+  position: sticky;
+  top: 1rem;
+  max-height: calc(100vh - 4rem);
+  overflow-y: auto;
+}
+
+.lo-panel-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-primary, #e2e8f0);
+  margin: 0 0 0.5rem;
+}
+
+.lo-panel-desc {
+  font-size: 0.82rem;
+  color: var(--text-muted, #9baec8);
+  line-height: 1.5;
+  margin-bottom: 1rem;
+}
+
+.lo-panel-section {
+  margin-top: 1rem;
+  border-top: 1px solid var(--border, #2a3a5c);
+  padding-top: 0.75rem;
+}
+
+.lo-panel-section h4 {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted, #9baec8);
+  margin: 0 0 0.5rem;
+}
+
+.lo-panel-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.lo-panel-list li {
+  font-size: 0.8rem;
+  color: var(--text-secondary, #b0c4de);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.lo-panel-fields li {
+  justify-content: space-between;
+}
+
+.lo-panel-required {
+  font-size: 0.7rem;
+  color: var(--warning, #f59e0b);
+  background: rgba(245, 158, 11, 0.12);
+  border-radius: 3px;
+  padding: 1px 5px;
+}
+
+.lo-panel-file-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.lo-panel-file-icon {
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+.lo-panel-mapping-active {
+  background: rgba(79, 142, 247, 0.08);
+  border: 1px solid rgba(79, 142, 247, 0.3);
+  border-radius: 6px;
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.lo-panel-mapping-name {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--accent, #4f8ef7);
+}
+
+.lo-panel-mapping-note {
+  font-size: 0.77rem;
+  color: var(--text-muted, #9baec8);
+  margin: 0;
+  line-height: 1.4;
+}
+
+.lo-panel-mapping-item {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+/* Field completion tracker */
+.lo-panel-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.lo-panel-progress-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.75rem;
+  color: var(--text-muted, #9baec8);
+  padding: 0.2rem 0;
+  border-bottom: 1px solid var(--border, #2a3a5c);
+}
+
+.lo-panel-progress-row--done {
+  color: var(--success, #4ade80);
+}
+
+/* ─── Badges ─── */
+.lo-badge {
+  display: inline-block;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  flex-shrink: 0;
+}
+
+.lo-badge--ai {
+  background: rgba(139, 92, 246, 0.2);
+  color: #a78bfa;
+}
+
+.lo-badge--bulk {
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+}
+
+.lo-badge--custom {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+/* ─── Step titles ─── */
+.lo-step-title {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--text-primary, #e2e8f0);
+  margin: 0 0 0.4rem;
+}
+
+.lo-step-subtitle {
+  font-size: 0.88rem;
+  color: var(--text-muted, #9baec8);
+  margin: 0 0 1.5rem;
+}
+
+/* ─── Module cards ─── */
+.lo-module-cards {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+@media (max-width: 700px) {
+  .lo-module-cards {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.lo-module-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem 0.75rem;
+  background: var(--surface-raised, #1e2d4a);
+  border: 1.5px solid var(--border, #2a3a5c);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  color: var(--text-secondary, #b0c4de);
+}
+
+.lo-module-card:hover {
+  border-color: var(--accent, #4f8ef7);
+  background: rgba(79, 142, 247, 0.06);
+}
+
+.lo-module-card--active {
+  border-color: var(--accent, #4f8ef7);
+  background: rgba(79, 142, 247, 0.1);
+  color: var(--text-primary, #e2e8f0);
+}
+
+.lo-module-card-icon {
+  font-size: 1.6rem;
+  line-height: 1;
+}
+
+.lo-module-card-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-align: center;
+  line-height: 1.3;
+}
+
+/* ─── Upload zone ─── */
+.lo-upload-zone {
+  border: 2px dashed var(--border, #2a3a5c);
+  border-radius: 10px;
+  padding: 2.5rem 1.5rem;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  background: var(--surface-raised, #1e2d4a);
+  margin-bottom: 1.25rem;
+}
+
+.lo-upload-zone:hover,
+.lo-upload-zone:focus {
+  border-color: var(--accent, #4f8ef7);
+  background: rgba(79, 142, 247, 0.05);
+  outline: none;
+}
+
+.lo-upload-icon {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+  color: var(--accent, #4f8ef7);
+}
+
+.lo-upload-primary {
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--text-primary, #e2e8f0);
+  margin: 0 0 0.35rem;
+}
+
+.lo-upload-link {
+  color: var(--accent, #4f8ef7);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.lo-upload-hint {
+  font-size: 0.78rem;
+  color: var(--text-muted, #9baec8);
+  margin: 0;
+}
+
+.lo-upload-selected {
+  margin-top: 1rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  justify-content: center;
+}
+
+.lo-upload-chip {
+  background: rgba(79, 142, 247, 0.15);
+  color: var(--accent, #4f8ef7);
+  border: 1px solid rgba(79, 142, 247, 0.3);
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 0.78rem;
+}
+
+/* ─── Active mapping banner ─── */
+.lo-active-mapping-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  border-radius: 6px;
+  padding: 0.6rem 0.9rem;
+  font-size: 0.85rem;
+  color: var(--text-secondary, #b0c4de);
+  margin-bottom: 1rem;
+}
+
+/* ─── Mapping toast ─── */
+.lo-mapping-toast {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: rgba(79, 142, 247, 0.1);
+  border: 1px solid rgba(79, 142, 247, 0.3);
+  border-radius: 6px;
+  padding: 0.6rem 0.9rem;
+  font-size: 0.85rem;
+  color: var(--text-secondary, #b0c4de);
+  margin-bottom: 1rem;
+}
+
+.lo-mapping-toast-icon {
+  font-size: 1.1rem;
+}
+
+.lo-mapping-toast-dismiss {
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: var(--text-muted, #9baec8);
+  font-size: 1.1rem;
+  cursor: pointer;
+  padding: 0 0.2rem;
+  line-height: 1;
+}
+
+.lo-mapping-toast-dismiss:hover {
+  color: var(--text-primary, #e2e8f0);
+}
+
+/* ─── AI progress panel ─── */
+.lo-ai-progress {
+  background: rgba(139, 92, 246, 0.07);
+  border: 1px solid rgba(139, 92, 246, 0.2);
+  border-radius: 8px;
+  padding: 0.9rem;
+  margin-bottom: 1rem;
+}
+
+.lo-ai-progress-title {
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #a78bfa;
+  margin: 0 0 0.75rem;
+}
+
+.lo-ai-steps {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.lo-ai-step {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  color: var(--text-muted, #9baec8);
+  transition: color 0.2s;
+}
+
+.lo-ai-step--running {
+  color: #a78bfa;
+}
+
+.lo-ai-step--done {
+  color: var(--success, #4ade80);
+}
+
+.lo-ai-step-icon {
+  width: 1rem;
+  font-size: 0.85rem;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.lo-ai-step--running .lo-ai-step-icon {
+  animation: lo-spin 1s linear infinite;
+}
+
+@keyframes lo-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* ─── Field form grid ─── */
+.lo-fields-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+@media (max-width: 600px) {
+  .lo-fields-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.lo-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+/* Textarea and scope fields take full width */
+.lo-field:has(.lo-field-textarea) {
+  grid-column: 1 / -1;
+}
+
+.lo-field--required .lo-field-label {
+  font-weight: 600;
+}
+
+.lo-field-label {
+  font-size: 0.8rem;
+  color: var(--text-secondary, #b0c4de);
+}
+
+.lo-field-required-star {
+  color: var(--warning, #f59e0b);
+  margin-left: 2px;
+}
+
+.lo-field-input {
+  background: var(--input-bg, #0f1e36);
+  border: 1px solid var(--border, #2a3a5c);
+  border-radius: 5px;
+  padding: 0.45rem 0.65rem;
+  color: var(--text-primary, #e2e8f0);
+  font-size: 0.875rem;
+  outline: none;
+  transition: border-color 0.15s;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.lo-field-input:focus {
+  border-color: var(--accent, #4f8ef7);
+}
+
+.lo-field-textarea {
+  resize: vertical;
+  min-height: 90px;
+  font-family: inherit;
+}
+
+.lo-field-hint {
+  font-size: 0.72rem;
+  color: var(--text-muted, #9baec8);
+  line-height: 1.4;
+}
+
+.lo-field--checkbox {
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding-top: 0.5rem;
+}
+
+.lo-field-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--text-secondary, #b0c4de);
+  cursor: pointer;
+}
+
+.lo-field-checkbox-label input[type="checkbox"] {
+  width: 1rem;
+  height: 1rem;
+  accent-color: var(--accent, #4f8ef7);
+  cursor: pointer;
+}
+
+/* ─── Review grid (step 3) ─── */
+.lo-review-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0;
+  border: 1px solid var(--border, #2a3a5c);
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 1.5rem;
+}
+
+@media (max-width: 600px) {
+  .lo-review-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.lo-review-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.65rem 0.9rem;
+  border-bottom: 1px solid var(--border, #2a3a5c);
+  border-right: 1px solid var(--border, #2a3a5c);
+}
+
+.lo-review-item:nth-child(2n) {
+  border-right: none;
+}
+
+.lo-review-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted, #9baec8);
+}
+
+.lo-review-value {
+  font-size: 0.85rem;
+  color: var(--text-primary, #e2e8f0);
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+
+/* ─── Step actions ─── */
+.lo-step-actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+  margin-top: 1rem;
+}
+
+/* ─── Error message ─── */
+.lo-error {
+  font-size: 0.82rem;
+  color: var(--danger, #f87171);
+  background: rgba(248, 113, 113, 0.08);
+  border: 1px solid rgba(248, 113, 113, 0.25);
+  border-radius: 5px;
+  padding: 0.5rem 0.75rem;
+  margin: 0 0 1rem;
+}
+
+.lo-extracting-msg {
+  font-size: 0.85rem;
+  color: #a78bfa;
+  margin-bottom: 0.75rem;
+}
+
+/* ─── Success banner ─── */
+.lo-success-banner {
+  text-align: center;
+  padding: 2.5rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.lo-success-icon {
+  width: 3rem;
+  height: 3rem;
+  border-radius: 50%;
+  background: rgba(74, 222, 128, 0.15);
+  color: var(--success, #4ade80);
+  font-size: 1.4rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--success, #4ade80);
+}
+
+.lo-success-banner h2 {
+  font-size: 1.2rem;
+  color: var(--success, #4ade80);
+  margin: 0;
+}
+
+.lo-success-banner p {
+  font-size: 0.9rem;
+  color: var(--text-secondary, #b0c4de);
+  margin: 0;
+  max-width: 500px;
+}
+
+.lo-success-mapping {
+  color: #fbbf24;
+}
+
+/* ─── Field Mapping Modal ─── */
+.lo-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  padding: 1rem;
+}
+
+.lo-modal {
+  background: var(--surface, #132035);
+  border: 1px solid var(--border, #2a3a5c);
+  border-radius: 12px;
+  width: 100%;
+  max-width: 680px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+.lo-modal--mapping {
+  max-width: 700px;
+}
+
+.lo-modal-header {
+  padding: 1.25rem 1.5rem 1rem;
+  border-bottom: 1px solid var(--border, #2a3a5c);
+}
+
+.lo-modal-header h2 {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-primary, #e2e8f0);
+  margin: 0 0 0.4rem;
+}
+
+.lo-modal-subtitle {
+  font-size: 0.83rem;
+  color: var(--text-muted, #9baec8);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.lo-modal-body {
+  padding: 1.25rem 1.5rem;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.lo-modal-footer {
+  padding: 0.9rem 1.5rem;
+  border-top: 1px solid var(--border, #2a3a5c);
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+}
+
+/* Mapping table */
+.lo-mapping-table {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-bottom: 1.25rem;
+  border: 1px solid var(--border, #2a3a5c);
+  border-radius: 7px;
+  overflow: hidden;
+}
+
+.lo-mapping-table-head {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  padding: 0.55rem 0.9rem;
+  background: var(--surface-raised, #1e2d4a);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted, #9baec8);
+}
+
+.lo-mapping-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  padding: 0.5rem 0.9rem;
+  align-items: center;
+  border-top: 1px solid var(--border, #2a3a5c);
+}
+
+.lo-mapping-row:hover {
+  background: rgba(79, 142, 247, 0.04);
+}
+
+.lo-mapping-source {
+  font-size: 0.82rem;
+  color: var(--text-secondary, #b0c4de);
+  font-family: monospace;
+  word-break: break-all;
+}
+
+.lo-mapping-select {
+  background: var(--input-bg, #0f1e36);
+  border: 1px solid var(--border, #2a3a5c);
+  border-radius: 4px;
+  padding: 0.35rem 0.55rem;
+  color: var(--text-primary, #e2e8f0);
+  font-size: 0.82rem;
+  width: 100%;
+  outline: none;
+}
+
+.lo-mapping-select:focus {
+  border-color: var(--accent, #4f8ef7);
+}
+
+/* Save row */
+.lo-mapping-save-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  background: var(--surface-raised, #1e2d4a);
+  border: 1px solid var(--border, #2a3a5c);
+  border-radius: 7px;
+  padding: 0.75rem 1rem;
+}
+
+.lo-mapping-name-label {
+  font-size: 0.8rem;
+  color: var(--text-secondary, #b0c4de);
+  white-space: nowrap;
+}
+
+.lo-mapping-name-input {
+  flex: 1;
+  min-width: 180px;
+  background: var(--input-bg, #0f1e36);
+  border: 1px solid var(--border, #2a3a5c);
+  border-radius: 4px;
+  padding: 0.4rem 0.65rem;
+  color: var(--text-primary, #e2e8f0);
+  font-size: 0.85rem;
+  outline: none;
+}
+
+.lo-mapping-name-input:focus {
+  border-color: var(--accent, #4f8ef7);
+}
+
+.lo-mapping-badge-preview {
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 3px 7px;
+  border-radius: 3px;
+  text-transform: uppercase;
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
+.lo-mapping-error {
+  font-size: 0.8rem;
+  color: var(--danger, #f87171);
+  margin: 0.5rem 0 0;
+}
