@@ -24,6 +24,23 @@ function daysUntil(dateStr) {
   return Math.ceil((new Date(dateStr) - new Date()) / 86400000);
 }
 
+const STALE_DAYS = 10;
+
+/** A task is "stale" if it's open/in-progress and updatedAt is more than STALE_DAYS days ago. */
+function isStale(task) {
+  if (task.status === 'done' || task.status === 'cancelled') return false;
+  if (!task.updatedAt) return false;
+  const daysSinceUpdate = (Date.now() - new Date(task.updatedAt).getTime()) / 86400000;
+  return daysSinceUpdate > STALE_DAYS;
+}
+
+const PRIORITY_LEVELS = ['low', 'medium', 'high', 'critical'];
+
+function nextPriority(current) {
+  const idx = PRIORITY_LEVELS.indexOf(current);
+  return PRIORITY_LEVELS[Math.min(idx + 1, PRIORITY_LEVELS.length - 1)];
+}
+
 function DueBadge({ dueDate }) {
   const du = daysUntil(dueDate);
   if (du === null) return null;
@@ -52,9 +69,10 @@ function StatTile({ label, value, color }) {
 
 function TaskCard({ task, onClick }) {
   const pc = PRIORITY_COLORS[task.priority] || 'var(--border)';
+  const stale = isStale(task);
   return (
     <div
-      className={`task-card status-${task.status}`}
+      className={`task-card status-${task.status}${stale ? ' task-card-stale' : ''}`}
       style={{ '--priority-color': pc }}
       onClick={() => onClick(task)}
     >
@@ -66,6 +84,8 @@ function TaskCard({ task, onClick }) {
           <span className={`task-badge badge-${task.status}`}>{task.status}</span>
           {task.module && <span className="task-card-module">{task.module}</span>}
           <DueBadge dueDate={task.dueDate} />
+          {stale && <span className="task-badge badge-stale" title={`No activity for more than ${STALE_DAYS} days`}>Not Actioned</span>}
+          {task.escalationLevel > 0 && <span className="task-badge badge-escalated">Escalated ×{task.escalationLevel}</span>}
         </div>
       </div>
       <div className="task-card-right">
@@ -169,9 +189,10 @@ function TaskModal({ task, onClose, onSave }) {
 }
 
 /* ── Detail / comment view ── */
-function TaskDetail({ task, onClose, onUpdate, onDelete, auditLog }) {
+function TaskDetail({ task, onClose, onUpdate, onDelete, onEscalate, auditLog }) {
   const [tab, setTab] = useState('details');
   const [editing, setEditing] = useState(false);
+  const stale = isStale(task);
 
   if (editing) return <TaskModal task={task} onClose={() => setEditing(false)} onSave={async (payload) => { await onUpdate(task.id, payload); setEditing(false); }} />;
 
@@ -192,6 +213,21 @@ function TaskDetail({ task, onClose, onUpdate, onDelete, auditLog }) {
 
         {tab === 'details' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            {stale && (
+              <div className="task-stale-banner">
+                <span className="task-stale-icon">⚠</span>
+                <span>
+                  <strong>Not actioned by assigned user</strong> — no activity for more than {STALE_DAYS} days.
+                  {task.assignee ? ` Assigned to: ${task.assignee}.` : ''} Escalate to raise priority and notify next level.
+                </span>
+              </div>
+            )}
+            {task.escalationLevel > 0 && (
+              <div className="task-escalated-banner">
+                <span>Escalated ×{task.escalationLevel}</span>
+                {task.escalatedAt && <span style={{ marginLeft: '0.5rem', opacity: 0.75, fontSize: '0.75rem' }}>Last escalated: {formatDate(task.escalatedAt)}</span>}
+              </div>
+            )}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', fontSize: '0.8rem' }}>
               <div><span style={{ color: 'var(--text-muted)' }}>Status:</span> <span className={`task-badge badge-${task.status}`}>{task.status}</span></div>
               <div><span style={{ color: 'var(--text-muted)' }}>Priority:</span> <span className={`task-badge badge-${task.priority}`}>{task.priority}</span></div>
@@ -199,6 +235,7 @@ function TaskDetail({ task, onClose, onUpdate, onDelete, auditLog }) {
               <div><span style={{ color: 'var(--text-muted)' }}>Assignee:</span> <span style={{ color: 'var(--text)' }}>{task.assignee || '—'}</span></div>
               <div><span style={{ color: 'var(--text-muted)' }}>Due:</span> <span style={{ color: 'var(--text)' }}><DueBadge dueDate={task.dueDate} /></span></div>
               <div><span style={{ color: 'var(--text-muted)' }}>Created:</span> <span style={{ color: 'var(--text)' }}>{formatDate(task.createdAt)}</span></div>
+              <div><span style={{ color: 'var(--text-muted)' }}>Last updated:</span> <span style={{ color: stale ? '#f59e0b' : 'var(--text)' }}>{formatDate(task.updatedAt)}</span></div>
             </div>
             {task.description && (
               <div>
@@ -208,6 +245,15 @@ function TaskDetail({ task, onClose, onUpdate, onDelete, auditLog }) {
             )}
             <div className="task-modal-actions" style={{ borderTop: '1px solid var(--border)', paddingTop: '0.75rem' }}>
               <button className="btn-danger-sm" onClick={() => { if (window.confirm('Delete this task?')) onDelete(task.id); }}>Delete</button>
+              {(stale || task.escalationLevel > 0) && task.priority !== 'critical' && (
+                <button
+                  className="btn-escalate"
+                  onClick={() => onEscalate(task.id)}
+                  title={`Escalate priority from ${task.priority} to ${nextPriority(task.priority)}`}
+                >
+                  ↑ Escalate
+                </button>
+              )}
               <button className="btn-secondary" onClick={() => onUpdate(task.id, { status: task.status === 'done' ? 'open' : 'done' })}>{task.status === 'done' ? 'Reopen' : 'Mark Done'}</button>
               <button className="btn-primary" onClick={() => setEditing(true)}>Edit</button>
             </div>
@@ -259,6 +305,7 @@ export function TaskTracker() {
   const [filterStatus, setFS]     = useState('');
   const [filterPriority, setFP]   = useState('');
   const [filterModule, setFM]     = useState('');
+  const [filterStale, setFilterStale] = useState(false);
   const [search, setSearch]       = useState('');
   const [showNew, setShowNew]     = useState(false);
   const [selected, setSelected]   = useState(null);
@@ -307,6 +354,17 @@ export function TaskTracker() {
     }
   }
 
+  async function handleEscalate(id) {
+    const r = await fetch(`/api/tasks/${id}/escalate`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' } });
+    if (!r.ok) return;
+    const updated = await r.json();
+    setTasks((prev) => prev.map((t) => t.id === id ? updated : t));
+    if (selected?.id === id) {
+      setSelected(updated);
+      await fetchAuditForTask(id);
+    }
+  }
+
   async function handleDelete(id) {
     await fetch(`/api/tasks/${id}`, { method: 'DELETE' });
     setSelected(null);
@@ -319,16 +377,18 @@ export function TaskTracker() {
   }
 
   const displayed = tasks.filter((t) => {
+    if (filterStale && !isStale(t)) return false;
     if (!search) return true;
     const q = search.toLowerCase();
     return (t.title + t.description + t.assignee + t.module).toLowerCase().includes(q);
   });
 
   const stats = {
-    open:       tasks.filter((t) => t.status === 'open').length,
-    inProgress: tasks.filter((t) => t.status === 'in-progress').length,
-    overdue:    tasks.filter((t) => t.dueDate && daysUntil(t.dueDate) < 0 && t.status !== 'done' && t.status !== 'cancelled').length,
-    done:       tasks.filter((t) => t.status === 'done').length,
+    open:        tasks.filter((t) => t.status === 'open').length,
+    inProgress:  tasks.filter((t) => t.status === 'in-progress').length,
+    overdue:     tasks.filter((t) => t.dueDate && daysUntil(t.dueDate) < 0 && t.status !== 'done' && t.status !== 'cancelled').length,
+    done:        tasks.filter((t) => t.status === 'done').length,
+    notActioned: tasks.filter(isStale).length,
   };
 
   return (
@@ -346,10 +406,11 @@ export function TaskTracker() {
 
       {/* Stats */}
       <div className="task-stats-row">
-        <StatTile label="Open"        value={stats.open}       color="#60a5fa" />
-        <StatTile label="In Progress" value={stats.inProgress} color="#eab308" />
-        <StatTile label="Overdue"     value={stats.overdue}    color="#ef4444" />
-        <StatTile label="Completed"   value={stats.done}       color="#22c55e" />
+        <StatTile label="Open"         value={stats.open}        color="#60a5fa" />
+        <StatTile label="In Progress"  value={stats.inProgress}  color="#eab308" />
+        <StatTile label="Overdue"      value={stats.overdue}     color="#ef4444" />
+        <StatTile label="Completed"    value={stats.done}        color="#22c55e" />
+        <StatTile label="Not Actioned" value={stats.notActioned} color="#f97316" />
       </div>
 
       {/* Filters */}
@@ -372,7 +433,14 @@ export function TaskTracker() {
         <select value={filterModule} onChange={(e) => setFM(e.target.value)}>
           {MODULES.map((m) => <option key={m} value={m}>{m || 'All modules'}</option>)}
         </select>
-        <button className="btn-secondary" style={{ marginLeft: 'auto' }} onClick={() => { setFS(''); setFP(''); setFM(''); setSearch(''); }}>Clear</button>
+        <button
+          className={`btn-secondary task-filter-stale-btn${filterStale ? ' active' : ''}`}
+          onClick={() => setFilterStale((v) => !v)}
+          title="Show only tasks with no activity for more than 10 days"
+        >
+          {filterStale ? '⚠ Not Actioned' : 'Not Actioned'}
+        </button>
+        <button className="btn-secondary" style={{ marginLeft: 'auto' }} onClick={() => { setFS(''); setFP(''); setFM(''); setSearch(''); setFilterStale(false); }}>Clear</button>
       </div>
 
       {/* List */}
@@ -397,6 +465,7 @@ export function TaskTracker() {
           onClose={() => setSelected(null)}
           onUpdate={handleUpdate}
           onDelete={handleDelete}
+          onEscalate={handleEscalate}
         />
       )}
     </div>

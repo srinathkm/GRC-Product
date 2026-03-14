@@ -444,3 +444,70 @@
 .task-tab-btn:hover:not(.active) {
   color: var(--text);
 }
+
+/* ── Stale / Not Actioned ── */
+.badge-stale {
+  background: rgba(249, 115, 22, 0.18);
+  color: #f97316;
+  border: 1px solid rgba(249, 115, 22, 0.35);
+}
+
+.badge-escalated {
+  background: rgba(239, 68, 68, 0.18);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.35);
+}
+
+.task-card-stale {
+  border-left: 3px solid #f97316;
+}
+
+.task-stale-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  background: rgba(249, 115, 22, 0.1);
+  border: 1px solid rgba(249, 115, 22, 0.3);
+  border-radius: 6px;
+  padding: 0.6rem 0.75rem;
+  font-size: 0.8rem;
+  color: var(--text);
+  line-height: 1.45;
+}
+.task-stale-icon {
+  color: #f97316;
+  font-size: 1rem;
+  flex-shrink: 0;
+  margin-top: 0.05rem;
+}
+
+.task-escalated-banner {
+  display: flex;
+  align-items: center;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  border-radius: 6px;
+  padding: 0.45rem 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #ef4444;
+}
+
+.btn-escalate {
+  background: rgba(249, 115, 22, 0.15);
+  border: 1px solid rgba(249, 115, 22, 0.4);
+  border-radius: 6px;
+  color: #f97316;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 0.4rem 0.9rem;
+  transition: background 0.15s;
+}
+.btn-escalate:hover { background: rgba(249, 115, 22, 0.25); }
+
+.task-filter-stale-btn.active {
+  background: rgba(249, 115, 22, 0.15);
+  border-color: rgba(249, 115, 22, 0.5);
+  color: #f97316;
+}

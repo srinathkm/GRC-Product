@@ -4,6 +4,7 @@ import { RbacSelector } from './RbacSelector';
 import { ChangeSnippet } from './ChangeSnippet';
 import { CompaniesByFramework } from './CompaniesByFramework';
 import { ChangesTree } from './ChangesTree';
+import { AssignTaskModal } from './AssignTaskModal';
 
 const API = '/api';
 
@@ -28,6 +29,7 @@ export function Dashboard({
   const [viewDetailsContext, setViewDetailsContext] = useState(null);
   const [selectedOpCo, setSelectedOpCo] = useState('');
   const [summaryCounts, setSummaryCounts] = useState({});
+  const [assignTaskContext, setAssignTaskContext] = useState(null); // { changeId, parent, extraContext, change }
   const [opcoAlerts, setOpcoAlerts] = useState({});
   const [opcoAlertsLoading, setOpcoAlertsLoading] = useState(false);
   const [opcoAlertsError, setOpcoAlertsError] = useState(null);
@@ -37,14 +39,15 @@ export function Dashboard({
   const hasFrameworkSelection = !!selectedFramework;
   const isFilteredByFramework = !!selectedFramework;
 
-  // Cards always show counts for the last 30 days (this month), independent of the Time period dropdown
+  // Governance summary cards: re-fetch whenever selected period changes.
+  // Only frameworks with at least one change in the selected period will be shown.
   useEffect(() => {
     if (frameworks.length === 0) return;
-    fetch(`${API}/changes/summary?days=30`)
+    fetch(`${API}/changes/summary?days=${selectedDays}`)
       .then((r) => r.json())
       .then((data) => setSummaryCounts(typeof data === 'object' && data !== null ? data : {}))
       .catch(() => setSummaryCounts({}));
-  }, [frameworks.length]);
+  }, [frameworks.length, selectedDays]);
 
   const loadChanges = () => {
     if (!selectedFramework) return;
@@ -209,37 +212,49 @@ export function Dashboard({
       {frameworks.length > 0 && (
         <section className="governance-framework-summary" aria-labelledby="governance-summary-heading">
           <h2 id="governance-summary-heading" className="governance-summary-title">Governance Framework Summary</h2>
-          <div className="governance-summary-cards">
-            {frameworks.map((fw) => {
-              const ref = frameworkReferences[fw];
-              const abbreviation = ref?.abbreviation ?? fw;
-              const authority = ref?.authority ?? '';
+          {(() => {
+            const periodLabel = periodOptions.find((o) => o.value === selectedDays)?.label || `${selectedDays} days`;
+            const activeFrameworks = frameworks.filter((fw) => {
               const fwSummary = summaryCounts[fw];
-              const count =
-                typeof fwSummary === 'number'
-                  ? fwSummary
-                  : (fwSummary && typeof fwSummary.count === 'number'
-                      ? fwSummary.count
-                      : 0);
-              const isSelected = fw === selectedFramework;
-              return (
-                <button
-                  key={fw}
-                  type="button"
-                  className={`governance-summary-card ${isSelected ? 'governance-summary-card-selected' : ''}`}
-                  onClick={() => onFrameworkChange(fw)}
-                  aria-pressed={isSelected}
-                  aria-label={`${abbreviation}: ${authority || fw}. ${count} updates this month. Select to show change summary.`}
-                >
-                  <span className="governance-summary-card-abbr">{abbreviation}</span>
-                  {authority && <span className="governance-summary-card-authority">{authority}</span>}
-                  <span className="governance-summary-card-updates">
-                    {count} Update{count !== 1 ? 's' : ''} this month
-                  </span>
-                </button>
-              );
-            })}
-          </div>
+              const count = typeof fwSummary === 'number' ? fwSummary : (fwSummary?.count ?? 0);
+              return count > 0;
+            });
+            return (
+              <>
+                {activeFrameworks.length === 0 && Object.keys(summaryCounts).length > 0 && (
+                  <p className="governance-summary-empty">No regulatory changes recorded in the selected period ({periodLabel}). Adjust the time period to see active frameworks.</p>
+                )}
+                <div className="governance-summary-cards">
+                  {activeFrameworks.map((fw) => {
+                    const ref = frameworkReferences[fw];
+                    const abbreviation = ref?.abbreviation ?? fw;
+                    const authority = ref?.authority ?? '';
+                    const fwSummary = summaryCounts[fw];
+                    const count = typeof fwSummary === 'number' ? fwSummary : (fwSummary?.count ?? 0);
+                    const hasCritical = fwSummary?.hasCritical ?? false;
+                    const isSelected = fw === selectedFramework;
+                    return (
+                      <button
+                        key={fw}
+                        type="button"
+                        className={`governance-summary-card ${isSelected ? 'governance-summary-card-selected' : ''} ${hasCritical ? 'governance-summary-card-critical' : ''}`}
+                        onClick={() => onFrameworkChange(fw)}
+                        aria-pressed={isSelected}
+                        aria-label={`${abbreviation}: ${authority || fw}. ${count} updates in ${periodLabel}. Select to show change summary.`}
+                      >
+                        {hasCritical && <span className="governance-summary-card-critical-dot" aria-label="Has critical deadline" title="Has critical deadline" />}
+                        <span className="governance-summary-card-abbr">{abbreviation}</span>
+                        {authority && <span className="governance-summary-card-authority">{authority}</span>}
+                        <span className="governance-summary-card-updates">
+                          {count} Update{count !== 1 ? 's' : ''} · {periodLabel}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            );
+          })()}
         </section>
       )}
 
@@ -344,8 +359,9 @@ export function Dashboard({
               setExpandedChangeId(id);
               setViewDetailsContext(context || null);
             }}
-            onAssignTasks={(changeId, parent) => {
-              console.log('Assign tasks', { changeId, parent });
+            onAssignTasks={(changeId, parent, extraContext = {}) => {
+              const change = changes.find((c) => c.id === changeId) || null;
+              setAssignTaskContext({ changeId, parent, extraContext, change });
             }}
           />
 
@@ -393,6 +409,16 @@ export function Dashboard({
             </button>
           </div>
         </>
+      )}
+
+      {assignTaskContext && (
+        <AssignTaskModal
+          change={assignTaskContext.change}
+          parent={assignTaskContext.parent}
+          extraContext={assignTaskContext.extraContext}
+          onClose={() => setAssignTaskContext(null)}
+          onCreated={() => setAssignTaskContext(null)}
+        />
       )}
 
       <section className="pdf-email-section">

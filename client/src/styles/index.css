@@ -235,6 +235,27 @@ a:hover {
   background: rgba(239, 68, 68, 0.12);
 }
 
+.governance-summary-card-critical-dot {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.6rem;
+  width: 8px;
+  height: 8px;
+  background: #ef4444;
+  border-radius: 50%;
+  box-shadow: 0 0 4px #ef4444;
+}
+
+.governance-summary-empty {
+  font-size: 0.85rem;
+  color: var(--text-muted, #888);
+  padding: 0.6rem 0.75rem;
+  background: rgba(255,255,255,0.04);
+  border-radius: var(--radius);
+  border: 1px dashed var(--border);
+  margin-bottom: 0.75rem;
+}
+
 .governance-summary-card-badge {
   position: absolute;
   top: 0.4rem;

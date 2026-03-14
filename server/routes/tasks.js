@@ -145,6 +145,61 @@ tasksRouter.patch('/:id', async (req, res) => {
   }
 });
 
+// ── PATCH /api/tasks/:id/escalate ───────────────────────────────────────────
+// Bumps priority one level (low → medium → high → critical), records escalation
+// metadata, and adds an automatic audit comment so the assignee and managers
+// can see the chain of escalation in the task history.
+const PRIORITY_LEVELS = ['low', 'medium', 'high', 'critical'];
+tasksRouter.patch('/:id/escalate', async (req, res) => {
+  try {
+    const tasks = await readTasks();
+    const idx = tasks.findIndex((t) => t.id === req.params.id);
+    if (idx === -1) return res.status(404).json({ error: 'Not found' });
+    const before = { ...tasks[idx] };
+    const task = tasks[idx];
+
+    const prevPriority = task.priority;
+    const prevIdx = PRIORITY_LEVELS.indexOf(prevPriority);
+    const newPriority = PRIORITY_LEVELS[Math.min(prevIdx + 1, PRIORITY_LEVELS.length - 1)];
+
+    task.priority = newPriority;
+    task.escalatedAt = new Date().toISOString();
+    task.escalationLevel = (task.escalationLevel || 0) + 1;
+
+    const escalationComment = [
+      `⬆ Escalated by ${getUser(req)} on ${new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}.`,
+      `Priority raised from ${prevPriority} to ${newPriority} (escalation #${task.escalationLevel}).`,
+      task.assignee ? `Assigned to: ${task.assignee}. Task has not been actioned for more than 10 days.` : 'Task has not been actioned for more than 10 days.',
+      'Please action this item immediately or reassign to an available team member.',
+    ].join(' ');
+
+    task.comments = task.comments || [];
+    task.comments.push({
+      id: `cmt-${Date.now()}`,
+      text: escalationComment,
+      author: getUser(req),
+      createdAt: task.escalatedAt,
+    });
+    task.updatedAt = task.escalatedAt;
+
+    await writeTasks(tasks);
+    await logAudit({
+      action: 'escalate',
+      module: 'tasks',
+      entityId: task.id,
+      entityName: task.title,
+      user: getUser(req),
+      role: getRole(req),
+      before,
+      after: task,
+      detail: `Priority escalated from ${prevPriority} to ${newPriority}`,
+    });
+    res.json(task);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ── DELETE /api/tasks/:id ───────────────────────────────────────────────────
 tasksRouter.delete('/:id', async (req, res) => {
   try {
