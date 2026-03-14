@@ -36,8 +36,8 @@
 }
 
 .ga-trigger-icon {
-  font-size: 1rem;
-  animation: ga-pulse-icon 3s ease-in-out infinite;
+  display: flex;
+  align-items: center;
 }
 .ga-trigger-label { white-space: nowrap; }
 .ga-trigger-close { font-size: 1rem; font-weight: 700; }
@@ -108,11 +108,9 @@
 }
 
 .ga-panel-icon {
-  font-size: 1rem;
-  background: linear-gradient(135deg, #3b82f6, #8b5cf6);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  display: flex;
+  align-items: center;
+  color: #3b82f6;
   flex-shrink: 0;
 }
 
@@ -232,14 +230,14 @@
 }
 
 .ga-welcome-icon {
-  font-size: 2.5rem;
-  background: linear-gradient(135deg, #3b82f6, #8b5cf6);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  display: block;
-  margin-bottom: 0.5rem;
-  animation: ga-pulse-icon 3s ease-in-out infinite;
+  display: flex;
+  justify-content: center;
+  margin-bottom: 0.75rem;
+}
+
+.ga-welcome-avatar {
+  filter: drop-shadow(0 4px 16px rgba(59, 130, 246, 0.35));
+  animation: ga-pulse-icon 4s ease-in-out infinite;
 }
 
 .ga-welcome-title {

@@ -12,6 +12,37 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import './GlobalAssistant.css';
 
 // ─────────────────────────────────────────────────────────────────────────────
+// ICONS — SVG-based, no emoji for brand/identity marks
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Human-style avatar icon used on the trigger button and panel header */
+function RaqibTriggerIcon({ size = 18 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 20 20" fill="currentColor" aria-hidden="true" style={{ flexShrink: 0 }}>
+      <circle cx="10" cy="7" r="4"/>
+      <path d="M2 18c0-4.418 3.582-8 8-8s8 3.582 8 8" strokeLinecap="round"/>
+    </svg>
+  );
+}
+
+/** Larger avatar shown on the welcome screen */
+function RaqibWelcomeAvatar() {
+  return (
+    <svg width="56" height="56" viewBox="0 0 56 56" aria-hidden="true" className="ga-welcome-avatar">
+      <defs>
+        <linearGradient id="raq-grad" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#3b82f6"/>
+          <stop offset="100%" stopColor="#8b5cf6"/>
+        </linearGradient>
+      </defs>
+      <circle cx="28" cy="28" r="28" fill="url(#raq-grad)"/>
+      <circle cx="28" cy="21" r="9" fill="rgba(255,255,255,0.92)"/>
+      <path d="M6 50 Q6 36 28 36 Q50 36 50 50" fill="rgba(255,255,255,0.92)"/>
+    </svg>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // CONSTANTS
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -237,7 +268,7 @@ function ActionApprovalCard({ action, status, onApprove, onDismiss }) {
       </div>
       <div className="ga-action-desc">{action.description}</div>
       <div className="ga-action-reasoning">
-        <span className="ga-action-reasoning-icon">🧠</span>
+        <span className="ga-action-reasoning-icon">›</span>
         <span className="ga-action-reasoning-text">{action.reasoning}</span>
       </div>
       {!isDone && !isDism && !isErr && (
@@ -263,7 +294,7 @@ function ReasoningBlock({ steps, expanded, onToggle }) {
   return (
     <div className="ga-reasoning">
       <button className="ga-reasoning-toggle" onClick={onToggle}>
-        <span className="ga-reasoning-icon">🧠</span>
+        <span className="ga-reasoning-icon">◎</span>
         <span>Reasoning</span>
         <span className="ga-reasoning-chevron">{expanded ? '▲' : '▼'}</span>
       </button>
@@ -536,8 +567,8 @@ function AssistantPanel({ currentView, selectedRole, selectedParentHolding, onCl
       {/* Header */}
       <div className="ga-panel-header">
         <div className="ga-panel-title">
-          <span className="ga-panel-icon">✦</span>
-          <span className="ga-panel-name">GRC Intelligence</span>
+          <span className="ga-panel-icon"><RaqibTriggerIcon size={16} /></span>
+          <span className="ga-panel-name">Raqib</span>
           <ModuleChip module={currentModule} />
         </div>
         <div className="ga-panel-controls">
@@ -573,10 +604,10 @@ function AssistantPanel({ currentView, selectedRole, selectedParentHolding, onCl
         {!hasMessages && (
           <>
             <div className="ga-welcome">
-              <div className="ga-welcome-icon">✦</div>
-              <div className="ga-welcome-title">GRC Intelligence Assistant</div>
+              <div className="ga-welcome-icon"><RaqibWelcomeAvatar /></div>
+              <div className="ga-welcome-title">Ask Raqib</div>
               <div className="ga-welcome-sub">
-                Ask me anything across Governance, Legal, ESG, Data, Ownership, and Analysis. I'll surface insights, flag correlations, and suggest actions — all with your approval.
+                Your GRC advisor across Governance, Legal, ESG, Data, Ownership, and Analysis. Ask a question and Raqib will surface insights, flag correlations, and suggest actions — each requiring your approval before anything is executed.
               </div>
             </div>
             <QuickPrompts currentView={currentView} onSelect={(p) => sendMessage(p)} />
@@ -664,11 +695,14 @@ export default function GlobalAssistant({ currentView, selectedRole, selectedPar
       <button
         className={`ga-trigger ${isOpen ? 'active' : ''}`}
         onClick={() => setIsOpen(o => !o)}
-        title="GRC Intelligence Assistant"
-        aria-label="Open GRC Intelligence Assistant"
+        title="Ask Raqib — GRC Advisor"
+        aria-label="Open Raqib GRC Advisor"
       >
-        {isOpen ? <span className="ga-trigger-close">✕</span> : <span className="ga-trigger-icon">✦</span>}
-        {!isOpen && <span className="ga-trigger-label">Ask AI</span>}
+        {isOpen
+          ? <span className="ga-trigger-close">✕</span>
+          : <span className="ga-trigger-icon"><RaqibTriggerIcon size={17} /></span>
+        }
+        {!isOpen && <span className="ga-trigger-label">Ask Raqib</span>}
       </button>
     </>
   );
