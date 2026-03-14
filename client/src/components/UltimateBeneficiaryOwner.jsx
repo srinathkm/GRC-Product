@@ -201,6 +201,10 @@ export function UltimateBeneficiaryOwner({ language = 'en', selectedParentHoldin
   const [uboChanges, setUboChanges] = useState(loadUboChanges);
   const [expandedRegisterOpcos, setExpandedRegisterOpcos] = useState(() => new Set());
   const [expandedMandatoryEntityKeys, setExpandedMandatoryEntityKeys] = useState(() => new Set()); // keys in set = expanded; empty = all collapsed by default
+  const [downloadModalOpco, setDownloadModalOpco] = useState(null);
+  const [templateFile, setTemplateFile] = useState(null);
+  const [isGeneratingDoc, setIsGeneratingDoc] = useState(false);
+  const templateFileRef = useRef(null);
 
   useEffect(() => {
     // Reload UBO register whenever upstream company data refreshes,
@@ -774,6 +778,67 @@ export function UltimateBeneficiaryOwner({ language = 'en', selectedParentHoldin
     setRegistryForm({ opco: '', summary: '', fileName: '', applyToUbo: true });
   };
 
+  /** Returns all beneficial owner entities for the given OpCo, sorted by % ownership descending. */
+  const getAllEntitiesForOpco = (opco) => {
+    const allMatches = Object.entries(uboData || {})
+      .filter(([key]) => {
+        const i = key.lastIndexOf('::');
+        return i >= 0 && key.slice(i + 2) === opco;
+      })
+      .map(([key]) => {
+        const i = key.lastIndexOf('::');
+        const parent = i >= 0 ? key.slice(0, i) : key;
+        return { parent, record: getRecordFor(parent, opco) };
+      })
+      .sort((a, b) => (b.record.percentage ?? 0) - (a.record.percentage ?? 0));
+    return allMatches.length > 0 ? allMatches : [{ parent: selectedParentHolding, record: getRecord(opco) }];
+  };
+
+  const openDownloadModal = (opco) => {
+    setDownloadModalOpco(opco);
+    setTemplateFile(null);
+    setIsGeneratingDoc(false);
+  };
+
+  const handleDownloadWithTemplate = async (opco, file) => {
+    setIsGeneratingDoc(true);
+    const entities = getAllEntitiesForOpco(opco);
+    try {
+      if (file) {
+        const fd = new FormData();
+        fd.append('template', file);
+        fd.append('parent', selectedParentHolding || '');
+        fd.append('opco', opco || '');
+        fd.append('ownersJson', JSON.stringify(
+          entities.map(({ parent, record: rec }) => ({
+            parent,
+            opco,
+            percentage: rec.percentage,
+            status: rec.status,
+            lastUpdated: rec.lastUpdated,
+            ...rec.details,
+          }))
+        ));
+        const res = await fetch(`${API}/pdf/ubo-record`, { method: 'POST', body: fd });
+        if (!res.ok) throw new Error('Template generation failed');
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `UBO_Record_${(opco || 'OpCo').replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.pdf`;
+        a.click();
+        URL.revokeObjectURL(url);
+      } else {
+        await downloadUboRegistrationDocument(opco);
+      }
+      setDownloadModalOpco(null);
+    } catch (err) {
+      alert(err.message || 'Failed to generate document.');
+    } finally {
+      setIsGeneratingDoc(false);
+    }
+  };
+
   const getRegistryRecordsByModule = (moduleId) => {
     return opcos.filter((opco) => {
       const key = getRegistryRecordKey(selectedParentHolding, opco, moduleId);
@@ -1197,10 +1262,10 @@ export function UltimateBeneficiaryOwner({ language = 'en', selectedParentHoldin
                           <button
                             type="button"
                             className="ubo-link"
-                            onClick={() => downloadUboRegistrationDocument(opco)}
-                            title="Download pre-filled UBO registration document; sign and upload via UAE Trade Registry"
+                            onClick={() => openDownloadModal(opco)}
+                            title="Download pre-filled UBO record; optionally use a DOCX template"
                           >
-                            Download UBO doc
+                            Download UBO Record
                           </button>
                           {r.status !== 'Updated' && (
                             <>
@@ -1586,8 +1651,8 @@ export function UltimateBeneficiaryOwner({ language = 'en', selectedParentHoldin
         <div className="ubo-modal-overlay" onClick={() => setEditingOpco(null)}>
           <div className="ubo-modal ubo-modal-large" onClick={(e) => e.stopPropagation()}>
             <button type="button" className="ubo-modal-close" onClick={() => setEditingOpco(null)} aria-label="Close" title="Close">×</button>
-            <h3 className="ubo-modal-title">Enter / Update UBO details — {editingOpco}</h3>
-            <p className="ubo-modal-subtitle">Mandatory fields as per UAE and GCC UBO register requirements.</p>
+            <h3 className="ubo-modal-title">Enter / Update UBO — {editingOpco}</h3>
+            <p className="ubo-modal-subtitle">Complete mandatory fields as per UAE Cabinet Decision No. 58 of 2020 and GCC UBO register requirements.</p>
 
             <div className="ubo-upload-block">
               <input
@@ -1603,7 +1668,7 @@ export function UltimateBeneficiaryOwner({ language = 'en', selectedParentHoldin
                 onClick={() => fileInputRef.current?.click()}
                 disabled={extractLoading}
               >
-                {extractLoading ? 'Extracting…' : 'Upload document to auto-fill fields'}
+                {extractLoading ? 'Extracting…' : '⬆ Upload document to auto-fill fields'}
               </button>
               {extractMessage && <p className="ubo-extract-msg">{extractMessage}</p>}
             </div>
@@ -1624,91 +1689,165 @@ export function UltimateBeneficiaryOwner({ language = 'en', selectedParentHoldin
                 setUboChanges(loadUboChanges());
               }}
             >
+              {/* Section 0: Entity Type */}
               <div className="ubo-form-section">
-                <h4>Holding &amp; status</h4>
-                <div className="ubo-form-row">
-                  <label>% Holding by parent</label>
-                  <input
-                    type="number"
-                    min={0}
-                    max={100}
-                    step={0.01}
-                    value={form.percentage}
-                    onChange={(e) => setForm((f) => ({ ...f, percentage: Number(e.target.value) || 0 }))}
-                  />
+                <h4>Entity Type</h4>
+                <div className="ubo-form-row ubo-form-row-radios">
+                  <label className="ubo-radio-label">
+                    <input
+                      type="radio"
+                      name="relationshipType"
+                      value="member"
+                      checked={form.details?.relationshipType !== 'corporate'}
+                      onChange={() => setForm((f) => ({ ...f, details: { ...f.details, relationshipType: 'member' } }))}
+                    />
+                    Individual / Member UBO
+                  </label>
+                  <label className="ubo-radio-label">
+                    <input
+                      type="radio"
+                      name="relationshipType"
+                      value="corporate"
+                      checked={form.details?.relationshipType === 'corporate'}
+                      onChange={() => setForm((f) => ({ ...f, details: { ...f.details, relationshipType: 'corporate' } }))}
+                    />
+                    Corporate Parent Entity
+                  </label>
                 </div>
-                <div className="ubo-form-row">
-                  <label>UBO register status</label>
-                  <select value={form.status} onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))}>
-                    {STATUS_OPTIONS.map((o) => (
-                      <option key={o.value} value={o.value}>{o.label}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="ubo-form-row">
-                  <label>Last updated (date)</label>
-                  <input
-                    type="date"
-                    value={form.lastUpdated}
-                    onChange={(e) => setForm((f) => ({ ...f, lastUpdated: e.target.value }))}
-                  />
+                {form.details?.relationshipType === 'corporate'
+                  ? <p className="ubo-form-hint">Corporate entity: complete Entity Name, Jurisdiction of Incorporation, and Registered Address per applicable corporate registry requirements.</p>
+                  : <p className="ubo-form-hint">Individual (Member) UBO: complete all mandatory personal, identification, address and control fields per UAE/GCC UBO register regulations.</p>
+                }
+              </div>
+
+              {/* Section 1: Holding & Status */}
+              <div className="ubo-form-section">
+                <h4>Holding &amp; Register Status</h4>
+                <div className="ubo-form-grid">
+                  <div className="ubo-form-row">
+                    <label>% Holding by parent *</label>
+                    <input
+                      type="number"
+                      min={0}
+                      max={100}
+                      step={0.01}
+                      value={form.percentage}
+                      onChange={(e) => setForm((f) => ({ ...f, percentage: Number(e.target.value) || 0 }))}
+                    />
+                  </div>
+                  <div className="ubo-form-row">
+                    <label>UBO register status *</label>
+                    <select value={form.status} onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))}>
+                      {STATUS_OPTIONS.map((o) => (
+                        <option key={o.value} value={o.value}>{o.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="ubo-form-row">
+                    <label>Last updated (date)</label>
+                    <input
+                      type="date"
+                      value={form.lastUpdated}
+                      onChange={(e) => setForm((f) => ({ ...f, lastUpdated: e.target.value }))}
+                    />
+                  </div>
                 </div>
               </div>
 
-              <div className="ubo-form-section">
-                <h4>Mandatory details (ME register)</h4>
-                {form.details?.relationshipType === 'corporate' ? (
-                  <>
-                    <p className="ubo-form-hint">Corporate parent: complete Entity Name, Jurisdiction of Incorporation, and Registered Address. Member-only fields are hidden.</p>
-                    {MANDATORY_CORPORATE_FIELDS.map((field) => (
-                      <div key={field.id} className="ubo-form-row">
-                        <label>{field.label}{field.required ? ' *' : ''}</label>
-                        <input
-                          type="text"
-                          value={form.details[field.id] || ''}
-                          onChange={(e) => setForm((f) => ({
-                            ...f,
-                            details: { ...f.details, [field.id]: e.target.value },
-                          }))}
-                          placeholder={field.label}
-                        />
-                      </div>
-                    ))}
-                  </>
-                ) : (
-                  <>
-                    <p className="ubo-form-hint">Member (individual) parent: complete full name, nationality, ID, and other mandatory UBO fields. Corporate-only fields are hidden.</p>
-                    {MANDATORY_UBO_FIELDS.map((field) => (
-                      <div key={field.id} className="ubo-form-row">
-                        <label>{field.label}{field.required ? ' *' : ''}</label>
-                        {field.type === 'date' ? (
-                          <input
-                            type="date"
-                            value={form.details[field.id] || ''}
-                            onChange={(e) => setForm((f) => ({
-                              ...f,
-                              details: { ...f.details, [field.id]: e.target.value },
-                            }))}
-                          />
-                        ) : (
-                          <input
-                            type="text"
-                            value={form.details[field.id] || ''}
-                            onChange={(e) => setForm((f) => ({
-                              ...f,
-                              details: { ...f.details, [field.id]: e.target.value },
-                            }))}
-                            placeholder={field.label}
-                          />
-                        )}
-                      </div>
-                    ))}
-                  </>
-                )}
-              </div>
+              {form.details?.relationshipType === 'corporate' ? (
+                /* Section 2a: Corporate entity details */
+                <div className="ubo-form-section">
+                  <h4>Corporate Entity Details</h4>
+                  {MANDATORY_CORPORATE_FIELDS.map((field) => (
+                    <div key={field.id} className="ubo-form-row">
+                      <label>{field.label}{field.required ? ' *' : ''}</label>
+                      <input
+                        type="text"
+                        value={form.details[field.id] || ''}
+                        onChange={(e) => setForm((f) => ({ ...f, details: { ...f.details, [field.id]: e.target.value } }))}
+                        placeholder={field.label}
+                      />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <>
+                  {/* Section 2b: Identity */}
+                  <div className="ubo-form-section">
+                    <h4>Identity</h4>
+                    <div className="ubo-form-grid">
+                      {['fullName', 'nationality', 'dateOfBirth', 'placeOfBirth'].map((id) => {
+                        const field = MANDATORY_UBO_FIELDS.find((f) => f.id === id);
+                        if (!field) return null;
+                        return (
+                          <div key={id} className="ubo-form-row">
+                            <label>{field.label} *</label>
+                            {field.type === 'date' ? (
+                              <input type="date" value={form.details[id] || ''} onChange={(e) => setForm((f) => ({ ...f, details: { ...f.details, [id]: e.target.value } }))} />
+                            ) : (
+                              <input type="text" value={form.details[id] || ''} onChange={(e) => setForm((f) => ({ ...f, details: { ...f.details, [id]: e.target.value } }))} placeholder={field.label} />
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
 
+                  {/* Section 3: Identification Document */}
+                  <div className="ubo-form-section">
+                    <h4>Identification Document</h4>
+                    <div className="ubo-form-grid">
+                      {['idType', 'idNumber', 'idCountryOfIssue', 'idExpiry'].map((id) => {
+                        const field = MANDATORY_UBO_FIELDS.find((f) => f.id === id);
+                        if (!field) return null;
+                        return (
+                          <div key={id} className="ubo-form-row">
+                            <label>{field.label} *</label>
+                            {field.type === 'date' ? (
+                              <input type="date" value={form.details[id] || ''} onChange={(e) => setForm((f) => ({ ...f, details: { ...f.details, [id]: e.target.value } }))} />
+                            ) : (
+                              <input type="text" value={form.details[id] || ''} onChange={(e) => setForm((f) => ({ ...f, details: { ...f.details, [id]: e.target.value } }))} placeholder={field.label} />
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Section 4: Address & Residence */}
+                  <div className="ubo-form-section">
+                    <h4>Address &amp; Residence</h4>
+                    <div className="ubo-form-row">
+                      <label>Residential address or address for notices *</label>
+                      <input type="text" value={form.details.address || ''} onChange={(e) => setForm((f) => ({ ...f, details: { ...f.details, address: e.target.value } }))} placeholder="Full residential address" />
+                    </div>
+                    <div className="ubo-form-row">
+                      <label>Country of residence *</label>
+                      <input type="text" value={form.details.countryOfResidence || ''} onChange={(e) => setForm((f) => ({ ...f, details: { ...f.details, countryOfResidence: e.target.value } }))} placeholder="Country of residence" />
+                    </div>
+                  </div>
+
+                  {/* Section 5: Ownership & Control */}
+                  <div className="ubo-form-section">
+                    <h4>Ownership &amp; Control</h4>
+                    <div className="ubo-form-grid">
+                      <div className="ubo-form-row">
+                        <label>Nature of control (ownership / voting / other means) *</label>
+                        <input type="text" value={form.details.natureOfControl || ''} onChange={(e) => setForm((f) => ({ ...f, details: { ...f.details, natureOfControl: e.target.value } }))} placeholder="e.g. Direct ownership, voting rights" />
+                      </div>
+                      <div className="ubo-form-row">
+                        <label>Date became beneficial owner *</label>
+                        <input type="date" value={form.details.dateBecameBeneficialOwner || ''} onChange={(e) => setForm((f) => ({ ...f, details: { ...f.details, dateBecameBeneficialOwner: e.target.value } }))} />
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* Section 6: Mandatory Documents */}
               <div className="ubo-form-section">
-                <h4>Mandatory documents (attach / confirm)</h4>
+                <h4>Mandatory Documents</h4>
+                <p className="ubo-form-hint">Seven mandatory documents per UAE Cabinet Decision No. 58 of 2020. Tick each document once it has been collected, verified and stored securely.</p>
                 {form.documents.map((doc) => (
                   <div key={doc.id} className="ubo-doc-row">
                     <span className="ubo-doc-label">{doc.label}</span>
@@ -1720,30 +1859,36 @@ export function UltimateBeneficiaryOwner({ language = 'en', selectedParentHoldin
                         onChange={(e) => setForm((f) => ({
                           ...f,
                           documents: f.documents.map((d) =>
-                            d.id === doc.id ? { ...d, uploaded: e.target.checked, fileName: d.fileName || (e.target.checked ? 'Attached' : ''), uploadedAt: e.target.checked ? new Date().toISOString().slice(0, 10) : '' } : d
+                            d.id === doc.id
+                              ? { ...d, uploaded: e.target.checked, fileName: d.fileName || (e.target.checked ? 'Attached' : ''), uploadedAt: e.target.checked ? new Date().toISOString().slice(0, 10) : '' }
+                              : d
                           ),
                         }))}
                       />
-                      Uploaded
+                      Collected &amp; verified
                     </label>
                     {doc.uploaded && doc.fileName && <span className="ubo-doc-filename">{doc.fileName}</span>}
                   </div>
                 ))}
               </div>
 
-              <div className="ubo-form-row">
-                <label>Notes</label>
-                <textarea
-                  value={form.notes}
-                  onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
-                  rows={2}
-                  placeholder="Optional notes"
-                />
+              {/* Section 7: Notes */}
+              <div className="ubo-form-section">
+                <h4>Notes</h4>
+                <div className="ubo-form-row">
+                  <label>Internal notes (optional)</label>
+                  <textarea
+                    value={form.notes}
+                    onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
+                    rows={2}
+                    placeholder="Add any compliance notes, source document references, or follow-up actions…"
+                  />
+                </div>
               </div>
 
               <div className="ubo-form-actions">
                 <button type="button" className="ubo-btn ubo-btn-secondary" onClick={() => setEditingOpco(null)}>Cancel</button>
-                <button type="submit" className="ubo-btn ubo-btn-primary">Save UBO details</button>
+                <button type="submit" className="ubo-btn ubo-btn-primary">Save UBO Record</button>
               </div>
             </form>
           </div>
@@ -1755,41 +1900,212 @@ export function UltimateBeneficiaryOwner({ language = 'en', selectedParentHoldin
         <div className="ubo-modal-overlay" onClick={() => setViewingOpco(null)}>
           <div className="ubo-modal ubo-modal-view ubo-modal-large" onClick={(e) => e.stopPropagation()}>
             <button type="button" className="ubo-modal-close" onClick={() => setViewingOpco(null)} aria-label="Close" title="Close">×</button>
-            <h3 className="ubo-modal-title">UBO details — {viewingOpco}</h3>
+            <h3 className="ubo-modal-title">UBO Details — {viewingOpco}</h3>
             {(() => {
-              const r = getRecord(viewingOpco);
+              const entities = getAllEntitiesForOpco(viewingOpco);
+              const totalPct = entities.reduce((sum, { record: rec }) => sum + (typeof rec.percentage === 'number' ? rec.percentage : 0), 0);
+              const primaryStatus = entities[0]?.record?.status || '—';
+              const primaryLastUpdated = entities[0]?.record?.lastUpdated || '—';
               return (
                 <div className="ubo-view-details">
-                  <p><strong>% Holding by parent:</strong> {r.percentage}%</p>
-                  <p><strong>UBO register status:</strong> <span className={`ubo-status ubo-status-${r.status.replace(/\s+/g, '-').toLowerCase()}`}>{r.status}</span></p>
-                  <p><strong>Last updated:</strong> {r.lastUpdated || '—'}</p>
-                  <div className="ubo-view-section">
-                    <h4>Mandatory details</h4>
-                    {r.details?.relationshipType === 'corporate' ? (
-                      MANDATORY_CORPORATE_FIELDS.map((f) => (
-                        <p key={f.id}><strong>{f.label}:</strong> {r.details?.[f.id] || '—'}</p>
-                      ))
-                    ) : (
-                      MANDATORY_UBO_FIELDS.map((f) => (
-                        <p key={f.id}><strong>{f.label}:</strong> {r.details?.[f.id] || '—'}</p>
-                      ))
-                    )}
+                  <div className="ubo-view-summary-bar">
+                    <div className="ubo-view-summary-item">
+                      <span className="ubo-view-summary-label">Beneficial Owners</span>
+                      <span className="ubo-view-summary-value">{entities.length}</span>
+                    </div>
+                    <div className="ubo-view-summary-item">
+                      <span className="ubo-view-summary-label">Total Ownership</span>
+                      <span className="ubo-view-summary-value">{totalPct}%</span>
+                    </div>
+                    <div className="ubo-view-summary-item">
+                      <span className="ubo-view-summary-label">Register Status</span>
+                      <span className={`ubo-status ubo-status-${primaryStatus.replace(/\s+/g, '-').toLowerCase()}`}>{primaryStatus}</span>
+                    </div>
+                    <div className="ubo-view-summary-item">
+                      <span className="ubo-view-summary-label">Last Updated</span>
+                      <span className="ubo-view-summary-value">{primaryLastUpdated}</span>
+                    </div>
                   </div>
-                  <div className="ubo-view-section">
-                    <h4>Documents</h4>
-                    {r.documents?.map((d) => (
-                      <p key={d.id}>{d.label}: {d.uploaded ? `Uploaded${d.fileName ? ` (${d.fileName})` : ''}` : 'Not uploaded'}</p>
-                    ))}
-                  </div>
-                  {r.notes && <p><strong>Notes:</strong><br />{r.notes}</p>}
-                  <p className="ubo-download-doc-note">Download the pre-filled UBO registration document below; sign and upload via the UAE Trade Registry section.</p>
+
+                  {entities.map(({ parent, record: rec }, idx) => {
+                    const isCorporate = rec.details?.relationshipType === 'corporate';
+                    const displayName = isCorporate
+                      ? (rec.details?.corporateName || parent)
+                      : (rec.details?.fullName || parent);
+                    const docsCompleted = (rec.documents || []).filter((d) => d.uploaded || d.completed).length;
+                    const docsTotal = MANDATORY_UBO_DOCUMENTS.length;
+                    return (
+                      <div key={parent} className="ubo-owner-card">
+                        <div className="ubo-owner-card-header">
+                          <span className="ubo-owner-card-rank">#{idx + 1}</span>
+                          <span className="ubo-owner-card-name">{displayName}</span>
+                          <span className="ubo-owner-card-pct">{rec.percentage ?? '—'}%</span>
+                          <span className={`ubo-owner-card-type ubo-owner-card-type--${isCorporate ? 'corporate' : 'member'}`}>
+                            {isCorporate ? 'Corporate' : 'Individual'}
+                          </span>
+                          <span className={`ubo-status ubo-status-${(rec.status || '').replace(/\s+/g, '-').toLowerCase()}`}>{rec.status || '—'}</span>
+                        </div>
+
+                        {isCorporate ? (
+                          <div className="ubo-owner-card-body">
+                            <div className="ubo-owner-section">
+                              <h5>Corporate Details</h5>
+                              <div className="ubo-owner-fields-grid">
+                                <div><span className="ubo-owner-field-label">Entity Name</span><span className="ubo-owner-field-value">{rec.details?.corporateName || '—'}</span></div>
+                                <div><span className="ubo-owner-field-label">Jurisdiction of Incorporation</span><span className="ubo-owner-field-value">{rec.details?.corporateJurisdictionOfIncorporation || '—'}</span></div>
+                                <div className="ubo-owner-field-wide"><span className="ubo-owner-field-label">Registered Address</span><span className="ubo-owner-field-value">{rec.details?.corporateRegisteredAddress || '—'}</span></div>
+                                <div><span className="ubo-owner-field-label">Registration Number</span><span className="ubo-owner-field-value">{rec.details?.corporateRegistrationNumber || '—'}</span></div>
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="ubo-owner-card-body">
+                            <div className="ubo-owner-section">
+                              <h5>Identity</h5>
+                              <div className="ubo-owner-fields-grid">
+                                <div><span className="ubo-owner-field-label">Full Name (as per ID)</span><span className="ubo-owner-field-value">{rec.details?.fullName || '—'}</span></div>
+                                <div><span className="ubo-owner-field-label">Nationality</span><span className="ubo-owner-field-value">{rec.details?.nationality || '—'}</span></div>
+                                <div><span className="ubo-owner-field-label">Date of Birth</span><span className="ubo-owner-field-value">{rec.details?.dateOfBirth || '—'}</span></div>
+                                <div><span className="ubo-owner-field-label">Place of Birth</span><span className="ubo-owner-field-value">{rec.details?.placeOfBirth || '—'}</span></div>
+                              </div>
+                            </div>
+                            <div className="ubo-owner-section">
+                              <h5>Identification Document</h5>
+                              <div className="ubo-owner-fields-grid">
+                                <div><span className="ubo-owner-field-label">ID Type</span><span className="ubo-owner-field-value">{rec.details?.idType || '—'}</span></div>
+                                <div><span className="ubo-owner-field-label">ID Number</span><span className="ubo-owner-field-value">{rec.details?.idNumber || '—'}</span></div>
+                                <div><span className="ubo-owner-field-label">Country of Issuance</span><span className="ubo-owner-field-value">{rec.details?.idCountryOfIssue || '—'}</span></div>
+                                <div><span className="ubo-owner-field-label">Expiry Date</span><span className="ubo-owner-field-value">{rec.details?.idExpiry || '—'}</span></div>
+                              </div>
+                            </div>
+                            <div className="ubo-owner-section">
+                              <h5>Address &amp; Residence</h5>
+                              <div className="ubo-owner-fields-grid">
+                                <div className="ubo-owner-field-wide"><span className="ubo-owner-field-label">Residential Address</span><span className="ubo-owner-field-value">{rec.details?.address || '—'}</span></div>
+                                <div><span className="ubo-owner-field-label">Country of Residence</span><span className="ubo-owner-field-value">{rec.details?.countryOfResidence || '—'}</span></div>
+                              </div>
+                            </div>
+                            <div className="ubo-owner-section">
+                              <h5>Ownership &amp; Control</h5>
+                              <div className="ubo-owner-fields-grid">
+                                <div><span className="ubo-owner-field-label">% Ownership / Control</span><span className="ubo-owner-field-value">{rec.percentage ?? rec.details?.percentageOwnership ?? '—'}{typeof (rec.percentage ?? rec.details?.percentageOwnership) === 'number' ? '%' : ''}</span></div>
+                                <div><span className="ubo-owner-field-label">Nature of Control</span><span className="ubo-owner-field-value">{rec.details?.natureOfControl || '—'}</span></div>
+                                <div><span className="ubo-owner-field-label">Date Became Beneficial Owner</span><span className="ubo-owner-field-value">{rec.details?.dateBecameBeneficialOwner || '—'}</span></div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="ubo-owner-docs">
+                          <h5>Mandatory Documents <span className="ubo-owner-docs-count">({docsCompleted}/{docsTotal} complete)</span></h5>
+                          <div className="ubo-owner-docs-grid">
+                            {(rec.documents && rec.documents.length ? rec.documents : MANDATORY_UBO_DOCUMENTS.map((d) => ({ ...d, uploaded: false }))).map((doc) => (
+                              <div key={doc.id} className={`ubo-owner-doc-item ${doc.uploaded ? 'ubo-owner-doc-item--ok' : 'ubo-owner-doc-item--missing'}`}>
+                                <span className="ubo-owner-doc-icon" aria-hidden>{doc.uploaded ? '✓' : '✗'}</span>
+                                <span className="ubo-owner-doc-label">{doc.label}</span>
+                                {doc.uploaded && doc.fileName && <span className="ubo-owner-doc-file">{doc.fileName}</span>}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {rec.notes && (
+                          <div className="ubo-owner-notes">
+                            <span className="ubo-owner-field-label">Notes</span>
+                            <p>{rec.notes}</p>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               );
             })()}
             <div className="ubo-form-actions">
-              <button type="button" className="ubo-btn ubo-btn-secondary" onClick={() => downloadUboRegistrationDocument(viewingOpco)}>Download UBO doc</button>
+              <button type="button" className="ubo-btn ubo-btn-secondary" onClick={() => { setViewingOpco(null); openDownloadModal(viewingOpco); }}>Download UBO Record</button>
               <button type="button" className="ubo-btn ubo-btn-secondary" onClick={() => setViewingOpco(null)}>Close</button>
               <button type="button" className="ubo-btn ubo-btn-primary" onClick={() => { setViewingOpco(null); openEdit(viewingOpco); }}>Edit</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Download UBO Record */}
+      {downloadModalOpco && (
+        <div className="ubo-modal-overlay" onClick={() => !isGeneratingDoc && setDownloadModalOpco(null)}>
+          <div className="ubo-modal ubo-modal-download" onClick={(e) => e.stopPropagation()}>
+            <button type="button" className="ubo-modal-close" onClick={() => !isGeneratingDoc && setDownloadModalOpco(null)} aria-label="Close" title="Close">×</button>
+            <h3 className="ubo-modal-title">Download UBO Record — {downloadModalOpco}</h3>
+            <p className="ubo-modal-subtitle">Generate a pre-filled official UBO record document. Optionally upload a DOCX template with <code>{'{{field}}'}</code> placeholders to produce a custom-formatted output.</p>
+
+            <div className="ubo-download-owners">
+              <h4>Beneficial owners included ({getAllEntitiesForOpco(downloadModalOpco).length})</h4>
+              <div className="ubo-download-owners-list">
+                {getAllEntitiesForOpco(downloadModalOpco).map(({ parent, record: rec }, idx) => {
+                  const isCorporate = rec.details?.relationshipType === 'corporate';
+                  const name = isCorporate ? (rec.details?.corporateName || parent) : (rec.details?.fullName || parent);
+                  return (
+                    <div key={parent} className="ubo-download-owner-row">
+                      <span className="ubo-download-owner-rank">#{idx + 1}</span>
+                      <span className="ubo-download-owner-name">{name || parent}</span>
+                      <span className="ubo-download-owner-pct">{rec.percentage ?? '—'}%</span>
+                      <span className={`ubo-owner-card-type ubo-owner-card-type--${isCorporate ? 'corporate' : 'member'}`}>{isCorporate ? 'Corporate' : 'Individual'}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="ubo-download-template-ref">
+              <h4>Available placeholders for DOCX templates</h4>
+              <p className="ubo-form-hint">Use these placeholders inside your DOCX template. For multi-owner documents, the system will repeat the owner section for each beneficial owner.</p>
+              <div className="ubo-download-placeholders">
+                {['{{opco}}', '{{parent}}', '{{percentage}}', '{{status}}', '{{lastUpdated}}',
+                  '{{fullName}}', '{{nationality}}', '{{dateOfBirth}}', '{{placeOfBirth}}',
+                  '{{idType}}', '{{idNumber}}', '{{idCountryOfIssue}}', '{{idExpiry}}',
+                  '{{address}}', '{{countryOfResidence}}', '{{natureOfControl}}', '{{dateBecameBeneficialOwner}}',
+                  '{{corporateName}}', '{{corporateJurisdictionOfIncorporation}}', '{{corporateRegisteredAddress}}', '{{corporateRegistrationNumber}}',
+                ].map((ph) => <code key={ph} className="ubo-placeholder-chip">{ph}</code>)}
+              </div>
+            </div>
+
+            <div className="ubo-download-upload-section">
+              <h4>Custom template (optional)</h4>
+              <input
+                ref={templateFileRef}
+                type="file"
+                accept=".docx"
+                className="ubo-file-input"
+                onChange={(e) => setTemplateFile(e.target.files?.[0] || null)}
+              />
+              <div className="ubo-download-upload-row">
+                <button type="button" className="ubo-btn ubo-btn-secondary" onClick={() => templateFileRef.current?.click()}>
+                  {templateFile ? `📄 ${templateFile.name}` : '⬆ Upload DOCX template'}
+                </button>
+                {templateFile && (
+                  <button
+                    type="button"
+                    className="ubo-btn ubo-btn-secondary"
+                    onClick={() => { setTemplateFile(null); if (templateFileRef.current) templateFileRef.current.value = ''; }}
+                  >
+                    Remove
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <div className="ubo-form-actions">
+              <button type="button" className="ubo-btn ubo-btn-secondary" onClick={() => setDownloadModalOpco(null)} disabled={isGeneratingDoc}>
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="ubo-btn ubo-btn-primary"
+                onClick={() => handleDownloadWithTemplate(downloadModalOpco, templateFile)}
+                disabled={isGeneratingDoc}
+              >
+                {isGeneratingDoc ? 'Generating…' : templateFile ? 'Generate with Custom Template' : 'Generate Standard Record'}
+              </button>
             </div>
           </div>
         </div>

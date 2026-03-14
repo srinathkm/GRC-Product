@@ -1593,3 +1593,279 @@
   font-size: 0.85rem;
   color: var(--text-muted);
 }
+
+/* ── View Details: summary bar ── */
+.ubo-view-summary-bar {
+  display: flex;
+  gap: 0;
+  background: rgba(59,130,246,0.06);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-bottom: 1.25rem;
+  overflow: hidden;
+}
+.ubo-view-summary-item {
+  flex: 1;
+  padding: 0.75rem 1rem;
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+.ubo-view-summary-item:last-child { border-right: none; }
+.ubo-view-summary-label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+.ubo-view-summary-value {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+/* ── Owner cards ── */
+.ubo-owner-card {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  margin-bottom: 1rem;
+  overflow: hidden;
+}
+.ubo-owner-card-header {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.75rem 1rem;
+  background: rgba(255,255,255,0.04);
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+.ubo-owner-card-rank {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  min-width: 2rem;
+}
+.ubo-owner-card-name {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text);
+  flex: 1;
+  min-width: 0;
+}
+.ubo-owner-card-pct {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--accent);
+}
+.ubo-owner-card-type {
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+}
+.ubo-owner-card-type--member {
+  background: rgba(16,185,129,0.15);
+  color: rgb(16,185,129);
+}
+.ubo-owner-card-type--corporate {
+  background: rgba(139,92,246,0.15);
+  color: rgb(139,92,246);
+}
+
+.ubo-owner-card-body {
+  padding: 0 1rem;
+}
+.ubo-owner-section {
+  padding: 0.75rem 0;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.ubo-owner-section:last-child { border-bottom: none; }
+.ubo-owner-section h5 {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  margin: 0 0 0.5rem;
+}
+.ubo-owner-fields-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 0.5rem 1rem;
+}
+.ubo-owner-fields-grid > div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+.ubo-owner-field-wide {
+  grid-column: 1 / -1;
+}
+.ubo-owner-field-label {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+.ubo-owner-field-value {
+  font-size: 0.88rem;
+  color: var(--text);
+  word-break: break-word;
+}
+
+/* ── Documents inside owner card ── */
+.ubo-owner-docs {
+  padding: 0.75rem 1rem;
+  background: rgba(0,0,0,0.12);
+  border-top: 1px solid var(--border);
+}
+.ubo-owner-docs h5 {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  margin: 0 0 0.5rem;
+}
+.ubo-owner-docs-count {
+  font-weight: normal;
+  color: var(--accent);
+}
+.ubo-owner-docs-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 0.35rem 0.75rem;
+}
+.ubo-owner-doc-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+  font-size: 0.82rem;
+}
+.ubo-owner-doc-icon {
+  font-size: 0.85rem;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.ubo-owner-doc-item--ok .ubo-owner-doc-icon { color: rgb(16,185,129); }
+.ubo-owner-doc-item--missing .ubo-owner-doc-icon { color: rgb(239,68,68); }
+.ubo-owner-doc-label {
+  color: var(--text);
+  flex: 1;
+}
+.ubo-owner-doc-file {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 140px;
+}
+
+.ubo-owner-notes {
+  padding: 0.5rem 1rem;
+  border-top: 1px solid var(--border);
+}
+.ubo-owner-notes p {
+  margin: 0.25rem 0 0;
+  font-size: 0.85rem;
+  color: var(--text);
+  white-space: pre-line;
+}
+
+/* ── Download modal ── */
+.ubo-modal-download {
+  max-width: 680px;
+}
+.ubo-download-owners {
+  margin-bottom: 1rem;
+}
+.ubo-download-owners h4,
+.ubo-download-template-ref h4,
+.ubo-download-upload-section h4 {
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  margin: 0 0 0.5rem;
+}
+.ubo-download-owners-list {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.ubo-download-owner-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.88rem;
+}
+.ubo-download-owner-row:last-child { border-bottom: none; }
+.ubo-download-owner-rank {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  min-width: 2rem;
+}
+.ubo-download-owner-name {
+  flex: 1;
+  font-weight: 600;
+  color: var(--text);
+}
+.ubo-download-owner-pct {
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.ubo-download-template-ref {
+  margin: 1rem 0;
+}
+.ubo-download-placeholders {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+.ubo-placeholder-chip {
+  background: rgba(59,130,246,0.12);
+  border: 1px solid rgba(59,130,246,0.25);
+  border-radius: 4px;
+  padding: 0.1rem 0.4rem;
+  font-size: 0.78rem;
+  color: var(--accent);
+  font-family: monospace;
+}
+
+.ubo-download-upload-section {
+  margin-bottom: 1rem;
+}
+.ubo-download-upload-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin-top: 0.5rem;
+}
+
+/* ── Edit form: radio toggle + grid ── */
+.ubo-form-row-radios {
+  display: flex;
+  gap: 1.5rem;
+  align-items: center;
+  padding: 0.5rem 0;
+}
+.ubo-radio-label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.9rem;
+  color: var(--text);
+  cursor: pointer;
+}
+.ubo-radio-label input[type="radio"] {
+  accent-color: var(--accent);
+  width: 15px;
+  height: 15px;
+}
+.ubo-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 0 1rem;
+}
