@@ -210,6 +210,7 @@ export default function App() {
   const isRtl = language === 'ar';
 
   return (
+    <>
     <div className="app" dir={isRtl ? 'rtl' : 'ltr'} lang={isRtl ? 'ar' : 'en'}>
       <header className="header">
         <h1>{t(language, 'appTitle')}</h1>
@@ -384,5 +385,6 @@ export default function App() {
       selectedRole={selectedRole}
       selectedParentHolding={selectedParentHolding}
     />
+    </>
   );
 }
