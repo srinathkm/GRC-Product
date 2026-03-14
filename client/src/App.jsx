@@ -23,6 +23,7 @@ import { Help } from './components/Help';
 import { ManagementDashboard } from './components/ManagementDashboard';
 import { TaskTracker } from './components/TaskTracker';
 import { LegalOnboarding } from './components/LegalOnboarding';
+import GlobalAssistant from './components/GlobalAssistant';
 
 const FRAMEWORKS = [
   'DFSA Rulebook',
@@ -378,5 +379,10 @@ export default function App() {
         </div>
       </div>
     </div>
+    <GlobalAssistant
+      currentView={currentView}
+      selectedRole={selectedRole}
+      selectedParentHolding={selectedParentHolding}
+    />
   );
 }
