@@ -435,7 +435,7 @@ function ThinkingBubble() {
 // ASSISTANT PANEL (main panel body — module level for Fast Refresh)
 // ─────────────────────────────────────────────────────────────────────────────
 
-function AssistantPanel({ currentView, selectedRole, selectedParentHolding, onClose }) {
+function AssistantPanel({ currentView, selectedRole, selectedParentHolding, selectedOpco, onClose }) {
   const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -456,6 +456,13 @@ function AssistantPanel({ currentView, selectedRole, selectedParentHolding, onCl
   }, []);
 
   useEffect(() => { scrollToBottom(); }, [messages, isLoading, scrollToBottom]);
+
+  // Clear conversation history when the selected OpCo changes to avoid stale cross-opco context
+  useEffect(() => {
+    setMessages([]);
+    setExpandedReasoning(new Set());
+    setActionStates({});
+  }, [selectedOpco]);
 
   const sendMessage = useCallback(async (text) => {
     const trimmed = typeof text === 'string' ? text.trim() : inputText.trim();
@@ -484,6 +491,7 @@ function AssistantPanel({ currentView, selectedRole, selectedParentHolding, onCl
           currentModule,
           persona,
           parentHolding: selectedParentHolding || '',
+          selectedOpco: selectedOpco || '',
         }),
       });
 
@@ -517,7 +525,7 @@ function AssistantPanel({ currentView, selectedRole, selectedParentHolding, onCl
     } finally {
       setIsLoading(false);
     }
-  }, [inputText, isLoading, messages, currentModule, persona, selectedParentHolding]);
+  }, [inputText, isLoading, messages, currentModule, persona, selectedParentHolding, selectedOpco]);
 
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -594,9 +602,11 @@ function AssistantPanel({ currentView, selectedRole, selectedParentHolding, onCl
         <span className="ga-persona-label">
           {PERSONAS.find(p => p.value === persona)?.icon} Responding as {PERSONAS.find(p => p.value === persona)?.label}
         </span>
-        {selectedParentHolding && (
+        {selectedOpco ? (
+          <span className="ga-org-chip" title="Scoped to this OpCo">{selectedOpco}</span>
+        ) : selectedParentHolding ? (
           <span className="ga-org-chip">{selectedParentHolding}</span>
-        )}
+        ) : null}
       </div>
 
       {/* Messages + Quick Prompts */}
@@ -664,7 +674,7 @@ function AssistantPanel({ currentView, selectedRole, selectedParentHolding, onCl
 // ROOT EXPORT — floating trigger + panel overlay
 // ─────────────────────────────────────────────────────────────────────────────
 
-export default function GlobalAssistant({ currentView, selectedRole, selectedParentHolding }) {
+export default function GlobalAssistant({ currentView, selectedRole, selectedParentHolding, selectedOpco }) {
   const [isOpen, setIsOpen] = useState(false);
 
   // Close on Escape key
@@ -686,6 +696,7 @@ export default function GlobalAssistant({ currentView, selectedRole, selectedPar
             currentView={currentView}
             selectedRole={selectedRole}
             selectedParentHolding={selectedParentHolding}
+            selectedOpco={selectedOpco}
             onClose={() => setIsOpen(false)}
           />
         )}

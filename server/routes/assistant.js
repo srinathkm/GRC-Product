@@ -5,7 +5,7 @@ export const assistantRouter = Router();
 
 assistantRouter.post('/', async (req, res) => {
   try {
-    const { message, history = [], currentModule, persona, parentHolding } = req.body || {};
+    const { message, history = [], currentModule, persona, parentHolding, selectedOpco } = req.body || {};
     const text = typeof message === 'string' ? message.trim() : '';
     if (!text) return res.status(400).json({ error: 'Message is required' });
 
@@ -15,6 +15,7 @@ assistantRouter.post('/', async (req, res) => {
       currentModule: currentModule || 'overview',
       persona: persona || 'c-level',
       parentHolding: parentHolding || '',
+      selectedOpco: typeof selectedOpco === 'string' ? selectedOpco.trim() : '',
     });
     res.json(response);
   } catch (e) {

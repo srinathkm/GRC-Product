@@ -348,12 +348,12 @@ function isPast(dateStr) {
   return !isNaN(d.getTime()) && d < new Date();
 }
 
-async function buildGlobalContext(parentHolding) {
+async function buildGlobalContext(parentHolding, selectedOpco) {
   const now = new Date();
   const thirtyAgo = new Date(now); thirtyAgo.setDate(thirtyAgo.getDate() - 30);
   const ninetyAhead = new Date(now); ninetyAhead.setDate(ninetyAhead.getDate() + 90);
 
-  const [changes, companies, onboardingOpcos, poa, ip, licences, litigations, tasks, contracts, esgRaw] =
+  const [changes, companies, onboardingOpcos, poaAll, ipAll, licencesAll, litigationsAll, tasks, contractsAll, esgRaw] =
     await Promise.all([
       safeReadJson(changesPath, []),
       safeReadJson(companiesPath, {}),
@@ -367,10 +367,43 @@ async function buildGlobalContext(parentHolding) {
       safeReadJson(esgMetricsPath, { metrics: {} }),
     ]);
 
+  // ── Resolve frameworks for the selected OpCo (mirrors dashboard.js logic) ──
+  const opcoLower = selectedOpco ? selectedOpco.toLowerCase() : null;
+  let opcoFrameworks = null;
+  if (opcoLower) {
+    opcoFrameworks = new Set();
+    for (const [fw, entries] of Object.entries(companies)) {
+      if (!Array.isArray(entries)) continue;
+      for (const entry of entries) {
+        if ((entry.companies || []).some(c => c && c.toLowerCase() === opcoLower)) {
+          opcoFrameworks.add(fw);
+        }
+      }
+    }
+    for (const row of (Array.isArray(onboardingOpcos) ? onboardingOpcos : [])) {
+      if (!row.opco || row.opco.toLowerCase() !== opcoLower) continue;
+      for (const fw of row.applicableFrameworks || []) opcoFrameworks.add(fw);
+      for (const pair of row.applicableFrameworksByLocation || []) {
+        if (pair.framework) opcoFrameworks.add(pair.framework);
+      }
+    }
+    opcoFrameworks.delete('Onboarded');
+  }
+
+  // ── Filter all data to the selected OpCo ───────────────────────────────────
   const allChanges = Array.isArray(changes) ? changes : [];
-  const recentChanges = allChanges.filter(c => { const d = new Date(c.date); return !isNaN(d) && d >= thirtyAgo; });
-  const upcomingDeadlines = allChanges.filter(c => daysFromNow(c.deadline, 60));
-  const overdueChanges = allChanges.filter(c => isPast(c.deadline));
+  const scopedChanges = opcoFrameworks
+    ? allChanges.filter(c => opcoFrameworks.has(c.framework))
+    : allChanges;
+  const poa         = opcoLower ? (Array.isArray(poaAll)         ? poaAll.filter(r => r.opco && r.opco.toLowerCase() === opcoLower)         : []) : poaAll;
+  const ip          = opcoLower ? (Array.isArray(ipAll)           ? ipAll.filter(r => r.opco && r.opco.toLowerCase() === opcoLower)           : []) : ipAll;
+  const licences    = opcoLower ? (Array.isArray(licencesAll)     ? licencesAll.filter(r => r.opco && r.opco.toLowerCase() === opcoLower)     : []) : licencesAll;
+  const litigations = opcoLower ? (Array.isArray(litigationsAll)  ? litigationsAll.filter(r => r.opco && r.opco.toLowerCase() === opcoLower)  : []) : litigationsAll;
+  const contracts   = opcoLower ? (Array.isArray(contractsAll)    ? contractsAll.filter(r => r.opco && r.opco.toLowerCase() === opcoLower)    : []) : contractsAll;
+
+  const recentChanges = scopedChanges.filter(c => { const d = new Date(c.date); return !isNaN(d) && d >= thirtyAgo; });
+  const upcomingDeadlines = scopedChanges.filter(c => daysFromNow(c.deadline, 60));
+  const overdueChanges = scopedChanges.filter(c => isPast(c.deadline));
 
   // Framework change counts
   const fwCounts = {};
@@ -416,9 +449,12 @@ async function buildGlobalContext(parentHolding) {
   const taskByPriority = { critical: 0, high: 0, medium: 0, low: 0 };
   openTasks.forEach(t => { if (taskByPriority[t.priority] !== undefined) taskByPriority[t.priority]++; });
 
-  // ESG
+  // ESG — filter to selected OpCo when set
   const esgMetrics = esgRaw?.metrics || {};
-  const esgKeys = Object.keys(esgMetrics);
+  const allEsgKeys = Object.keys(esgMetrics);
+  const esgKeys = opcoLower
+    ? allEsgKeys.filter(key => { const [, o] = key.split('::'); return o && o.toLowerCase() === opcoLower; })
+    : allEsgKeys;
   const latestEsgByOpco = {};
   esgKeys.forEach(key => {
     const [, opco, period] = key.split('::');
@@ -439,6 +475,7 @@ async function buildGlobalContext(parentHolding) {
 
   const lines = [];
   lines.push(`ORGANIZATION: ${parentHolding || 'All holdings'}`);
+  if (selectedOpco) lines.push(`SELECTED OPCO: ${selectedOpco} (all data in this snapshot is scoped to this OpCo only)`);
   lines.push(`DATE: ${now.toISOString().slice(0,10)}`);
   lines.push('');
   lines.push('=== GOVERNANCE & REGULATORY ===');
@@ -563,10 +600,10 @@ const MODULE_CONTEXT = {
  * Global GRC Intelligence Assistant — answers questions across all modules
  * with structured JSON responses for rich UI rendering.
  */
-export async function answerGlobal({ message, history, currentModule, persona, parentHolding }) {
+export async function answerGlobal({ message, history, currentModule, persona, parentHolding, selectedOpco }) {
   if (!isLlmConfigured()) return buildFallbackResponse(message);
 
-  const context = await buildGlobalContext(parentHolding);
+  const context = await buildGlobalContext(parentHolding, selectedOpco);
   const personaGuide = PERSONA_GUIDES[persona] || PERSONA_GUIDES['c-level'];
   const moduleContext = MODULE_CONTEXT[currentModule] || MODULE_CONTEXT['cross'];
 
@@ -579,7 +616,7 @@ export async function answerGlobal({ message, history, currentModule, persona, p
 CURRENT USER CONTEXT:
 - Persona: ${personaGuide}
 - Active module: ${moduleContext}
-- Selected organisation: ${parentHolding || 'all holdings'}
+- Selected organisation: ${parentHolding || 'all holdings'}${selectedOpco ? `\n- Selected OpCo: ${selectedOpco} — IMPORTANT: answer exclusively from this OpCo's data. Do not reference data from other OpCos.` : ''}
 
 YOUR CAPABILITIES:
 1. Detect which GRC module(s) the question relates to (governance, legal, esg, data, ownership, analysis, tasks, overview, cross)

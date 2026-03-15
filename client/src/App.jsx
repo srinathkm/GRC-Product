@@ -410,6 +410,7 @@ export default function App() {
       currentView={currentView}
       selectedRole={selectedRole}
       selectedParentHolding={selectedParentHolding}
+      selectedOpco={selectedOpco}
     />
     </>
   );
