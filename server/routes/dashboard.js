@@ -105,37 +105,46 @@ dashboardRouter.get('/summary', async (req, res) => {
     // ── Resolve frameworks for the selected OpCo ───────────────────────────
     // Build opcoFrameworks: the set of framework names the selected OpCo belongs to,
     // derived from companies.json (framework-keyed) and onboarding-opcos.json.
+    // All name comparisons are case-insensitive to handle inconsistent casing in data.
     let opcoFrameworks = null;
     if (opcoFilter) {
       opcoFrameworks = new Set();
+      const opcoLower = opcoFilter.toLowerCase();
       // companies.json: { [framework]: [{ parent, companies: [] }] }
       for (const [fw, entries] of Object.entries(companies)) {
         if (!Array.isArray(entries)) continue;
         for (const entry of entries) {
-          if ((entry.companies || []).includes(opcoFilter)) {
+          if ((entry.companies || []).some((c) => c && c.toLowerCase() === opcoLower)) {
             opcoFrameworks.add(fw);
           }
         }
       }
-      // onboarding-opcos.json: [{ opco, framework, applicableFrameworks }]
+      // onboarding-opcos.json: check applicableFrameworks and applicableFrameworksByLocation
       for (const row of onboarding) {
-        if (row.opco !== opcoFilter) continue;
-        if (row.framework) opcoFrameworks.add(row.framework);
+        if (!row.opco || row.opco.toLowerCase() !== opcoLower) continue;
+        // explicit list takes priority
         for (const fw of row.applicableFrameworks || []) opcoFrameworks.add(fw);
+        // fallback: extract from location-based pairs
+        for (const pair of row.applicableFrameworksByLocation || []) {
+          if (pair.framework) opcoFrameworks.add(pair.framework);
+        }
       }
+      // Remove "Onboarded" pseudo-framework — it has no matching changes
+      opcoFrameworks.delete('Onboarded');
     }
 
     // ── Apply OpCo filter ──────────────────────────────────────────────────
     // Regulatory changes: use framework membership (not affectedCompanies, which is
     // sparsely populated) so all framework changes relevant to the OpCo are shown.
+    const opcoLower = opcoFilter ? opcoFilter.toLowerCase() : null;
     const changes = opcoFrameworks
       ? allChanges.filter((c) => opcoFrameworks.has(c.framework))
       : allChanges;
-    const poa         = opcoFilter ? poaAll.filter((r) => r.opco === opcoFilter)         : poaAll;
-    const ip          = opcoFilter ? ipAll.filter((r) => r.opco === opcoFilter)          : ipAll;
-    const licences    = opcoFilter ? licencesAll.filter((r) => r.opco === opcoFilter)    : licencesAll;
-    const litigations = opcoFilter ? litigationsAll.filter((r) => r.opco === opcoFilter) : litigationsAll;
-    const contracts   = opcoFilter ? contractsAll.filter((r) => r.opco === opcoFilter)   : contractsAll;
+    const poa         = opcoLower ? poaAll.filter((r) => r.opco && r.opco.toLowerCase() === opcoLower)         : poaAll;
+    const ip          = opcoLower ? ipAll.filter((r) => r.opco && r.opco.toLowerCase() === opcoLower)          : ipAll;
+    const licences    = opcoLower ? licencesAll.filter((r) => r.opco && r.opco.toLowerCase() === opcoLower)    : licencesAll;
+    const litigations = opcoLower ? litigationsAll.filter((r) => r.opco && r.opco.toLowerCase() === opcoLower) : litigationsAll;
+    const contracts   = opcoLower ? contractsAll.filter((r) => r.opco && r.opco.toLowerCase() === opcoLower)   : contractsAll;
 
     // ── Entity counts ──────────────────────────────────────────────────────
     const parentSet = new Set();
@@ -168,6 +177,7 @@ dashboardRouter.get('/summary', async (req, res) => {
       if (!c.deadline) return false;
       return isExpired(c.deadline);
     });
+    const overdueFrameworkSet = new Set(overdueChanges.map((c) => c.framework).filter(Boolean));
 
     // Top frameworks by change volume (for bar chart)
     const topFrameworks = Object.entries(frameworkCounts)
@@ -284,6 +294,7 @@ dashboardRouter.get('/summary', async (req, res) => {
         total: recentChanges.length,
         critical: criticalChanges.length,
         overdue: overdueChanges.length,
+        overdueFrameworks: overdueFrameworkSet.size,
         frameworkBreakdown: frameworkCounts,
         topFrameworks,
       },

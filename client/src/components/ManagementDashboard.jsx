@@ -379,14 +379,14 @@ export function ManagementDashboard({ onNavigateToView }) {
             />
           )}
 
-          {/* When an OpCo is selected, show its framework count instead */}
-          {selectedOpco && Array.isArray(opcoFrameworks) && (
+          {/* When an OpCo is selected, show overdue framework items instead */}
+          {selectedOpco && (
             <KpiTile
-              icon="🗂️"
-              value={opcoFrameworks.length}
-              label="Applicable Frameworks"
-              sub={opcoFrameworks.length > 0 ? opcoFrameworks.slice(0, 2).join(', ') + (opcoFrameworks.length > 2 ? ` +${opcoFrameworks.length - 2}` : '') : 'None resolved'}
-              accentColor="#8b5cf6"
+              icon="⏰"
+              value={regulatoryChanges.overdueFrameworks ?? regulatoryChanges.overdue}
+              label="Overdue Framework Items"
+              sub={`${regulatoryChanges.overdue} overdue change${regulatoryChanges.overdue !== 1 ? 's' : ''} across frameworks`}
+              accentColor={regulatoryChanges.overdue > 0 ? '#ef4444' : '#22c55e'}
               onClick={() => navigate('governance-framework')}
             />
           )}
