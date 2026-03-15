@@ -224,12 +224,25 @@ export function ManagementDashboard({ onNavigateToView }) {
   const [error, setError] = useState(null);
   const [days, setDays] = useState(30);
   const [refreshing, setRefreshing] = useState(false);
+  const [selectedOpco, setSelectedOpco] = useState('');
+  const [opcoList, setOpcoList] = useState([]);
 
-  const load = useCallback((d, isRefresh = false) => {
+  // Fetch available OpCos once on mount
+  useEffect(() => {
+    fetch(`${API}/companies/roles`)
+      .then((r) => r.json())
+      .then((json) => { if (Array.isArray(json.opcos)) setOpcoList(json.opcos); })
+      .catch(() => {});
+  }, []);
+
+  const load = useCallback((d, opco, isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
     else setLoading(true);
     setError(null);
-    fetch(`${API}/dashboard/summary?days=${d}`)
+    const url = opco
+      ? `${API}/dashboard/summary?days=${d}&opco=${encodeURIComponent(opco)}`
+      : `${API}/dashboard/summary?days=${d}`;
+    fetch(url)
       .then((r) => r.json())
       .then((json) => {
         if (json.error) throw new Error(json.error);
@@ -239,9 +252,9 @@ export function ManagementDashboard({ onNavigateToView }) {
       .finally(() => { setLoading(false); setRefreshing(false); });
   }, []);
 
-  useEffect(() => { load(days); }, [days, load]);
+  useEffect(() => { load(days, selectedOpco); }, [days, selectedOpco, load]);
 
-  const handleRefresh = () => load(days, true);
+  const handleRefresh = () => load(days, selectedOpco, true);
 
   const navigate = (view) => {
     if (onNavigateToView) onNavigateToView(view);
@@ -264,7 +277,10 @@ export function ManagementDashboard({ onNavigateToView }) {
         <div>
           <h2 className="mgmt-dash-title">Management Dashboard</h2>
           <div className="mgmt-dash-subtitle">
-            Cross-portfolio compliance intelligence · {entities.totalParents} parent{entities.totalParents !== 1 ? 's' : ''} · {entities.totalOpcos} OpCos
+            {selectedOpco
+              ? <><span style={{ color: 'var(--accent)', fontWeight: 600 }}>{selectedOpco}</span> · OpCo view</>
+              : <>Cross-portfolio compliance intelligence · {entities.totalParents} parent{entities.totalParents !== 1 ? 's' : ''} · {entities.totalOpcos} OpCos</>
+            }
           </div>
         </div>
         <div className="mgmt-dash-header-right">
@@ -276,6 +292,20 @@ export function ManagementDashboard({ onNavigateToView }) {
           <span className="mgmt-dash-last-updated">
             Updated {generatedAt ? new Date(generatedAt).toLocaleTimeString() : '—'}
           </span>
+          {opcoList.length > 0 && (
+            <select
+              className="mgmt-dash-period-select"
+              value={selectedOpco}
+              onChange={(e) => setSelectedOpco(e.target.value)}
+              aria-label="Filter by OpCo"
+              style={{ minWidth: '160px' }}
+            >
+              <option value="">All OpCos</option>
+              {opcoList.map((o) => (
+                <option key={o} value={o}>{o}</option>
+              ))}
+            </select>
+          )}
           <select
             className="mgmt-dash-period-select"
             value={days}

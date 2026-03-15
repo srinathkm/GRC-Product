@@ -82,11 +82,12 @@ export const dashboardRouter = Router();
 dashboardRouter.get('/summary', async (req, res) => {
   try {
     const days = parseInt(req.query.days, 10) || 30;
+    const opcoFilter = req.query.opco ? req.query.opco.trim() : null;
     const now = new Date();
     const today = now.toISOString().slice(0, 10);
 
     // ── Load all data sources in parallel ──────────────────────────────────
-    const [changesRaw, companies, onboarding, poa, ip, licences, litigations, contracts, feedMeta] =
+    const [changesRaw, companies, onboarding, poaAll, ipAll, licencesAll, litigationsAll, contractsAll, feedMeta] =
       await Promise.all([
         safeRead(paths.changes, []),
         safeRead(paths.companies, {}),
@@ -99,7 +100,17 @@ dashboardRouter.get('/summary', async (req, res) => {
         safeRead(paths.feedMeta, null),
       ]);
 
-    const changes = normalizeDates(changesRaw);
+    const allChanges = normalizeDates(changesRaw);
+
+    // ── Apply OpCo filter ──────────────────────────────────────────────────
+    const changes = opcoFilter
+      ? allChanges.filter((c) => (c.affectedCompanies || []).includes(opcoFilter))
+      : allChanges;
+    const poa        = opcoFilter ? poaAll.filter((r) => r.opco === opcoFilter)        : poaAll;
+    const ip         = opcoFilter ? ipAll.filter((r) => r.opco === opcoFilter)         : ipAll;
+    const licences   = opcoFilter ? licencesAll.filter((r) => r.opco === opcoFilter)   : licencesAll;
+    const litigations = opcoFilter ? litigationsAll.filter((r) => r.opco === opcoFilter) : litigationsAll;
+    const contracts  = opcoFilter ? contractsAll.filter((r) => r.opco === opcoFilter)  : contractsAll;
 
     // ── Entity counts ──────────────────────────────────────────────────────
     const parentSet = new Set();
@@ -235,6 +246,7 @@ dashboardRouter.get('/summary', async (req, res) => {
     res.json({
       generatedAt: now.toISOString(),
       periodDays: days,
+      opcoFilter: opcoFilter || null,
 
       entities: {
         totalParents: parentSet.size,
