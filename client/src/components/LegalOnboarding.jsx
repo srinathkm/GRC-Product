@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import './LegalOnboarding.css';
-import { DocumentAutoFill } from './DocumentAutoFill.jsx';
 
 const API = '/api';
 
@@ -50,7 +49,8 @@ const MODULE_CONFIGS = {
     icon: '®',
     description: 'Register trademarks, patents and design rights. Tracks class, registration number, renewal deadlines and agent details — missed renewals result in irrevocable loss of IP rights.',
     endpoint: `${API}/ip`,
-    aiExtract: false,
+    extractEndpoint: `${API}/extract`,
+    aiExtract: true,
     acceptBulk: true,
     requiredKeys: ['parent', 'mark', 'jurisdiction'],
     fields: [
@@ -69,7 +69,12 @@ const MODULE_CONFIGS = {
       { key: 'agent',           label: 'IP Agent / Representative',type: 'text' },
       { key: 'notes',           label: 'Notes',                   type: 'textarea' },
     ],
-    aiSteps: [],
+    aiSteps: [
+      'Extracting certificate or registration document text',
+      'Identifying mark name, IP type and class',
+      'Parsing registration and application numbers',
+      'Extracting filing, registration and renewal dates',
+    ],
   },
   licence: {
     id: 'licence',
@@ -77,7 +82,8 @@ const MODULE_CONFIGS = {
     icon: '🏛',
     description: 'Track commercial, professional and regulatory licences. Expiry of a key licence can result in suspension of operations, regulatory penalties or loss of market authorisation.',
     endpoint: `${API}/licences`,
-    aiExtract: false,
+    extractEndpoint: `${API}/extract`,
+    aiExtract: true,
     acceptBulk: true,
     requiredKeys: ['parent', 'licenceType', 'jurisdiction'],
     fields: [
@@ -95,7 +101,12 @@ const MODULE_CONFIGS = {
       { key: 'renewalFee',      label: 'Renewal Fee (currency)',  type: 'text' },
       { key: 'notes',           label: 'Notes',                   type: 'textarea' },
     ],
-    aiSteps: [],
+    aiSteps: [
+      'Extracting licence document text',
+      'Identifying licence type and issuing authority',
+      'Parsing licence number and jurisdiction',
+      'Extracting validity and renewal dates',
+    ],
   },
   litigation: {
     id: 'litigation',
@@ -103,6 +114,7 @@ const MODULE_CONFIGS = {
     icon: '⚖',
     description: 'Record court cases, arbitration proceedings and regulatory investigations. Tracks financial exposure, counsel assignments and hearing schedules — essential for board reporting and provisioning.',
     endpoint: `${API}/litigations`,
+    extractEndpoint: `${API}/extract`,
     aiExtract: true,
     acceptBulk: true,
     requiredKeys: ['parent', 'caseId', 'court'],
@@ -126,7 +138,12 @@ const MODULE_CONFIGS = {
       { key: 'boardNotified',   label: 'Board / Audit Committee Notified', type: 'checkbox' },
       { key: 'notes',           label: 'Notes / Strategy Summary',     type: 'textarea' },
     ],
-    aiSteps: [],
+    aiSteps: [
+      'Extracting court filing or case document text',
+      'Identifying case reference and parties',
+      'Parsing claim type and financial exposure',
+      'Extracting hearing dates and counsel details',
+    ],
   },
 };
 
@@ -549,11 +566,6 @@ export function LegalOnboarding({ language = 'en', parents = [] }) {
     setFormData((d) => ({ ...d, [key]: value }));
   };
 
-  // Merge AI-extracted fields from DocumentAutoFill into formData
-  const handleDocAutoFill = (fields) => {
-    setFormData((d) => ({ ...d, ...fields }));
-  };
-
   // ── File Upload handling ──
   const handleFileDrop = useCallback((e) => {
     e.preventDefault();
@@ -645,6 +657,8 @@ export function LegalOnboarding({ language = 'en', parents = [] }) {
 
     const fd = new FormData();
     fd.append('file', file);
+    // Universal /api/extract endpoint requires a module param; POA's own endpoint ignores it
+    fd.append('module', config.id === 'licence' ? 'licences' : config.id);
 
     try {
       const res = await fetch(config.extractEndpoint, { method: 'POST', body: fd });
@@ -654,14 +668,21 @@ export function LegalOnboarding({ language = 'en', parents = [] }) {
       clearInterval(interval);
       setAiProgress((prev) => prev.map((s) => ({ ...s, status: 'done' })));
 
-      if (data.extracted) {
-        setFormData((prev) => {
-          const merged = { ...prev };
-          for (const [k, v] of Object.entries(data.extracted)) {
-            if (v !== undefined && v !== null && v !== '') merged[k] = v;
-          }
-          return merged;
-        });
+      // Normalise: /api/extract returns { fields: { key: {value, confidence} } }
+      //            /api/poa/extract returns { extracted: { key: value } }
+      const flat = {};
+      if (data.fields) {
+        for (const [k, f] of Object.entries(data.fields)) {
+          if (f && f.value !== undefined && f.value !== null && f.value !== '') flat[k] = f.value;
+        }
+      } else if (data.extracted) {
+        for (const [k, v] of Object.entries(data.extracted)) {
+          if (v !== undefined && v !== null && v !== '') flat[k] = v;
+        }
+      }
+
+      if (Object.keys(flat).length > 0) {
+        setFormData((prev) => ({ ...prev, ...flat }));
       }
     } catch (e) {
       clearInterval(interval);
@@ -875,12 +896,6 @@ export function LegalOnboarding({ language = 'en', parents = [] }) {
               {isExtracting && (
                 <p className="lo-extracting-msg">Extracting document data, please wait…</p>
               )}
-              <DocumentAutoFill
-                module={selectedModule}
-                onApply={handleDocAutoFill}
-                compact
-                fieldLabels={Object.fromEntries(config.fields.map((f) => [f.key, f.label]))}
-              />
               <div className="lo-fields-grid">
                 {config.fields.map((field) => (
                   <FormField
