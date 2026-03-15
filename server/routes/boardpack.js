@@ -83,7 +83,7 @@ function normalizeDates(data) {
 }
 
 function fmtDate(dateStr) {
-  if (!dateStr) return '—';
+  if (!dateStr) return '-';
   const d = new Date(dateStr);
   if (isNaN(d)) return dateStr;
   return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
@@ -231,9 +231,9 @@ async function buildBoardPack(payload) {
 
   // Top 5 upcoming expiry items (for decisions section)
   const upcomingItems = [
-    ...expiringPoa.map(p => ({ type: 'POA',      name: p.holderName || '—', opco: p.opco || '—', date: p.validUntil,  days: daysUntil(p.validUntil) })),
-    ...expiringLic.map(l => ({ type: 'Licence',  name: l.licenceType || l.licenceName || '—', opco: l.opco || '—', date: l.expiryDate, days: daysUntil(l.expiryDate) })),
-    ...expiringCon.map(c => ({ type: 'Contract', name: c.title || c.contractId || '—', opco: c.opco || '—', date: c.expiryDate, days: daysUntil(c.expiryDate) })),
+    ...expiringPoa.map(p => ({ type: 'POA',      name: p.holderName || '-', opco: p.opco || '-', date: p.validUntil,  days: daysUntil(p.validUntil) })),
+    ...expiringLic.map(l => ({ type: 'Licence',  name: l.licenceType || l.licenceName || '-', opco: l.opco || '-', date: l.expiryDate, days: daysUntil(l.expiryDate) })),
+    ...expiringCon.map(c => ({ type: 'Contract', name: c.title || c.contractId || '-', opco: c.opco || '-', date: c.expiryDate, days: daysUntil(c.expiryDate) })),
   ].filter(x => x.days !== null).sort((a, b) => a.days - b.days).slice(0, 6);
 
   // Top regulatory highlights (most recent + critical first)
@@ -276,7 +276,7 @@ async function buildBoardPack(payload) {
 
     // Footer
     p.drawRectangle({ x: 0, y: 0, width: PAGE_W, height: FOOTER_H, color: C.navy });
-    p.drawText('Prepared by Raqib · For Board use only · Not for external distribution', { x: M, y: 10, font: ital, size: 6.5, color: rgb(0.55, 0.62, 0.75) });
+    p.drawText('Prepared by Raqib | For Board use only | Not for external distribution', { x: M, y: 10, font: ital, size: 6.5, color: rgb(0.55, 0.62, 0.75) });
     const pg = `Page ${pageCount}`;
     p.drawText(pg, { x: PAGE_W - M - font.widthOfTextAtSize(pg, 7), y: 10, font, size: 7, color: rgb(0.55, 0.62, 0.75) });
 
@@ -383,7 +383,7 @@ async function buildBoardPack(payload) {
 
   // Classification notice
   page.drawRectangle({ x: M, y: 170, width: CW, height: 36, color: rgb(0.86, 0.21, 0.21) });
-  const classLine1 = 'CONFIDENTIAL — FOR BOARD MEMBERS ONLY';
+  const classLine1 = 'CONFIDENTIAL - FOR BOARD MEMBERS ONLY';
   const classLine2 = 'This document contains material non-public information. Do not circulate outside of the Board.';
   const cl1W = bold.widthOfTextAtSize(classLine1, 9);
   page.drawText(classLine1, { x: M + (CW - cl1W) / 2, y: 196, font: bold, size: 9, color: C.white });
@@ -428,7 +428,7 @@ async function buildBoardPack(payload) {
   y = drawParagraph(page, y, narrative1, 13, 9);
   y -= 8;
 
-  const narrative2 = `${critical.length} event${critical.length !== 1 ? 's carry' : ' carries'} an upcoming compliance deadline within 90 days, and ${overdue.length} item${overdue.length !== 1 ? 's are' : ' is'} overdue — these represent the most time-sensitive obligations and require Board awareness. ${expiryRisk} legal instrument${expiryRisk !== 1 ? 's are' : ' is'} expiring within 90 days, including POAs, licences, and contracts.`;
+  const narrative2 = `${critical.length} event${critical.length !== 1 ? 's carry' : ' carries'} an upcoming compliance deadline within 90 days, and ${overdue.length} item${overdue.length !== 1 ? 's are' : ' is'} overdue - these represent the most time-sensitive obligations and require Board awareness. ${expiryRisk} legal instrument${expiryRisk !== 1 ? 's are' : ' is'} expiring within 90 days, including POAs, licences, and contracts.`;
   y = drawParagraph(page, y, narrative2, 13, 9);
   y -= 8;
 
@@ -457,13 +457,13 @@ async function buildBoardPack(payload) {
   y -= 8;
 
   const metricsData = [
-    ['Compliance Health Score', `${healthScore} / 100 — ${healthLabel}`, healthColor],
+    ['Compliance Health Score', `${healthScore} / 100 - ${healthLabel}`, healthColor],
     ['Regulatory Events This Period', `${recent.length} events across ${topFws.length} frameworks`, C.text],
-    ['Critical Deadline Items (≤90d)', `${critical.length}`, critical.length > 0 ? C.red : C.green],
+    ['Critical Deadline Items (<=90d)', `${critical.length}`, critical.length > 0 ? C.red : C.green],
     ['Overdue Compliance Items', `${overdue.length}`, overdue.length > 0 ? C.red : C.green],
-    ['Active POA Records', `${activePoa.length} (${expiredPoa.length} expired, ${expiringPoa.length} expiring ≤90d)`, expiringPoa.length + expiredPoa.length > 0 ? C.amber : C.text],
-    ['Active Licences', `${activeLic.length} (${expiredLic.length} expired, ${expiringLic.length} expiring ≤90d)`, expiringLic.length + expiredLic.length > 0 ? C.amber : C.text],
-    ['Active Contracts', `${activeCon.length} (${expiringCon.length} expiring ≤90d)`, expiringCon.length > 0 ? C.amber : C.text],
+    ['Active POA Records', `${activePoa.length} (${expiredPoa.length} expired, ${expiringPoa.length} expiring <=90d)`, expiringPoa.length + expiredPoa.length > 0 ? C.amber : C.text],
+    ['Active Licences', `${activeLic.length} (${expiredLic.length} expired, ${expiringLic.length} expiring <=90d)`, expiringLic.length + expiredLic.length > 0 ? C.amber : C.text],
+    ['Active Contracts', `${activeCon.length} (${expiringCon.length} expiring <=90d)`, expiringCon.length > 0 ? C.amber : C.text],
     ['Active Litigations', `${activeLit.length} (${highRiskLit.length} high/critical risk)`, highRiskLit.length > 0 ? C.red : C.text],
     ['Open Compliance Tasks', `${openTasks.length} (${overdueTasks.length} overdue)`, overdueTasks.length > 0 ? C.amber : C.text],
   ];
@@ -520,7 +520,7 @@ async function buildBoardPack(payload) {
       page.drawRectangle({ x: M, y: y - 10, width: CW, height: 20, color: rgb(0.99, 0.94, 0.94) });
       page.drawRectangle({ x: M, y: y - 10, width: 3, height: 20, color: C.red });
       const title = wrapText(c.title || 'Untitled', CW - 200, bold, 8)[0] || '';
-      page.drawText(s(`${c.framework || '—'}: ${title}`), { x: M + 8, y, font: bold, size: 8, color: C.red });
+      page.drawText(s(`${c.framework || '-'}: ${title}`), { x: M + 8, y, font: bold, size: 8, color: C.red });
       page.drawText(`Deadline passed: ${fmtDate(c.deadline)}`, { x: PAGE_W - M - 160, y, font, size: 7.5, color: C.red });
       y -= 24;
     }
@@ -528,7 +528,7 @@ async function buildBoardPack(payload) {
   y -= 6;
 
   // ── Critical upcoming deadlines ──────────────────────────────────────────────
-  page.drawText('CRITICAL UPCOMING DEADLINES  (≤90 DAYS)', { x: M, y, font: bold, size: 8, color: C.amber });
+  page.drawText('CRITICAL UPCOMING DEADLINES  (<=90 DAYS)', { x: M, y, font: bold, size: 8, color: C.amber });
   y -= 14;
   if (critical.length === 0) {
     page.drawText('No critical deadlines within 90 days.', { x: M, y, font: ital, size: 8, color: C.muted });
@@ -541,7 +541,7 @@ async function buildBoardPack(payload) {
       page.drawRectangle({ x: M, y: y - 10, width: CW, height: 20, color: rowColor });
       page.drawRectangle({ x: M, y: y - 10, width: 3, height: 20, color: du <= 30 ? C.amber : C.accent });
       const title2 = wrapText(c.title || 'Untitled', CW - 200, bold, 8)[0] || '';
-      page.drawText(s(`${c.framework || '—'}: ${title2}`), { x: M + 8, y, font: bold, size: 8, color: C.text });
+      page.drawText(s(`${c.framework || '-'}: ${title2}`), { x: M + 8, y, font: bold, size: 8, color: C.text });
       page.drawText(`Due: ${fmtDate(c.deadline)}  (${du}d)`, { x: PAGE_W - M - 150, y, font, size: 7.5, color: du <= 30 ? C.amber : C.muted });
       y -= 24;
     }
@@ -568,8 +568,8 @@ async function buildBoardPack(payload) {
       if (y < BODY_BOT + 16) break;
       const matter = wrapText(l.caseTitle || l.matter || 'Unnamed matter', 190, font, 7.5)[0] || '';
       page.drawText(s(matter), { x: M, y, font, size: 7.5, color: C.text });
-      page.drawText(s(l.opco || '—'), { x: M + 200, y, font, size: 7.5, color: C.text });
-      page.drawText(s(l.status || '—'), { x: M + 300, y, font, size: 7.5, color: C.text });
+      page.drawText(s(l.opco || '-'), { x: M + 200, y, font, size: 7.5, color: C.text });
+      page.drawText(s(l.status || '-'), { x: M + 300, y, font, size: 7.5, color: C.text });
       drawRiskPill(page, M + 380, y, l.riskLevel);
       y -= 14;
     }
@@ -641,7 +641,7 @@ async function buildBoardPack(payload) {
     y -= 14;
     for (const t of overdueTasks.slice(0, 4)) {
       if (y < BODY_BOT + 16) break;
-      page.drawText(s(`• ${t.title || 'Unnamed task'} — assigned: ${t.assignedTo || 'unassigned'}, due: ${fmtDate(t.dueDate)}`), { x: M, y, font, size: 7.5, color: C.text });
+      page.drawText(s(`- ${t.title || 'Unnamed task'} | assigned: ${t.assignedTo || 'unassigned'}, due: ${fmtDate(t.dueDate)}`), { x: M, y, font, size: 7.5, color: C.text });
       y -= 12;
     }
   }
@@ -679,8 +679,8 @@ async function buildBoardPack(payload) {
       page.drawRectangle({ x: M, y: y - 10, width: CW, height: 18, color: rowBg });
       const matter = wrapText(l.caseTitle || l.matter || 'Unnamed', 186, font, 7.5)[0] || '';
       page.drawText(s(matter), { x: M + 6, y: y - 2, font, size: 7.5, color: C.text });
-      page.drawText(s(l.jurisdiction || l.court || '—'), { x: M + 200, y: y - 2, font, size: 7.5, color: C.text });
-      page.drawText(s(l.stage || l.status || '—'), { x: M + 310, y: y - 2, font, size: 7.5, color: C.text });
+      page.drawText(s(l.jurisdiction || l.court || '-'), { x: M + 200, y: y - 2, font, size: 7.5, color: C.text });
+      page.drawText(s(l.stage || l.status || '-'), { x: M + 310, y: y - 2, font, size: 7.5, color: C.text });
       drawRiskPill(page, M + 410, y - 2, l.riskLevel);
       y -= 18;
     }
@@ -704,7 +704,7 @@ async function buildBoardPack(payload) {
       page.drawRectangle({ x: M, y: y - 10, width: CW, height: 18, color: rowBg });
       const title3 = wrapText(c.title || c.contractId || 'Unnamed', 200, font, 7.5)[0] || '';
       page.drawText(s(title3), { x: M + 6, y: y - 2, font, size: 7.5, color: C.text });
-      page.drawText(s(c.opco || '—'), { x: M + 220, y: y - 2, font, size: 7.5, color: C.muted });
+      page.drawText(s(c.opco || '-'), { x: M + 220, y: y - 2, font, size: 7.5, color: C.muted });
       page.drawText(`Expires: ${fmtDate(c.expiryDate)}`, { x: M + 340, y: y - 2, font, size: 7.5, color: urgColor });
       if (du !== null) page.drawText(`${du}d`, { x: M + 460, y: y - 2, font: bold, size: 7.5, color: urgColor });
       y -= 18;
@@ -717,8 +717,8 @@ async function buildBoardPack(payload) {
     y -= 6;
     const exposureItems = [
       `Active litigations: ${activeLit.length}  |  High/Critical risk: ${highRiskLit.length}`,
-      `Active contracts: ${activeCon.length}  |  Expiring ≤90d: ${expiringCon.length}`,
-      `Active licences: ${activeLic.length}  |  Expired: ${expiredLic.length}  |  Expiring ≤90d: ${expiringLic.length}`,
+      `Active contracts: ${activeCon.length}  |  Expiring <=90d: ${expiringCon.length}`,
+      `Active licences: ${activeLic.length}  |  Expired: ${expiredLic.length}  |  Expiring <=90d: ${expiringLic.length}`,
     ];
     page.drawRectangle({ x: M, y: y - 10 - (exposureItems.length * 14), width: CW, height: 20 + exposureItems.length * 14, color: C.offWhite });
     page.drawRectangle({ x: M, y: y - 10 - (exposureItems.length * 14), width: 3, height: 20 + exposureItems.length * 14, color: C.accent });
