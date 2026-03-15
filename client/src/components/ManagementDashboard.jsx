@@ -299,6 +299,11 @@ export function ManagementDashboard({ onNavigateToView, selectedOpco = '', onOpc
   const totalExpiring = (poa.expiringSoon || 0) + (licences.expiringSoon || 0) + (contracts.expiringSoon || 0);
   const totalExpired  = (poa.expired || 0) + (licences.expired || 0) + (contracts.expired || 0);
 
+  // When a specific OpCo is selected, only show that OpCo in the heat map
+  const filteredOpcoAlerts = selectedOpco
+    ? topOpcoAlerts.filter((a) => a.opco.toLowerCase() === selectedOpco.toLowerCase())
+    : topOpcoAlerts;
+
   return (
     <div className="mgmt-dash">
       {/* ── HEADER ── */}
@@ -480,7 +485,7 @@ export function ManagementDashboard({ onNavigateToView, selectedOpco = '', onOpc
           <p style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginBottom: '0.6rem', marginTop: 0 }}>
             Colour intensity = regulatory change exposure. Click any cell for entity details.
           </p>
-          <OpcoHeatMap topOpcoAlerts={topOpcoAlerts} onNavigate={navigate} />
+          <OpcoHeatMap topOpcoAlerts={filteredOpcoAlerts} onNavigate={navigate} />
         </div>
       </div>
 
