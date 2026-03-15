@@ -54,6 +54,49 @@
   border: 1px solid #22c55e44;
 }
 
+/* ── Board Pack button ── */
+.btn-board-pack {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.76rem;
+  font-weight: 600;
+  padding: 5px 13px;
+  border-radius: 6px;
+  border: 1px solid rgba(59, 130, 246, 0.55);
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.18) 0%, rgba(99, 102, 241, 0.14) 100%);
+  color: #93c5fd;
+  cursor: pointer;
+  transition: background 0.18s, border-color 0.18s, color 0.18s;
+  white-space: nowrap;
+}
+.btn-board-pack:hover:not(:disabled) {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.30) 0%, rgba(99, 102, 241, 0.24) 100%);
+  border-color: rgba(59, 130, 246, 0.8);
+  color: #bfdbfe;
+}
+.btn-board-pack:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+.bp-icon {
+  font-size: 0.85rem;
+  line-height: 1;
+}
+@keyframes bp-spin {
+  to { transform: rotate(360deg); }
+}
+.bp-spinner {
+  display: inline-block;
+  width: 11px;
+  height: 11px;
+  border: 2px solid rgba(147, 197, 253, 0.3);
+  border-top-color: #93c5fd;
+  border-radius: 50%;
+  animation: bp-spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
 .mgmt-dash-period-select {
   background: var(--surface);
   color: var(--text);

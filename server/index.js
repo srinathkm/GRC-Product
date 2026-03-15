@@ -29,6 +29,7 @@ import { tasksRouter } from './routes/tasks.js';
 import { fieldMappingsRouter } from './routes/fieldMappings.js';
 import { esgRouter } from './routes/esg.js';
 import { assistantRouter } from './routes/assistant.js';
+import { boardPackRouter } from './routes/boardpack.js';
 import { startFeedScheduler } from './services/regulatoryFeed.js';
 
 const app = express();
@@ -60,6 +61,7 @@ app.use('/api/tasks', tasksRouter);
 app.use('/api/field-mappings', fieldMappingsRouter);
 app.use('/api/esg', esgRouter);
 app.use('/api/assistant', assistantRouter);
+app.use('/api/board-pack', boardPackRouter);
 
 app.get('/api/health', (_, res) => res.json({ status: 'ok' }));
 app.get('/api/frameworks', (_, res) => res.json({ frameworks: FRAMEWORKS, references: FRAMEWORK_REFERENCES }));

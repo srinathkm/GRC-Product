@@ -225,6 +225,7 @@ export function ManagementDashboard({ onNavigateToView, selectedOpco = '', onOpc
   const [days, setDays] = useState(30);
   const [refreshing, setRefreshing] = useState(false);
   const [opcoList, setOpcoList] = useState([]);
+  const [boardPackGenerating, setBoardPackGenerating] = useState(false);
 
   // Fetch available OpCos once on mount
   useEffect(() => {
@@ -254,6 +255,34 @@ export function ManagementDashboard({ onNavigateToView, selectedOpco = '', onOpc
   useEffect(() => { load(days, selectedOpco); }, [days, selectedOpco, load]);
 
   const handleRefresh = () => load(days, selectedOpco, true);
+
+  const handleBoardPack = useCallback(async () => {
+    if (boardPackGenerating) return;
+    setBoardPackGenerating(true);
+    try {
+      const body = { periodDays: days };
+      if (selectedOpco) body.opco = selectedOpco;
+      if (data?.opcoFilter === null && !selectedOpco) body.parentHolding = '';
+      const res = await fetch('/api/board-pack', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) throw new Error(`Server error ${res.status}`);
+      const blob = await res.blob();
+      const disposition = res.headers.get('Content-Disposition') || '';
+      const match = disposition.match(/filename="([^"]+)"/);
+      const filename = match ? match[1] : 'Board_Compliance_Pack.pdf';
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = filename; a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      alert(`Board Pack generation failed: ${e.message}`);
+    } finally {
+      setBoardPackGenerating(false);
+    }
+  }, [boardPackGenerating, days, selectedOpco, data]);
 
   const navigate = (view) => {
     if (onNavigateToView) onNavigateToView(view);
@@ -316,6 +345,18 @@ export function ManagementDashboard({ onNavigateToView, selectedOpco = '', onOpc
             <option value={180}>Last 6 months</option>
             <option value={365}>Last 1 year</option>
           </select>
+          <button
+            type="button"
+            className="btn btn-board-pack"
+            onClick={handleBoardPack}
+            disabled={boardPackGenerating}
+            title={selectedOpco ? `Generate Board Pack for ${selectedOpco}` : 'Generate Board Compliance Pack for this period'}
+          >
+            {boardPackGenerating
+              ? <><span className="bp-spinner" />Generating…</>
+              : <><span className="bp-icon">📋</span>Board Pack</>
+            }
+          </button>
           <button
             type="button"
             className="btn btn-secondary"
