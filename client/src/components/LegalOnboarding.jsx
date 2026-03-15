@@ -658,7 +658,8 @@ export function LegalOnboarding({ language = 'en', parents = [] }) {
     const fd = new FormData();
     fd.append('file', file);
     // Universal /api/extract endpoint requires a module param; POA's own endpoint ignores it
-    fd.append('module', config.id === 'licence' ? 'licences' : config.id);
+    const moduleMap = { licence: 'licences', litigation: 'litigations' };
+    fd.append('module', moduleMap[config.id] ?? config.id);
 
     try {
       const res = await fetch(config.extractEndpoint, { method: 'POST', body: fd });
