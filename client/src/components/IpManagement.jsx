@@ -1,6 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
+import { DocumentAutoFill, useDocumentAutoFill } from './DocumentAutoFill.jsx';
 
 const API = '/api';
+
+const IP_FIELD_LABELS = {
+  mark: 'Mark / IP Name', ipType: 'Type', class: 'Class', jurisdiction: 'Jurisdiction',
+  registrationNo: 'Registration No.', applicationNo: 'Application No.',
+  filingDate: 'Filing Date', registrationDate: 'Registration Date',
+  renewalDate: 'Renewal Date', status: 'Status', agent: 'IP Agent',
+};
 
 export function IpManagement({ language = 'en', parents = [], selectedParentHolding, onParentHoldingChange }) {
   const [records, setRecords] = useState([]);
@@ -9,6 +17,7 @@ export function IpManagement({ language = 'en', parents = [], selectedParentHold
   const [filterOpco, setFilterOpco] = useState('');
   const [editingId, setEditingId] = useState(null);
   const [readOnlyIp, setReadOnlyIp] = useState(false);
+  const { applyExtracted, sendFeedback } = useDocumentAutoFill('ip');
 
   const [form, setForm] = useState({
     parent: selectedParentHolding || '',
@@ -65,12 +74,18 @@ export function IpManagement({ language = 'en', parents = [], selectedParentHold
     }));
   };
 
+  const handleAutoFill = (fields) => {
+    const extracted = applyExtracted(fields);
+    setForm((prev) => ({ ...prev, ...extracted }));
+  };
+
   const handleSave = (e) => {
     e.preventDefault();
     const parent = (form.parent || '').trim();
     const mark = (form.mark || '').trim();
     const jurisdiction = (form.jurisdiction || '').trim();
     if (!parent || !mark || !jurisdiction) return;
+    sendFeedback({}, form);  // record any user edits as learning signal
     const payload = {
       ...(editingId ? { id: editingId } : {}),
       ...form,
@@ -182,6 +197,7 @@ export function IpManagement({ language = 'en', parents = [], selectedParentHold
 
       <form className="ip-form" onSubmit={handleSave}>
         <h3 className="ip-form-title">Add / update IP asset</h3>
+        <DocumentAutoFill module="ip" fieldLabels={IP_FIELD_LABELS} onApply={handleAutoFill} compact />
         <div className="ip-form-grid">
           <div className="ip-field">
             <label>Parent Holding</label>

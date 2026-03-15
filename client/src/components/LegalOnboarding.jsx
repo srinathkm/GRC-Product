@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import './LegalOnboarding.css';
+import { DocumentAutoFill } from './DocumentAutoFill.jsx';
 
 const API = '/api';
 
@@ -102,7 +103,7 @@ const MODULE_CONFIGS = {
     icon: '⚖',
     description: 'Record court cases, arbitration proceedings and regulatory investigations. Tracks financial exposure, counsel assignments and hearing schedules — essential for board reporting and provisioning.',
     endpoint: `${API}/litigations`,
-    aiExtract: false,
+    aiExtract: true,
     acceptBulk: true,
     requiredKeys: ['parent', 'caseId', 'court'],
     fields: [
@@ -548,6 +549,11 @@ export function LegalOnboarding({ language = 'en', parents = [] }) {
     setFormData((d) => ({ ...d, [key]: value }));
   };
 
+  // Merge AI-extracted fields from DocumentAutoFill into formData
+  const handleDocAutoFill = (fields) => {
+    setFormData((d) => ({ ...d, ...fields }));
+  };
+
   // ── File Upload handling ──
   const handleFileDrop = useCallback((e) => {
     e.preventDefault();
@@ -869,6 +875,12 @@ export function LegalOnboarding({ language = 'en', parents = [] }) {
               {isExtracting && (
                 <p className="lo-extracting-msg">Extracting document data, please wait…</p>
               )}
+              <DocumentAutoFill
+                module={activeModule}
+                onApply={handleDocAutoFill}
+                compact
+                fieldLabels={Object.fromEntries(config.fields.map((f) => [f.key, f.label]))}
+              />
               <div className="lo-fields-grid">
                 {config.fields.map((field) => (
                   <FormField

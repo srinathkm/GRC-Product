@@ -28,6 +28,7 @@ import { auditRouter } from './routes/audit.js';
 import { tasksRouter } from './routes/tasks.js';
 import { fieldMappingsRouter } from './routes/fieldMappings.js';
 import { esgRouter } from './routes/esg.js';
+import { extractRouter } from './routes/extract.js';
 import { assistantRouter } from './routes/assistant.js';
 import { boardPackRouter } from './routes/boardpack.js';
 import { startFeedScheduler } from './services/regulatoryFeed.js';
@@ -60,6 +61,7 @@ app.use('/api/audit', auditRouter);
 app.use('/api/tasks', tasksRouter);
 app.use('/api/field-mappings', fieldMappingsRouter);
 app.use('/api/esg', esgRouter);
+app.use('/api/extract', extractRouter);
 app.use('/api/assistant', assistantRouter);
 app.use('/api/board-pack', boardPackRouter);
 

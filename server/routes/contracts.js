@@ -5,6 +5,7 @@ import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import { createChatCompletion, isLlmConfigured } from '../services/llm.js';
 import { extractTextFromBuffer } from '../services/text-extract.js';
+import { recordExtraction } from '../services/fieldLearningService.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const DATA_PATH = join(__dirname, '../data/contracts.json');
@@ -283,6 +284,13 @@ contractsRouter.post('/upload', contractUpload.array('files', 20), async (req, r
       const path = join(UPLOADS_DIR, fileId);
       await writeFile(path, file.buffer);
       const extracted = await extractContractFieldsFromBuffer(file.buffer, file.mimetype || 'application/octet-stream');
+      if (extracted) {
+        const learningFields = Object.fromEntries(
+          Object.entries(extracted).filter(([, v]) => v !== '' && v != null)
+            .map(([k, v]) => [k, { value: v, confidence: 0.8, label: '' }])
+        );
+        recordExtraction('contracts', learningFields).catch(() => {});
+      }
       results.push({
         fileId,
         contractId,

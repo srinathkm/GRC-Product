@@ -1,6 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
+import { DocumentAutoFill, useDocumentAutoFill } from './DocumentAutoFill.jsx';
 
 const API = '/api';
+
+const LIC_FIELD_LABELS = {
+  licenceType: 'Licence Type', licenceNo: 'Licence No.', jurisdiction: 'Jurisdiction',
+  issuingAuthority: 'Issuing Authority', regulatoryBody: 'Regulatory Body',
+  validFrom: 'Valid From', validUntil: 'Valid Until', status: 'Status',
+  renewalFee: 'Renewal Fee', dependencies: 'Dependencies / Conditions',
+};
 
 export function LicenceManagement({ language = 'en', parents = [], selectedParentHolding, onParentHoldingChange }) {
   const [records, setRecords] = useState([]);
@@ -8,6 +16,7 @@ export function LicenceManagement({ language = 'en', parents = [], selectedParen
   const [filterStatus, setFilterStatus] = useState('all');
   const [editingId, setEditingId] = useState(null);
   const [readOnlyLic, setReadOnlyLic] = useState(false);
+  const { applyExtracted, sendFeedback } = useDocumentAutoFill('licences');
 
   const [form, setForm] = useState({
     parent: selectedParentHolding || '',
@@ -60,12 +69,18 @@ export function LicenceManagement({ language = 'en', parents = [], selectedParen
     }));
   };
 
+  const handleAutoFill = (fields) => {
+    const extracted = applyExtracted(fields);
+    setForm((prev) => ({ ...prev, ...extracted }));
+  };
+
   const handleSave = (e) => {
     e.preventDefault();
     const parent = (form.parent || '').trim();
     const licenceType = (form.licenceType || '').trim();
     const jurisdiction = (form.jurisdiction || '').trim();
     if (!parent || !licenceType || !jurisdiction) return;
+    sendFeedback({}, form);
     const payload = {
       ...(editingId ? { id: editingId } : {}),
       ...form,
@@ -182,6 +197,7 @@ export function LicenceManagement({ language = 'en', parents = [], selectedParen
 
       <form className="lic-form" onSubmit={handleSave}>
         <h3 className="lic-form-title">Add / update licence</h3>
+        <DocumentAutoFill module="licences" fieldLabels={LIC_FIELD_LABELS} onApply={handleAutoFill} compact />
         <div className="lic-form-grid">
           <div className="lic-field">
             <label>Parent Holding</label>
