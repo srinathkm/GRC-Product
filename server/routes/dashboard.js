@@ -102,15 +102,40 @@ dashboardRouter.get('/summary', async (req, res) => {
 
     const allChanges = normalizeDates(changesRaw);
 
+    // ── Resolve frameworks for the selected OpCo ───────────────────────────
+    // Build opcoFrameworks: the set of framework names the selected OpCo belongs to,
+    // derived from companies.json (framework-keyed) and onboarding-opcos.json.
+    let opcoFrameworks = null;
+    if (opcoFilter) {
+      opcoFrameworks = new Set();
+      // companies.json: { [framework]: [{ parent, companies: [] }] }
+      for (const [fw, entries] of Object.entries(companies)) {
+        if (!Array.isArray(entries)) continue;
+        for (const entry of entries) {
+          if ((entry.companies || []).includes(opcoFilter)) {
+            opcoFrameworks.add(fw);
+          }
+        }
+      }
+      // onboarding-opcos.json: [{ opco, framework, applicableFrameworks }]
+      for (const row of onboarding) {
+        if (row.opco !== opcoFilter) continue;
+        if (row.framework) opcoFrameworks.add(row.framework);
+        for (const fw of row.applicableFrameworks || []) opcoFrameworks.add(fw);
+      }
+    }
+
     // ── Apply OpCo filter ──────────────────────────────────────────────────
-    const changes = opcoFilter
-      ? allChanges.filter((c) => (c.affectedCompanies || []).includes(opcoFilter))
+    // Regulatory changes: use framework membership (not affectedCompanies, which is
+    // sparsely populated) so all framework changes relevant to the OpCo are shown.
+    const changes = opcoFrameworks
+      ? allChanges.filter((c) => opcoFrameworks.has(c.framework))
       : allChanges;
-    const poa        = opcoFilter ? poaAll.filter((r) => r.opco === opcoFilter)        : poaAll;
-    const ip         = opcoFilter ? ipAll.filter((r) => r.opco === opcoFilter)         : ipAll;
-    const licences   = opcoFilter ? licencesAll.filter((r) => r.opco === opcoFilter)   : licencesAll;
+    const poa         = opcoFilter ? poaAll.filter((r) => r.opco === opcoFilter)         : poaAll;
+    const ip          = opcoFilter ? ipAll.filter((r) => r.opco === opcoFilter)          : ipAll;
+    const licences    = opcoFilter ? licencesAll.filter((r) => r.opco === opcoFilter)    : licencesAll;
     const litigations = opcoFilter ? litigationsAll.filter((r) => r.opco === opcoFilter) : litigationsAll;
-    const contracts  = opcoFilter ? contractsAll.filter((r) => r.opco === opcoFilter)  : contractsAll;
+    const contracts   = opcoFilter ? contractsAll.filter((r) => r.opco === opcoFilter)   : contractsAll;
 
     // ── Entity counts ──────────────────────────────────────────────────────
     const parentSet = new Set();
@@ -247,6 +272,7 @@ dashboardRouter.get('/summary', async (req, res) => {
       generatedAt: now.toISOString(),
       periodDays: days,
       opcoFilter: opcoFilter || null,
+      opcoFrameworks: opcoFrameworks ? [...opcoFrameworks] : null,
 
       entities: {
         totalParents: parentSet.size,

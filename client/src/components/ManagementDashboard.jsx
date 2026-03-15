@@ -265,7 +265,8 @@ export function ManagementDashboard({ onNavigateToView }) {
   if (!data)   return null;
 
   const { entities, regulatoryChanges, poa, licences, contracts, litigations, ip,
-          upcomingExpiry, topOpcoAlerts, feedStatus, complianceHealthScore, generatedAt } = data;
+          upcomingExpiry, topOpcoAlerts, feedStatus, complianceHealthScore, generatedAt,
+          opcoFrameworks } = data;
 
   const totalExpiring = (poa.expiringSoon || 0) + (licences.expiringSoon || 0) + (contracts.expiringSoon || 0);
   const totalExpired  = (poa.expired || 0) + (licences.expired || 0) + (contracts.expired || 0);
@@ -336,7 +337,7 @@ export function ManagementDashboard({ onNavigateToView }) {
           <div className="mgmt-kpi-tile health-score" style={{ '--kpi-accent': complianceHealthScore >= 80 ? '#22c55e' : complianceHealthScore >= 60 ? '#3b82f6' : '#ef4444' }}>
             <HealthGauge score={complianceHealthScore} />
             <div className="mgmt-kpi-label" style={{ textAlign: 'center', marginTop: '0.2rem' }}>Compliance Health</div>
-            <div className="mgmt-kpi-sub" style={{ textAlign: 'center' }}>Portfolio-wide score</div>
+            <div className="mgmt-kpi-sub" style={{ textAlign: 'center' }}>{selectedOpco ? `${selectedOpco} score` : 'Portfolio-wide score'}</div>
           </div>
 
           <KpiTile
@@ -366,14 +367,29 @@ export function ManagementDashboard({ onNavigateToView }) {
             onClick={() => navigate('poa-management')}
           />
 
-          <KpiTile
-            icon="🏢"
-            value={entities.totalOpcos}
-            label="Active Entities"
-            sub={`${entities.totalParents} parent holdings`}
-            accentColor="#8b5cf6"
-            onClick={() => navigate('org-overview')}
-          />
+          {/* Active Entities tile: hidden when a specific OpCo is selected */}
+          {!selectedOpco && (
+            <KpiTile
+              icon="🏢"
+              value={entities.totalOpcos}
+              label="Active Entities"
+              sub={`${entities.totalParents} parent holdings`}
+              accentColor="#8b5cf6"
+              onClick={() => navigate('org-overview')}
+            />
+          )}
+
+          {/* When an OpCo is selected, show its framework count instead */}
+          {selectedOpco && Array.isArray(opcoFrameworks) && (
+            <KpiTile
+              icon="🗂️"
+              value={opcoFrameworks.length}
+              label="Applicable Frameworks"
+              sub={opcoFrameworks.length > 0 ? opcoFrameworks.slice(0, 2).join(', ') + (opcoFrameworks.length > 2 ? ` +${opcoFrameworks.length - 2}` : '') : 'None resolved'}
+              accentColor="#8b5cf6"
+              onClick={() => navigate('governance-framework')}
+            />
+          )}
         </div>
       </div>
 
