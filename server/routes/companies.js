@@ -58,6 +58,43 @@ companiesRouter.get('/by-parent', async (req, res) => {
   }
 });
 
+/** GET /api/companies/by-opco?opco=... – resolve the parent and applicable frameworks for a single OpCo (case-insensitive). */
+companiesRouter.get('/by-opco', async (req, res) => {
+  try {
+    const opco = typeof req.query.opco === 'string' ? req.query.opco.trim() : '';
+    if (!opco) return res.json({ opco: '', parent: null, frameworks: [] });
+    const opcoLower = opco.toLowerCase();
+    const raw = await readFile(dataPath, 'utf-8');
+    const data = JSON.parse(raw);
+    const frameworkSet = new Set();
+    let parent = null;
+    // Search companies.json (framework-keyed)
+    for (const [fw, entries] of Object.entries(data)) {
+      if (!Array.isArray(entries)) continue;
+      for (const entry of entries) {
+        if ((entry.companies || []).some((c) => c && c.toLowerCase() === opcoLower)) {
+          frameworkSet.add(fw);
+          if (!parent && entry.parent) parent = entry.parent;
+        }
+      }
+    }
+    // Search onboarding data
+    const onboarding = await readOnboardingOpcos();
+    for (const row of onboarding) {
+      if (!row.opco || row.opco.toLowerCase() !== opcoLower) continue;
+      if (!parent && row.parent) parent = row.parent;
+      for (const fw of row.applicableFrameworks || []) frameworkSet.add(fw);
+      for (const pair of row.applicableFrameworksByLocation || []) {
+        if (pair.framework) frameworkSet.add(pair.framework);
+      }
+    }
+    frameworkSet.delete('Onboarded');
+    res.json({ opco, parent, frameworks: [...frameworkSet].sort() });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 /** GET /api/companies/roles – list of parent holdings and OpCos. Merges onboarding additions (new parents and OpCos). */
 companiesRouter.get('/roles', async (req, res) => {
   try {

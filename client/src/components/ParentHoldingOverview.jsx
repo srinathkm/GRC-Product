@@ -330,6 +330,8 @@ export function ParentHoldingOverview({
   onParentHoldingChange,
   onNavigateToView,
   companiesRefreshKey = 0,
+  selectedOpco = '',
+  onOpcoChange,
 }) {
   // ── State ────────────────────────────────────────────────────────────────
   const [allChanges, setAllChanges] = useState([]);
@@ -400,9 +402,30 @@ export function ParentHoldingOverview({
   // Jurisdiction detection via UBO registered address
   const opcoMeta = useMemo(() => {
     const byName = {};
-    for (const { name, framework, locations } of opcosForParent) {
-      if (!byName[name]) byName[name] = { frameworks: [], locations: [] };
-      byName[name].frameworks.push(framework);
+    for (const item of opcosForParent) {
+      const { name, framework, locations, applicableFrameworks, applicableFrameworksByLocation } = item;
+      if (!byName[name]) byName[name] = { frameworks: [], frameworkSet: new Set(), locations: [] };
+      // Primary framework
+      if (framework && framework !== 'Onboarded') {
+        if (!byName[name].frameworkSet.has(framework)) {
+          byName[name].frameworkSet.add(framework);
+          byName[name].frameworks.push(framework);
+        }
+      }
+      // Explicit applicable frameworks (onboarded OpCos)
+      for (const fw of applicableFrameworks || []) {
+        if (!byName[name].frameworkSet.has(fw)) {
+          byName[name].frameworkSet.add(fw);
+          byName[name].frameworks.push(fw);
+        }
+      }
+      // Location-based framework pairs (onboarded OpCos)
+      for (const pair of applicableFrameworksByLocation || []) {
+        if (pair.framework && !byName[name].frameworkSet.has(pair.framework)) {
+          byName[name].frameworkSet.add(pair.framework);
+          byName[name].frameworks.push(pair.framework);
+        }
+      }
       if (Array.isArray(locations) && locations.length > 0) byName[name].locations = locations;
     }
     const isMultiJurisdiction = {};
@@ -490,15 +513,23 @@ export function ParentHoldingOverview({
     return s;
   }, [opcosForParent]);
 
-  // Changes relevant to this parent: at least one affectedCompany is our OpCo.
+  // Changes relevant to this parent/OpCo.
+  // When an OpCo is selected: filter by framework membership (affectedCompanies is sparsely populated).
+  // When only a parent is selected: filter by affectedCompanies (existing behaviour).
   const changesForParent = useMemo(() => {
-    if (!selectedParentHolding || opcoNamesSet.size === 0) return [];
+    if (!selectedParentHolding) return [];
+    if (selectedOpco) {
+      const opcoFws = new Set(opcoMeta.byName[selectedOpco]?.frameworks || []);
+      if (opcoFws.size === 0) return [];
+      return allChanges.filter(c => opcoFws.has(c.framework));
+    }
+    if (opcoNamesSet.size === 0) return [];
     return allChanges.filter(c => {
       const companies = c.affectedCompanies || [];
       if (companies.length === 0) return false;
       return companies.some(name => opcoNamesSet.has(name));
     });
-  }, [allChanges, selectedParentHolding, opcoNamesSet]);
+  }, [allChanges, selectedParentHolding, selectedOpco, opcoNamesSet, opcoMeta]);
 
   // Bucket by urgency — all derived from real data
   const { overdueList, upcoming30List, upcoming90List } = useMemo(() => {
@@ -539,14 +570,21 @@ export function ParentHoldingOverview({
     });
   }, [overdueList, upcoming30List, upcoming90List]);
 
+  // When an OpCo is selected, scope the compliance table + charts to just that OpCo.
+  const activeRows = useMemo(() => {
+    if (!selectedOpco) return tableRows;
+    const lower = selectedOpco.toLowerCase();
+    return tableRows.filter(r => r.opcoName.toLowerCase() === lower);
+  }, [tableRows, selectedOpco]);
+
   // Derived metrics
   const nonCompliantCount = useMemo(() =>
-    tableRows.filter(r => r.status !== 'Compliant').length,
-  [tableRows]);
+    activeRows.filter(r => r.status !== 'Compliant').length,
+  [activeRows]);
 
   // OpCos sorted worst → best (for profile bars and chart)
   const sortedOpcos = useMemo(() =>
-    tableRows.slice().sort((a, b) => {
+    activeRows.slice().sort((a, b) => {
       const avgA = (a.governanceScore + a.policyScore + a.dataSovereigntyScore) / 3;
       const avgB = (b.governanceScore + b.policyScore + b.dataSovereigntyScore) / 3;
       return avgA - avgB;
@@ -566,11 +604,12 @@ export function ParentHoldingOverview({
   // ── Summary stats for the top stat cards ─────────────────────────────────
 
   const displayStats = (() => {
-    if (!selectedParentHolding || tableRows.length === 0) {
-      return { ...stats, operatingCompaniesCount: selectedParentHolding ? tableRows.length : stats.operatingCompaniesCount };
+    const rows = activeRows;
+    if (!selectedParentHolding || rows.length === 0) {
+      return { ...stats, operatingCompaniesCount: selectedParentHolding ? rows.length : stats.operatingCompaniesCount };
     }
-    const n = tableRows.length;
-    const avg = key => Math.round(tableRows.reduce((s, r) => s + (r[key] ?? 0), 0) / n);
+    const n = rows.length;
+    const avg = key => Math.round(rows.reduce((s, r) => s + (r[key] ?? 0), 0) / n);
     return {
       ...stats,
       operatingCompaniesCount: n,
@@ -584,16 +623,16 @@ export function ParentHoldingOverview({
 
   useEffect(() => {
     const currentKey = selectedParentHolding
-      ? `${selectedParentHolding}::${tableRows.length}::${overdueList.length}`
+      ? `${selectedParentHolding}::${selectedOpco}::${activeRows.length}::${overdueList.length}`
       : '';
-    if (!selectedParentHolding || tableRows.length === 0) {
+    if (!selectedParentHolding || activeRows.length === 0) {
       setOverviewSummary(null); setOverviewError(null); setOverviewLoading(false); setOverviewKey('');
       return;
     }
     if (overviewKey === currentKey) return;
     setOverviewKey(currentKey);
 
-    const opcosPayload = tableRows.map(row => ({
+    const opcosPayload = activeRows.map(row => ({
       opcoName: row.opcoName,
       jurisdiction: row.jurisdiction,
       governanceScore: row.governanceScore,
@@ -637,20 +676,45 @@ export function ParentHoldingOverview({
     <div className="parent-overview">
       <h2 className="parent-overview-title">{t(language, 'parentOverviewTitle')}</h2>
 
-      {/* Parent selector */}
+      {/* Parent + OpCo selectors */}
       <div className="parent-overview-select-wrap">
         <label htmlFor="parent-holding-select">{t(language, 'parentHoldingCompany')}</label>
         <select
           id="parent-holding-select"
           className="parent-holding-select"
           value={selectedParentHolding || ''}
-          onChange={e => onParentHoldingChange(e.target.value || '')}
+          onChange={e => {
+            onParentHoldingChange(e.target.value || '');
+            if (onOpcoChange) onOpcoChange(''); // reset opco when parent changes
+          }}
         >
           <option value="">{t(language, 'selectParentPlaceholder')}</option>
           {parents.map(p => <option key={p} value={p}>{p}</option>)}
         </select>
+
+        {/* OpCo sub-filter — shown once a parent is selected and OpCos are loaded */}
+        {selectedParentHolding && tableRows.length > 0 && (
+          <>
+            <label htmlFor="opco-filter-select" style={{ marginLeft: '0.75rem' }}>OpCo</label>
+            <select
+              id="opco-filter-select"
+              className="parent-holding-select"
+              value={selectedOpco || ''}
+              onChange={e => onOpcoChange && onOpcoChange(e.target.value)}
+              style={{ minWidth: '180px' }}
+            >
+              <option value="">All OpCos</option>
+              {tableRows.map(r => (
+                <option key={r.opcoName} value={r.opcoName}>{r.opcoName}</option>
+              ))}
+            </select>
+          </>
+        )}
+
         {selectedParentHolding && (
-          <span className="parent-overview-selection-note">{t(language, 'selectionAppliesNote')}</span>
+          <span className="parent-overview-selection-note">
+            {selectedOpco ? `Showing data for ${selectedOpco}` : t(language, 'selectionAppliesNote')}
+          </span>
         )}
       </div>
 
@@ -736,7 +800,7 @@ export function ParentHoldingOverview({
           <p className="ph-table-empty-msg">{t(language, 'selectParentToShow')}</p>
         ) : loadingOpcos ? (
           <p className="ph-table-loading">{t(language, 'loadingOpCos')}</p>
-        ) : tableRows.length === 0 ? (
+        ) : activeRows.length === 0 ? (
           <p className="ph-table-empty-msg">{t(language, 'noOpCosFound')}</p>
         ) : (
           <div className="ph-table-wrap">
@@ -752,7 +816,7 @@ export function ParentHoldingOverview({
                 </tr>
               </thead>
               <tbody>
-                {tableRows.map((row, i) => (
+                {activeRows.map((row, i) => (
                   <tr key={row.opcoName + i}>
                     <td>{row.opcoName}</td>
                     <td>{row.jurisdiction}</td>
@@ -813,7 +877,9 @@ export function ParentHoldingOverview({
         <div className="pho-section-header">
           <h3 className="pho-section-title">Compliance Intelligence</h3>
           {selectedParentHolding && (
-            <span className="pho-section-org">{selectedParentHolding}</span>
+            <span className="pho-section-org">
+              {selectedOpco ? selectedOpco : selectedParentHolding}
+            </span>
           )}
         </div>
 
@@ -857,7 +923,9 @@ export function ParentHoldingOverview({
             <div className="pho-subsection">
               <h4 className="pho-subsection-title">Regulatory Deadline Intelligence</h4>
               <p className="pho-subsection-sub">
-                All deadlines are derived from regulatory change data filtered to {selectedParentHolding}'s operating companies.
+                {selectedOpco
+                  ? `Showing deadlines for regulatory frameworks applicable to ${selectedOpco}.`
+                  : `All deadlines are derived from regulatory change data filtered to ${selectedParentHolding}'s operating companies.`}
               </p>
               <div className="pho-dl-grid">
                 <DeadlineColumn

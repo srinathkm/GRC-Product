@@ -218,13 +218,12 @@ function QuickActions({ onNavigate }) {
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
-export function ManagementDashboard({ onNavigateToView }) {
+export function ManagementDashboard({ onNavigateToView, selectedOpco = '', onOpcoChange }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [days, setDays] = useState(30);
   const [refreshing, setRefreshing] = useState(false);
-  const [selectedOpco, setSelectedOpco] = useState('');
   const [opcoList, setOpcoList] = useState([]);
 
   // Fetch available OpCos once on mount
@@ -297,7 +296,7 @@ export function ManagementDashboard({ onNavigateToView }) {
             <select
               className="mgmt-dash-period-select"
               value={selectedOpco}
-              onChange={(e) => setSelectedOpco(e.target.value)}
+              onChange={(e) => onOpcoChange && onOpcoChange(e.target.value)}
               aria-label="Filter by OpCo"
               style={{ minWidth: '160px' }}
             >

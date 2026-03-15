@@ -114,9 +114,11 @@ export default function App() {
   const [frameworkReferences, setFrameworkReferences] = useState({});
   const [parentHoldingList, setParentHoldingList] = useState([]);
   const [selectedParentHolding, setSelectedParentHolding] = useState('');
+  const [selectedOpco, setSelectedOpco] = useState('');
   const [companiesRefreshKey, setCompaniesRefreshKey] = useState(0);
   const [applicableFrameworksForGovernance, setApplicableFrameworksForGovernance] = useState(loadApplicableFrameworksFromStorage);
   const [frameworksForParent, setFrameworksForParent] = useState([]);
+  const [frameworksForOpco, setFrameworksForOpco] = useState([]);
 
   const setApplicableFrameworksLoaded = (list) => {
     const arr = Array.isArray(list) ? list : null;
@@ -150,6 +152,20 @@ export default function App() {
       .catch(() => {});
     setCompaniesRefreshKey((k) => k + 1);
   };
+
+  // When an OpCo is selected (e.g. from Management Dashboard), resolve its parent and
+  // applicable frameworks so other views can use them without requiring a separate parent pick.
+  useEffect(() => {
+    if (!selectedOpco) { setFrameworksForOpco([]); return; }
+    fetch(`/api/companies/by-opco?opco=${encodeURIComponent(selectedOpco)}`)
+      .then((r) => r.json())
+      .then((d) => {
+        setFrameworksForOpco(d.frameworks || []);
+        // Auto-set parent only when none is currently selected
+        if (d.parent && !selectedParentHolding) setSelectedParentHolding(d.parent);
+      })
+      .catch(() => setFrameworksForOpco([]));
+  }, [selectedOpco]);
 
   const isGovernanceFramework = currentView === 'governance-framework';
 
@@ -193,7 +209,11 @@ export default function App() {
       });
   }, [selectedParentHolding, companiesRefreshKey, applicableFrameworksForGovernance]);
 
-  const gatedFrameworks = selectedParentHolding ? frameworksForParent : [];
+  // When an OpCo is selected, gate the Governance Framework view to only that OpCo's frameworks.
+  // Otherwise fall back to the full parent-level framework list.
+  const gatedFrameworks = selectedOpco && frameworksForOpco.length > 0
+    ? frameworksForOpco
+    : selectedParentHolding ? frameworksForParent : [];
 
   const allowedModuleIds = ROLE_MODULE_IDS[selectedRole] || null;
 
@@ -249,7 +269,11 @@ export default function App() {
         <MainNav language={language} currentView={currentView} onSelect={setCurrentView} allowedModuleIds={allowedModuleIds} />
         <div className="app-content">
           {currentView === 'mgmt-dashboard' && (
-            <ManagementDashboard onNavigateToView={setCurrentView} />
+            <ManagementDashboard
+              onNavigateToView={setCurrentView}
+              selectedOpco={selectedOpco}
+              onOpcoChange={setSelectedOpco}
+            />
           )}
           {currentView === 'onboarding' && (
             <Onboarding
@@ -279,6 +303,8 @@ export default function App() {
               onParentHoldingChange={setSelectedParentHolding}
               onNavigateToView={setCurrentView}
               companiesRefreshKey={companiesRefreshKey}
+              selectedOpco={selectedOpco}
+              onOpcoChange={setSelectedOpco}
             />
           )}
           {currentView === 'legal-onboarding' && (
