@@ -13,7 +13,7 @@ const MODULE_CONFIGS = {
     icon: '📜',
     description: 'Upload and extract Power of Attorney documents. Captures holder details, authority scope, validity dates, notarisation status and jurisdictional law — essential for entities operating across multiple jurisdictions.',
     endpoint: `${API}/poa`,
-    extractEndpoint: `${API}/poa/extract`,
+    extractEndpoint: `${API}/extract`,
     aiExtract: true,
     acceptBulk: true,
     requiredKeys: ['parent', 'holderName', 'scope'],

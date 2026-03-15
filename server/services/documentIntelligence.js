@@ -3,43 +3,44 @@
  * =======================
  * Universal AI extraction engine.
  *
- * For every onboarding module this file defines:
- *   1. MODULE_SCHEMAS  – human-readable field definitions fed to the LLM
- *   2. extractDocumentFields()  – calls the LLM with learning context injected
- *   3. Normalisation helpers   – date / boolean / number cleanup
+ * Extraction uses a two-pass strategy to maximise reliability:
  *
- * The LLM is asked to return a JSON object:
- *   {
- *     fieldName: { value: "...", confidence: 0.0-1.0, label: "heading in doc" },
- *     ...
- *   }
+ *  Pass 1 — Structured fields (JSON)
+ *    Short, predictable values (names, dates, booleans, reference numbers).
+ *    Returned as { fieldName: { value, confidence, label } }.
  *
- * `label` is the document heading or keyword the LLM used to find the value.
- * The learning service stores these labels so future prompts become richer.
+ *  Pass 2 — Long-text fields (plain text)
+ *    Fields like 'scope', 'notes', 'dependencies' that contain multi-paragraph
+ *    prose. Extracted as raw text in a separate call so that newlines and
+ *    special characters never break JSON parsing.
+ *
+ * Both passes inject accumulated learning context (from fieldLearningService)
+ * as few-shot examples so accuracy improves with every document processed.
  */
 
 import { createChatCompletion, isLlmConfigured } from './llm.js';
 import { buildLearningContext } from './fieldLearningService.js';
 
 // ── Module field schemas ──────────────────────────────────────────────────────
-// Each value is the instruction given to the LLM for that field.
+// Each value is the plain-English instruction given to the LLM.
 
 export const MODULE_SCHEMAS = {
 
   poa: {
-    fileId:           'Notarisation reference number or unique document reference (e.g. DXB/NOT/2024/BPO/009114)',
-    holderName:       'Full name of the attorney / grantee / holder of the power of attorney',
-    holderRole:       'Job title or designation of the attorney (e.g. Finance Manager)',
-    poaType:          'Type of POA — must be one of: Banking, General, Government, Real Estate, Corporate, Limited, Special',
-    scope:            'Full numbered list of powers granted and any limitations or exclusions (preserve the original text)',
-    jurisdiction:     'City or country where the POA was executed (e.g. Dubai, KSA)',
-    issuingAuthority: 'Issuing authority or governing law reference (e.g. UAE Federal Law — Central Bank regulations)',
-    signedOn:         'Date the document was signed (format: YYYY-MM-DD)',
-    validFrom:        'Start date of validity (format: YYYY-MM-DD)',
-    validUntil:       'Expiry or end date (format: YYYY-MM-DD)',
-    notarised:        'Whether the document is notarised — return "true" or "false"',
-    mofaStamp:        'Whether a MOFA (Ministry of Foreign Affairs) stamp is present — "true" or "false"',
-    embassyStamp:     'Whether an embassy or apostille stamp is present — "true" or "false"',
+    // structured
+    fileId:           'The unique document reference or notarisation reference number (e.g. TEST-POA-BANK-0001-2024 or DXB/NOT/2024/BPO/009114). Look for labels like "Reference No.", "Ref:", "Notarisation Ref", "File No."',
+    holderName:       'Full legal name of the attorney-in-fact, grantee, or power of attorney holder. Look for headings like "ATTORNEY-IN-FACT", "GRANTEE", "Attorney", "Authorised Person", "Part 2 – Full Name"',
+    holderRole:       'Job title or designation of the attorney (e.g. Finance Manager, Head of Operations). Look near the holder name.',
+    poaType:          'Category of this POA — infer from the title or subject matter. Must be one of: Banking, General, Government, Real Estate, Corporate, Limited, Special',
+    jurisdiction:     'The city, emirate, or country where the POA is executed or governing law applies (e.g. Dubai, KSA, Abu Dhabi). Extract ONLY the place name.',
+    issuingAuthority: 'The governing law or issuing authority (e.g. "UAE Federal Law — Central Bank of UAE Regulations", "Laws of the Emirate of Dubai")',
+    signedOn:         'The date the document was signed or issued (YYYY-MM-DD). Look for "Date:", "Signed On:", "Issue Date:", "Effective:"',
+    validFrom:        'The start date of validity (YYYY-MM-DD). Often the same as the signing date.',
+    validUntil:       'The expiry or end date of validity (YYYY-MM-DD). Look for "Expiry:", "Valid Until:", "Expiry Date:", "Valid to:"',
+    notarised:        'Is the document notarised/notarized? Look for words like "Notary Public", "Notarisation", "Attestation No." Return "true" or "false"',
+    mofaStamp:        'Is a MOFA (Ministry of Foreign Affairs) stamp present or mentioned? Return "true" or "false"',
+    embassyStamp:     'Is an embassy stamp, apostille, or consular attestation present or mentioned? Return "true" or "false"',
+    // scope is a LONG-TEXT field handled in pass 2
   },
 
   contracts: {
@@ -58,46 +59,45 @@ export const MODULE_SCHEMAS = {
   },
 
   ip: {
-    mark:             'Trademark name, patent title, or IP asset name exactly as it appears on the certificate',
-    ipType:           'Type — one of: Trademark, Patent, Design Right, Trade Name, Copyright, Domain',
-    class:            'WIPO Nice Classification number (e.g. Class 36) or patent classification',
-    jurisdiction:     'Country or territory where the IP is registered',
-    registrationNo:   'Registration or grant number (e.g. GCC/TM/2024/00123)',
-    applicationNo:    'Application number if different from registration number',
-    filingDate:       'Date of filing or application (YYYY-MM-DD)',
-    registrationDate: 'Date of registration or grant (YYYY-MM-DD)',
-    renewalDate:      'Renewal or expiry date (YYYY-MM-DD)',
-    status:           'Status — one of: Active, Pending, Expired, Opposed, Cancelled, Lapsed',
-    agent:            'IP agent or law firm representing the applicant',
+    mark:             'Trademark name, patent title, or IP asset name exactly as it appears on the certificate. Look for "Mark:", "Trade Mark Name:", "Patent Title:", "IP Name:"',
+    ipType:           'Type of IP right — one of: Trademark, Patent, Design Right, Trade Name, Copyright, Domain. Infer from document title or content.',
+    class:            'WIPO Nice Classification number or patent classification (e.g. Class 36, IPC A61K). Look for "Class:", "Classes:", "Classification:"',
+    jurisdiction:     'Country or territory where the IP is registered. Look for "Territory:", "Country:", "Jurisdiction:", or the name of a national IP office.',
+    registrationNo:   'Registration or grant number. Look for "Registration No.", "Grant No.", "Certificate No.", "Reg. No."',
+    applicationNo:    'Application number, if different from registration number. Look for "Application No.", "App. No."',
+    filingDate:       'Date of filing or application (YYYY-MM-DD). Look for "Filing Date:", "Application Date:", "Date of Filing:"',
+    registrationDate: 'Date of registration or grant (YYYY-MM-DD). Look for "Registration Date:", "Date of Grant:", "Issue Date:"',
+    renewalDate:      'Renewal or expiry date (YYYY-MM-DD). Look for "Renewal Date:", "Expiry Date:", "Valid Until:", "Next Renewal:"',
+    status:           'Status — one of: Active, Pending, Expired, Opposed, Cancelled, Lapsed. Infer from document wording.',
+    agent:            'IP agent, attorney, or law firm representing the applicant. Look for "Agent:", "Representative:", "Counsel:"',
   },
 
   licences: {
-    licenceType:      'Category of licence (e.g. Commercial, Financial Services, Healthcare, Import/Export, Technology)',
-    licenceNo:        'Licence or permit number',
-    jurisdiction:     'Country, emirate, or free zone where the licence is issued',
-    issuingAuthority: 'Authority that issued the licence (e.g. DFSA, CBUAE, SAMA, DED, ADGM)',
-    regulatoryBody:   'Relevant regulatory body if different from issuing authority',
-    validFrom:        'Date the licence becomes valid (YYYY-MM-DD)',
-    validUntil:       'Expiry or renewal date of the licence (YYYY-MM-DD)',
-    status:           'Status — one of: Active, Pending Renewal, Under Review, Suspended, Expired, Revoked',
-    renewalFee:       'Renewal fee including currency (e.g. AED 15,000)',
-    dependencies:     'Any conditions, restrictions, or dependent licences noted on the document',
+    licenceType:      'Category of licence (e.g. Commercial, Financial Services, Healthcare, Import/Export, Technology). Look for "Licence Type:", "Type of Licence:", or infer from document title.',
+    licenceNo:        'Licence or permit number. Look for "Licence No.", "License No.", "Permit No.", "Certificate No.", "Reference No."',
+    jurisdiction:     'Country, emirate, or free zone where the licence is issued. Look for "Issued in:", "Jurisdiction:", "Emirate:", or the name of the issuing authority\'s location.',
+    issuingAuthority: 'Authority that issued the licence (e.g. DFSA, CBUAE, SAMA, DED, ADGM, Ministry of Commerce).',
+    regulatoryBody:   'Relevant regulatory body if different from issuing authority.',
+    validFrom:        'Date the licence becomes valid (YYYY-MM-DD). Look for "Issue Date:", "Valid From:", "Commencement Date:"',
+    validUntil:       'Expiry or renewal date of the licence (YYYY-MM-DD). Look for "Expiry Date:", "Valid Until:", "Renewal Date:", "Expires:"',
+    status:           'Status — one of: Active, Pending Renewal, Under Review, Suspended, Expired, Revoked. Infer from document.',
+    renewalFee:       'Renewal fee including currency (e.g. AED 15,000). Look for "Renewal Fee:", "Fee:", "Annual Fee:"',
   },
 
   litigations: {
-    caseId:           'Official court or arbitration reference / case number',
-    court:            'Court or arbitration body name (e.g. DIFC Court of First Instance, DIAC)',
-    jurisdiction:     'Legal jurisdiction',
-    claimType:        'Type of claim — one of: Commercial Dispute, Employment, Regulatory Enforcement, IP Dispute, Contract Breach, Real Estate, Tax/Customs, Other',
-    claimant:         'Party bringing the claim (plaintiff / applicant)',
-    respondent:       'Respondent or defendant',
-    claimAmount:      'Claimed amount as stated in the filing (include currency)',
-    expectedExposure: 'Estimated financial exposure or liability noted in the document',
-    status:           'Status — one of: Open, In Progress, Discovery Stage, Awaiting Judgment, Settled, Closed–Won, Closed–Lost, Appeal Filed, Enforcement Stage',
-    filingDate:       'Date case was filed or commenced (YYYY-MM-DD)',
-    nextHearingDate:  'Next hearing or submission deadline date (YYYY-MM-DD)',
-    externalCounsel:  'Name of the law firm handling the case',
-    internalOwner:    'Internal legal team member assigned to the case',
+    caseId:           'Official court or arbitration reference / case number. Look for "Case No.", "Case Reference:", "Ref:", "Arbitration No.", "Claim No."',
+    court:            'Court or arbitration body name (e.g. DIFC Court of First Instance, DIAC, Dubai Courts). Look for "Court:", "Before:", "Forum:", "Tribunal:"',
+    jurisdiction:     'Legal jurisdiction where proceedings are taking place.',
+    claimType:        'Type of claim — one of: Commercial Dispute, Employment, Regulatory Enforcement, IP Dispute, Contract Breach, Real Estate, Tax/Customs, Other. Infer from subject matter.',
+    claimant:         'Party bringing the claim (plaintiff / applicant). Look for "Claimant:", "Plaintiff:", "Applicant:", "Complainant:"',
+    respondent:       'Respondent or defendant. Look for "Respondent:", "Defendant:", "Respondents:"',
+    claimAmount:      'Claimed amount as stated in the filing, including currency (e.g. AED 2,500,000).',
+    expectedExposure: 'Estimated financial exposure or liability noted in the document.',
+    status:           'Status — one of: Open, In Progress, Discovery Stage, Awaiting Judgment, Settled, Closed–Won, Closed–Lost, Appeal Filed, Enforcement Stage.',
+    filingDate:       'Date case was filed or commenced (YYYY-MM-DD). Look for "Filing Date:", "Commencement Date:", "Date of Claim:"',
+    nextHearingDate:  'Next hearing or submission deadline date (YYYY-MM-DD). Look for "Hearing Date:", "Next Hearing:", "Deadline:", "Submission Date:"',
+    externalCounsel:  'Name of the law firm handling the case. Look for "Counsel:", "Solicitors:", "Represented by:", "Legal Advisors:"',
+    internalOwner:    'Internal legal team member assigned to the case.',
   },
 
   ubo: {
@@ -117,12 +117,28 @@ export const MODULE_SCHEMAS = {
   },
 };
 
+// ── Long-text fields: extracted as plain text (Pass 2) to avoid JSON issues ──
+// These fields contain multi-paragraph prose that breaks JSON encoding.
+const LONG_TEXT_FIELDS = {
+  poa:        { scope: 'The full list of powers and authorities granted, including all numbered points and any stated limitations or exclusions. Preserve the exact wording and structure.' },
+  licences:   { dependencies: 'Any licence conditions, restrictions, prerequisites or dependencies stated in the document.' },
+  contracts:  { notes: 'Any special conditions, penalties, or notable clauses mentioned in the document.' },
+};
+
 // ── Normalisation helpers ─────────────────────────────────────────────────────
 
 function normDate(v) {
   if (!v || typeof v !== 'string') return v;
+  // Try direct ISO parse first
   const d = new Date(v);
   if (!isNaN(d.getTime())) return d.toISOString().split('T')[0];
+  // Try common formats: DD/MM/YYYY, DD-MM-YYYY, Month DD YYYY
+  const dmy = v.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})$/);
+  if (dmy) {
+    const [, dd, mm, yyyy] = dmy;
+    const d2 = new Date(`${yyyy}-${mm.padStart(2,'0')}-${dd.padStart(2,'0')}`);
+    if (!isNaN(d2.getTime())) return d2.toISOString().split('T')[0];
+  }
   return v;
 }
 
@@ -131,7 +147,7 @@ function normBool(v) {
   if (typeof v === 'string') {
     const l = v.toLowerCase().trim();
     if (['true', 'yes', '1', 'y', 'present', 'stamped', 'notarised', 'notarized'].includes(l)) return true;
-    if (['false', 'no', '0', 'n', 'absent', 'not present'].includes(l)) return false;
+    if (['false', 'no', '0', 'n', 'absent', 'not present', 'none'].includes(l)) return false;
   }
   return v;
 }
@@ -142,9 +158,9 @@ function normNumber(v) {
   return isNaN(n) ? v : n;
 }
 
-const DATE_FIELDS   = new Set(['signedOn','validFrom','validUntil','effectiveDate','expiryDate','renewalWindowStart','renewalWindowEnd','filingDate','registrationDate','renewalDate','applicationDate','nextHearingDate','filingDate','dateBecameBeneficialOwner','dateOfBirth','idExpiry','validFrom','validUntil','filingDate']);
+const DATE_FIELDS   = new Set(['signedOn','validFrom','validUntil','effectiveDate','expiryDate','renewalWindowStart','renewalWindowEnd','filingDate','registrationDate','renewalDate','nextHearingDate','dateBecameBeneficialOwner','dateOfBirth','idExpiry','applicationDate']);
 const BOOL_FIELDS   = new Set(['notarised','mofaStamp','embassyStamp','provisioned','boardNotified']);
-const NUMBER_FIELDS = new Set(['totalAmount','netAmount','vatAmount','taxAmount','renewalFee']);
+const NUMBER_FIELDS = new Set(['totalAmount','netAmount','vatAmount','taxAmount']);
 
 function normaliseField(fieldName, raw) {
   if (raw == null || raw === '') return raw;
@@ -154,127 +170,167 @@ function normaliseField(fieldName, raw) {
   return typeof raw === 'string' ? raw.trim() : raw;
 }
 
-// ── Core extraction function ──────────────────────────────────────────────────
+// ── Pass 1: Structured fields extracted as JSON ───────────────────────────────
 
-/**
- * Extract structured fields from document text using the LLM.
- *
- * @param {string} text         - Plain text content of the document
- * @param {string} moduleType   - e.g. 'poa', 'contracts', 'ip'
- * @param {Object} [options]
- * @param {string} [options.filename]  - Original filename (for context)
- * @param {string[]} [options.only]    - Subset of fields to extract (omit = all)
- *
- * @returns {Promise<{ fields: Object, rawResponse: string, error?: string }>}
- *   fields: { fieldName: { value, confidence, label } }
- */
-export async function extractDocumentFields(text, moduleType, options = {}) {
-  const schema = MODULE_SCHEMAS[moduleType];
-  if (!schema) {
-    return { fields: {}, rawResponse: '', error: `Unknown module type: ${moduleType}` };
-  }
-
-  if (!isLlmConfigured()) {
-    return { fields: {}, rawResponse: '', error: 'LLM is not configured' };
-  }
-
-  // Limit document text to avoid token overflow (keep ~12 000 chars)
-  const docText = (text || '').slice(0, 12000);
-  if (!docText.trim()) {
-    return { fields: {}, rawResponse: '', error: 'Document text is empty' };
-  }
-
-  // Build field list to extract
-  const fieldEntries = Object.entries(schema).filter(([k]) =>
-    !options.only || options.only.includes(k)
-  );
+async function extractStructuredFields(docText, moduleType, fieldEntries, learningContext) {
+  if (fieldEntries.length === 0) return {};
 
   const fieldDescriptions = fieldEntries
     .map(([k, desc]) => `  "${k}": ${desc}`)
     .join('\n');
 
-  // Inject learned patterns as few-shot context
-  const learningContext = await buildLearningContext(moduleType);
-
   const systemPrompt = [
     `You are an expert legal document parser for a GRC (Governance, Risk, Compliance) platform.`,
-    `Your task is to extract specific fields from the following ${moduleType} document.`,
+    `Extract the requested fields from the document and return a single JSON object.`,
     ``,
-    `Return a JSON object where each key is one of the requested field names, and each value is:`,
-    `  { "value": <extracted value or null>, "confidence": <0.0-1.0>, "label": "<heading or keyword in the doc>" }`,
+    `For each field return:`,
+    `  { "value": <extracted value or null>, "confidence": <0.0–1.0>, "label": "<exact heading/keyword from doc where found>" }`,
     ``,
     `Rules:`,
-    `- If a field is not found, return { "value": null, "confidence": 0, "label": "" }`,
-    `- Format all dates as YYYY-MM-DD`,
-    `- For boolean fields return "true" or "false" (string)`,
-    `- For amount fields return numeric digits only (no currency symbol)`,
-    `- confidence 1.0 = exact match found; 0.7-0.9 = inferred; below 0.5 = guessed`,
-    `- "label" is the exact heading, column header, or keyword in the document where you found the value`,
-    `- Do not invent data; prefer null over guessing`,
+    `- Search the ENTIRE document — values may appear anywhere, under any heading style`,
+    `- If a field cannot be found, return { "value": null, "confidence": 0, "label": "" }`,
+    `- Dates: always output as YYYY-MM-DD. Convert DD/MM/YYYY, "15 March 2026", etc.`,
+    `- Booleans: output the string "true" or "false"`,
+    `- Amounts: numeric digits only, no currency symbols`,
+    `- confidence: 1.0 = explicitly stated; 0.7–0.9 = clearly implied; <0.5 = uncertain guess`,
+    `- "label" = the exact heading, label, or keyword in the document where the value was found`,
+    `- Do NOT invent data; prefer null over guessing`,
     learningContext ? `\n${learningContext}` : '',
   ].filter(Boolean).join('\n');
 
   const userPrompt = [
-    `Extract these fields from the document:`,
+    `Extract these fields from the document below. Return only a JSON object with no extra text.`,
+    ``,
+    `Fields to extract:`,
     `{`,
     fieldDescriptions,
     `}`,
     ``,
-    `--- DOCUMENT START ---`,
-    docText,
-    `--- DOCUMENT END ---`,
-    ``,
-    `Respond with a single JSON object only.`,
+    `--- DOCUMENT ---`,
+    docText.slice(0, 14000),
+    `--- END OF DOCUMENT ---`,
   ].join('\n');
 
-  let rawResponse = '';
-  try {
-    const completion = await createChatCompletion({
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user',   content: userPrompt },
-      ],
-      responseFormat: 'json',
-      maxTokens: 2048,
-    });
+  const completion = await createChatCompletion({
+    messages: [
+      { role: 'system', content: systemPrompt },
+      { role: 'user',   content: userPrompt },
+    ],
+    responseFormat: 'json',
+    maxTokens: 3500,
+  });
 
-    rawResponse = completion?.choices?.[0]?.message?.content || '';
-    const parsed = JSON.parse(rawResponse);
+  const raw = completion?.choices?.[0]?.message?.content || '{}';
+  const parsed = JSON.parse(raw);
 
-    // Normalise and validate the response
-    const fields = {};
-    for (const [fieldName] of fieldEntries) {
-      const raw = parsed[fieldName];
-      if (raw && typeof raw === 'object' && 'value' in raw) {
-        fields[fieldName] = {
-          value:      normaliseField(fieldName, raw.value),
-          confidence: typeof raw.confidence === 'number' ? Math.min(1, Math.max(0, raw.confidence)) : 0.5,
-          label:      typeof raw.label === 'string' ? raw.label.trim().slice(0, 80) : '',
-        };
-      } else {
-        // LLM returned a bare value instead of the expected shape
-        fields[fieldName] = {
-          value:      normaliseField(fieldName, raw ?? null),
-          confidence: raw != null ? 0.6 : 0,
-          label:      '',
-        };
-      }
+  const fields = {};
+  for (const [fieldName] of fieldEntries) {
+    const entry = parsed[fieldName];
+    if (entry && typeof entry === 'object' && 'value' in entry) {
+      fields[fieldName] = {
+        value:      normaliseField(fieldName, entry.value),
+        confidence: typeof entry.confidence === 'number' ? Math.min(1, Math.max(0, entry.confidence)) : 0.5,
+        label:      typeof entry.label === 'string' ? entry.label.trim().slice(0, 100) : '',
+      };
+    } else if (entry !== undefined) {
+      // LLM returned a bare value
+      fields[fieldName] = {
+        value:      normaliseField(fieldName, entry ?? null),
+        confidence: entry != null ? 0.6 : 0,
+        label:      '',
+      };
     }
-
-    return { fields, rawResponse };
-
-  } catch (err) {
-    return {
-      fields: {},
-      rawResponse,
-      error: `Extraction failed: ${err.message}`,
-    };
   }
+  return fields;
 }
 
+// ── Pass 2: Long-text fields extracted as plain text ─────────────────────────
+
+async function extractLongTextField(docText, fieldName, description) {
+  const systemPrompt =
+    `You are a legal document analyst. Extract the requested text section from the document exactly as written. ` +
+    `Return ONLY the extracted text — no commentary, no JSON, no labels. ` +
+    `If the section is not present in the document, reply with exactly: [NOT FOUND]`;
+
+  const userPrompt = [
+    `Extract the following from the document:`,
+    description,
+    ``,
+    `Important: return the full text of this section, preserving numbering and structure. ` +
+    `If it is genuinely absent, reply [NOT FOUND].`,
+    ``,
+    `--- DOCUMENT ---`,
+    docText.slice(0, 14000),
+    `--- END OF DOCUMENT ---`,
+  ].join('\n');
+
+  const completion = await createChatCompletion({
+    messages: [
+      { role: 'system', content: systemPrompt },
+      { role: 'user',   content: userPrompt },
+    ],
+    maxTokens: 2500,
+  });
+
+  const result = (completion?.choices?.[0]?.message?.content || '').trim();
+  if (!result || result === '[NOT FOUND]') return null;
+  return result;
+}
+
+// ── Public extraction API ─────────────────────────────────────────────────────
+
 /**
- * Quick field-list for a module (used by API to advertise what can be extracted).
+ * Extract all fields for a module from document text.
+ * Uses two-pass strategy: structured fields via JSON, long-text via plain text.
+ *
+ * @returns {{ fields: Object, error?: string }}
+ *   fields: { fieldName: { value, confidence, label } }
  */
+export async function extractDocumentFields(text, moduleType, options = {}) {
+  const schema = MODULE_SCHEMAS[moduleType];
+  if (!schema) return { fields: {}, error: `Unknown module type: ${moduleType}` };
+  if (!isLlmConfigured()) return { fields: {}, error: 'LLM is not configured' };
+
+  const docText = (text || '').trim();
+  if (!docText) return { fields: {}, error: 'Document text is empty after extraction' };
+
+  const longTextDefs = LONG_TEXT_FIELDS[moduleType] || {};
+  const only = options.only;
+
+  // Partition fields
+  const structuredEntries = Object.entries(schema).filter(([k]) =>
+    !longTextDefs[k] && (!only || only.includes(k))
+  );
+  const longTextEntries = Object.entries(longTextDefs).filter(([k]) =>
+    !only || only.includes(k)
+  );
+
+  const learningContext = await buildLearningContext(moduleType);
+
+  // Run both passes concurrently
+  const [structuredFields, ...longTextResults] = await Promise.all([
+    extractStructuredFields(docText, moduleType, structuredEntries, learningContext).catch((e) => {
+      console.error(`[documentIntelligence] structured pass failed for ${moduleType}:`, e.message);
+      return {};
+    }),
+    ...longTextEntries.map(([fieldName, desc]) =>
+      extractLongTextField(docText, fieldName, desc).catch(() => null)
+    ),
+  ]);
+
+  // Merge long-text results
+  const longTextFields = {};
+  for (let i = 0; i < longTextEntries.length; i++) {
+    const [fieldName] = longTextEntries[i];
+    const value = longTextResults[i];
+    if (value) {
+      longTextFields[fieldName] = { value, confidence: 0.85, label: 'scope/notes section' };
+    }
+  }
+
+  return { fields: { ...structuredFields, ...longTextFields } };
+}
+
 export function getModuleSchema(moduleType) {
   return MODULE_SCHEMAS[moduleType] || null;
 }
