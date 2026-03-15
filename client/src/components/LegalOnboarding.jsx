@@ -876,7 +876,7 @@ export function LegalOnboarding({ language = 'en', parents = [] }) {
                 <p className="lo-extracting-msg">Extracting document data, please wait…</p>
               )}
               <DocumentAutoFill
-                module={activeModule}
+                module={selectedModule}
                 onApply={handleDocAutoFill}
                 compact
                 fieldLabels={Object.fromEntries(config.fields.map((f) => [f.key, f.label]))}
