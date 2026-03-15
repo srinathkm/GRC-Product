@@ -263,8 +263,13 @@ dashboardRouter.get('/summary', async (req, res) => {
     // ── OpCo alert heat map (top 8 OpCos by total change exposure) ─────────
     const opcoChangeCounts = {};
     for (const c of recentChanges) {
-      for (const co of c.affectedCompanies || []) {
-        if (co) opcoChangeCounts[co] = (opcoChangeCounts[co] || 0) + 1;
+      if (opcoFilter) {
+        // Only show the selected OpCo — don't bleed in unrelated companies
+        opcoChangeCounts[opcoFilter] = (opcoChangeCounts[opcoFilter] || 0) + 1;
+      } else {
+        for (const co of c.affectedCompanies || []) {
+          if (co) opcoChangeCounts[co] = (opcoChangeCounts[co] || 0) + 1;
+        }
       }
     }
     const topOpcoAlerts = Object.entries(opcoChangeCounts)
