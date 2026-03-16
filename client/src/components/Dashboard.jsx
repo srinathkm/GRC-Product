@@ -5,6 +5,7 @@ import { ChangeSnippet } from './ChangeSnippet';
 import { CompaniesByFramework } from './CompaniesByFramework';
 import { ChangesTree } from './ChangesTree';
 import { AssignTaskModal } from './AssignTaskModal';
+import AmlCftChecklist from './AmlCftChecklist';
 
 const API = '/api';
 
@@ -446,6 +447,8 @@ export function Dashboard({
           </p>
         )}
       </section>
+
+      <AmlCftChecklist opco={selectedOpCo || selectedParent || 'global'} language={language} />
     </>
   );
 }

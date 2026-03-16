@@ -1,0 +1,349 @@
+/* AmlCftChecklist.css — UAE AML/CFT Compliance Checklist */
+
+.aml-checklist {
+  margin-top: 2rem;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--surface, #fff);
+}
+
+/* ── Collapsible section header ── */
+.aml-checklist-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem;
+  background: var(--surface, #fff);
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text, #111827);
+  transition: background 0.15s;
+}
+.aml-checklist-toggle:hover {
+  background: var(--surface-hover, #f9fafb);
+}
+.aml-checklist-toggle-icon {
+  font-size: 1.2rem;
+}
+.aml-checklist-toggle-chevron {
+  margin-left: auto;
+  font-size: 0.85rem;
+  color: var(--text-muted, #6b7280);
+  transition: transform 0.2s;
+}
+.aml-checklist-toggle-chevron.open {
+  transform: rotate(180deg);
+}
+
+/* ── Overall progress bar ── */
+.aml-checklist-progress-bar-wrap {
+  padding: 0 1.25rem 0.75rem;
+  border-bottom: 1px solid var(--border, #e5e7eb);
+}
+.aml-checklist-progress-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.78rem;
+  color: var(--text-muted, #6b7280);
+  margin-bottom: 4px;
+}
+.aml-checklist-progress-bar {
+  height: 6px;
+  background: var(--border, #e5e7eb);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.aml-checklist-progress-fill {
+  height: 100%;
+  background: #10b981;
+  border-radius: 3px;
+  transition: width 0.4s ease;
+}
+
+/* ── Toolbar row ── */
+.aml-checklist-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1.25rem;
+  border-bottom: 1px solid var(--border, #e5e7eb);
+  flex-wrap: wrap;
+}
+.aml-checklist-toolbar-label {
+  font-size: 0.82rem;
+  color: var(--text-muted, #6b7280);
+}
+.aml-checklist-upload-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.85rem;
+  border-radius: 6px;
+  border: 1px solid #7c3aed;
+  background: #f5f3ff;
+  color: #7c3aed;
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.aml-checklist-upload-btn:hover {
+  background: #ede9fe;
+}
+.aml-checklist-upload-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.aml-checklist-save-btn {
+  margin-left: auto;
+  padding: 0.35rem 0.85rem;
+  border-radius: 6px;
+  border: none;
+  background: #2563eb;
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.aml-checklist-save-btn:hover {
+  background: #1d4ed8;
+}
+.aml-checklist-save-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.aml-checklist-auto-msg {
+  font-size: 0.78rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 4px;
+}
+.aml-checklist-auto-msg.success {
+  background: #d1fae5;
+  color: #065f46;
+}
+.aml-checklist-auto-msg.error {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+/* ── Domain accordion ── */
+.aml-domains-list {
+  padding: 0.5rem 0;
+}
+.aml-domain {
+  border-bottom: 1px solid var(--border, #e5e7eb);
+}
+.aml-domain:last-child {
+  border-bottom: none;
+}
+
+.aml-domain-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s;
+}
+.aml-domain-header:hover {
+  background: var(--surface-hover, #f9fafb);
+}
+.aml-domain-id {
+  display: inline-block;
+  min-width: 36px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+.aml-domain-name {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text, #111827);
+  flex: 1;
+}
+.aml-domain-progress {
+  font-size: 0.75rem;
+  color: var(--text-muted, #6b7280);
+  white-space: nowrap;
+  margin-right: 0.25rem;
+}
+.aml-domain-chevron {
+  font-size: 0.75rem;
+  color: var(--text-muted, #6b7280);
+  transition: transform 0.2s;
+}
+.aml-domain-chevron.open {
+  transform: rotate(180deg);
+}
+
+/* ── Item list ── */
+.aml-items-list {
+  padding: 0.25rem 0 0.5rem;
+  background: var(--surface-secondary, #f9fafb);
+}
+
+.aml-item {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  border-bottom: 1px solid var(--border, #e5e7eb);
+  align-items: start;
+}
+.aml-item:last-child {
+  border-bottom: none;
+}
+
+.aml-item-left {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.aml-item-control-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+.aml-item-id {
+  flex-shrink: 0;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #6b7280;
+  padding-top: 1px;
+  min-width: 60px;
+}
+.aml-item-control {
+  font-size: 0.83rem;
+  color: var(--text, #111827);
+  line-height: 1.5;
+}
+.aml-critical-badge {
+  flex-shrink: 0;
+  font-size: 0.65rem;
+  font-weight: 700;
+  background: #fef2f2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+  border-radius: 3px;
+  padding: 1px 5px;
+  white-space: nowrap;
+  margin-top: 1px;
+}
+
+.aml-item-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 1rem;
+  margin-top: 0.2rem;
+}
+.aml-item-meta-field {
+  display: flex;
+  flex-direction: column;
+}
+.aml-item-meta-label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.aml-item-meta-value {
+  font-size: 0.74rem;
+  color: var(--text-muted, #6b7280);
+}
+
+/* Evidence note */
+.aml-item-evidence-note {
+  margin-top: 0.4rem;
+}
+.aml-item-evidence-note textarea {
+  width: 100%;
+  font-size: 0.77rem;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 5px;
+  background: #fff;
+  color: var(--text, #111827);
+  resize: vertical;
+  min-height: 48px;
+  font-family: inherit;
+  transition: border-color 0.15s;
+}
+.aml-item-evidence-note textarea:focus {
+  outline: none;
+  border-color: #2563eb;
+}
+
+/* Right side — status picker */
+.aml-item-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.5rem;
+  min-width: 96px;
+}
+
+.aml-status-group {
+  display: flex;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.aml-status-btn {
+  padding: 4px 10px;
+  border: none;
+  background: none;
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  color: #6b7280;
+  transition: background 0.12s, color 0.12s;
+  border-right: 1px solid var(--border, #e5e7eb);
+}
+.aml-status-btn:last-child {
+  border-right: none;
+}
+.aml-status-btn:hover {
+  background: #f3f4f6;
+}
+.aml-status-btn.active-yes {
+  background: #d1fae5;
+  color: #065f46;
+  font-weight: 700;
+}
+.aml-status-btn.active-no {
+  background: #fee2e2;
+  color: #991b1b;
+  font-weight: 700;
+}
+.aml-status-btn.active-na {
+  background: #f3f4f6;
+  color: #374151;
+  font-weight: 700;
+}
+
+/* AI suggestion pill */
+.aml-ai-suggestion {
+  font-size: 0.68rem;
+  padding: 2px 6px;
+  border-radius: 3px;
+  background: #fef9c3;
+  color: #854d0e;
+  border: 1px solid #fef08a;
+  white-space: nowrap;
+}

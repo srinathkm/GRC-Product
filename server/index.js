@@ -31,6 +31,7 @@ import { esgRouter } from './routes/esg.js';
 import { extractRouter } from './routes/extract.js';
 import { assistantRouter } from './routes/assistant.js';
 import { boardPackRouter } from './routes/boardpack.js';
+import { amlChecklistRouter } from './routes/amlChecklist.js';
 import { startFeedScheduler } from './services/regulatoryFeed.js';
 
 const app = express();
@@ -64,6 +65,7 @@ app.use('/api/esg', esgRouter);
 app.use('/api/extract', extractRouter);
 app.use('/api/assistant', assistantRouter);
 app.use('/api/board-pack', boardPackRouter);
+app.use('/api/aml-checklist', amlChecklistRouter);
 
 app.get('/api/health', (_, res) => res.json({ status: 'ok' }));
 app.get('/api/frameworks', (_, res) => res.json({ frameworks: FRAMEWORKS, references: FRAMEWORK_REFERENCES }));
