@@ -1,4 +1,13 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+
+/** Inline AI confidence badge shown next to field labels after extraction. */
+function AiBadge({ meta }) {
+  if (!meta || !meta.confidence) return null;
+  const pct = Math.round(meta.confidence * 100);
+  const cls = meta.confidence >= 0.8 ? 'ai-badge--high' : meta.confidence >= 0.5 ? 'ai-badge--med' : 'ai-badge--low';
+  const title = meta.label ? `AI extracted · found under "${meta.label}"` : 'AI extracted';
+  return <span className={`ai-badge ${cls}`} title={title}>AI {pct}%</span>;
+}
 
 const CONTRACT_TYPES = ['Vendor', 'Employment', 'Service', 'NDA', 'Lease', 'Partnership'];
 const STATUS_OPTIONS = [
@@ -50,6 +59,11 @@ export function ContractsManagement({ language = 'en', parents = [], selectedPar
   const [uploadedFiles, setUploadedFiles] = useState([]); // { fileId, contractId, originalName, extracted? }[]
   const [pendingSavePayload, setPendingSavePayload] = useState(null);
   const [pendingSaveDiff, setPendingSaveDiff] = useState(null);
+
+  // AI extraction metadata — tracks which form fields were auto-populated by AI and with what confidence
+  const [aiExtractedMeta, setAiExtractedMeta] = useState({}); // { fieldKey: { confidence, label } }
+  const originalExtractedRef = useRef({});                     // snapshot of AI values for feedback diff
+  const [learningCount, setLearningCount] = useState(0);
 
   const [form, setForm] = useState({
     contractId: '',
@@ -167,6 +181,29 @@ export function ContractsManagement({ language = 'en', parents = [], selectedPar
   };
 
   const performSave = (payload) => {
+    // Send user corrections as learning feedback before saving (fire-and-forget).
+    const snapshot = originalExtractedRef.current;
+    if (Object.keys(snapshot).length > 0) {
+      const corrections = {};
+      for (const [key, origVal] of Object.entries(snapshot)) {
+        const currentVal = payload[key];
+        if (
+          currentVal !== undefined && currentVal !== null && currentVal !== '' &&
+          String(currentVal) !== String(origVal)
+        ) {
+          corrections[key] = currentVal;
+        }
+      }
+      if (Object.keys(corrections).length > 0) {
+        fetch('/api/extract/feedback', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ module: 'contracts', corrections }),
+        }).catch(() => {});
+      }
+      originalExtractedRef.current = {}; // clear after first save
+    }
+
     fetch('/api/contracts', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -177,6 +214,7 @@ export function ContractsManagement({ language = 'en', parents = [], selectedPar
         setEditingId(null);
         setPendingSavePayload(null);
         setPendingSaveDiff(null);
+        setAiExtractedMeta({});
         loadContracts();
       })
       .catch(() => {});
@@ -290,6 +328,57 @@ export function ContractsManagement({ language = 'en', parents = [], selectedPar
     return null;
   };
 
+  /**
+   * Apply extracted fields from an upload result to the form.
+   * Also records AI metadata for badge display and stores a snapshot for feedback.
+   * `ex` is the flat extracted object returned by /api/contracts/upload.
+   */
+  const applyExtractedToForm = useCallback((item) => {
+    const ex = item.extracted || {};
+
+    // Build the form patch from extracted values
+    const patch = {
+      contractId:          item.contractId          || undefined,
+      documentLink:        item.fileId              || undefined,
+      documentOriginalName: item.originalName       || undefined,
+      title:               ex.title                || undefined,
+      counterparty:        ex.counterparty          || undefined,
+      effectiveDate:       ex.effectiveDate         || undefined,
+      expiryDate:          ex.expiryDate            || undefined,
+      renewalWindowStart:  ex.renewalStart          || undefined,
+      renewalWindowEnd:    ex.renewalEnd            || undefined,
+      vatAmount:           ex.vatAmount  != null    ? String(ex.vatAmount)  : undefined,
+      taxAmount:           ex.taxAmount  != null    ? String(ex.taxAmount)  : undefined,
+      netAmount:           ex.netAmount  != null    ? String(ex.netAmount)  : undefined,
+      totalAmount:         ex.totalAmount != null   ? String(ex.totalAmount): undefined,
+      contractType:        ex.contractType          || undefined,
+      riskLevel:           ex.riskLevel             || undefined,
+    };
+
+    // Strip undefined so we only overwrite fields that were actually extracted
+    const cleanPatch = Object.fromEntries(Object.entries(patch).filter(([, v]) => v !== undefined));
+
+    setForm((prev) => ({ ...prev, ...cleanPatch }));
+
+    // Build AI metadata badges for extracted fields (confidence approx. 0.80 — from universal engine)
+    const AI_CONFIDENCE = 0.8;
+    const meta = {};
+    const snapshot = {};
+    const aiFields = ['title', 'counterparty', 'effectiveDate', 'expiryDate',
+      'renewalWindowStart', 'renewalWindowEnd', 'vatAmount', 'taxAmount',
+      'netAmount', 'totalAmount', 'contractType', 'riskLevel'];
+    for (const f of aiFields) {
+      const val = cleanPatch[f];
+      if (val !== undefined && val !== '') {
+        meta[f] = { confidence: AI_CONFIDENCE, label: '' };
+        snapshot[f] = val;
+      }
+    }
+    setAiExtractedMeta(meta);
+    originalExtractedRef.current = snapshot;
+    if (item.learningCount !== undefined) setLearningCount(item.learningCount);
+  }, []);
+
   const onUpload = useCallback(
     (fileList) => {
       const files = Array.isArray(fileList) ? fileList : (fileList ? [fileList] : []);
@@ -315,45 +404,13 @@ export function ContractsManagement({ language = 'en', parents = [], selectedPar
           const results = Array.isArray(data.results) ? data.results : [];
           setUploadedFiles((prev) => [...prev, ...results]);
           if (results.length > 0) {
-            const first = results[0];
-            const ex = first.extracted || {};
-            setForm((prev) => ({
-              ...prev,
-              contractId: first.contractId || prev.contractId,
-              documentLink: first.fileId || prev.documentLink,
-              documentOriginalName: first.originalName || prev.documentOriginalName,
-              title: ex.title || prev.title,
-              // Dates and counterparty from extraction, if available
-              effectiveDate: ex.effectiveDate || prev.effectiveDate,
-              expiryDate: ex.expiryDate || prev.expiryDate,
-              // Map renewalStart/renewalEnd directly to UI fields
-              renewalWindowStart: ex.renewalStart || prev.renewalWindowStart,
-              renewalWindowEnd: ex.renewalEnd || prev.renewalWindowEnd,
-              counterparty: ex.counterparty || prev.counterparty,
-              // Monetary fields from extraction
-              vatAmount:
-                ex.vatAmount !== undefined && ex.vatAmount !== null
-                  ? String(ex.vatAmount)
-                  : prev.vatAmount,
-              taxAmount:
-                ex.taxAmount !== undefined && ex.taxAmount !== null
-                  ? String(ex.taxAmount)
-                  : prev.taxAmount,
-              netAmount:
-                ex.netAmount !== undefined && ex.netAmount !== null
-                  ? String(ex.netAmount)
-                  : prev.netAmount,
-              totalAmount:
-                ex.totalAmount !== undefined && ex.totalAmount !== null
-                  ? String(ex.totalAmount)
-                  : prev.totalAmount,
-            }));
+            applyExtractedToForm(results[0]);
           }
         })
         .catch(() => setUploadError('Upload failed'))
         .finally(() => setUploadLoading(false));
     },
-    []
+    [applyExtractedToForm]
   );
 
   const onDrop = useCallback(
@@ -366,36 +423,7 @@ export function ContractsManagement({ language = 'en', parents = [], selectedPar
   );
 
   const applyUploadToForm = (item) => {
-    const ex = item.extracted || {};
-    setForm((prev) => ({
-      ...prev,
-      contractId: item.contractId || prev.contractId,
-      documentLink: item.fileId || prev.documentLink,
-      documentOriginalName: item.originalName || prev.documentOriginalName,
-      title: ex.title || prev.title,
-      effectiveDate: ex.effectiveDate || prev.effectiveDate,
-      expiryDate: ex.expiryDate || prev.expiryDate,
-      // Map renewalStart/renewalEnd directly to UI fields
-      renewalWindowStart: ex.renewalStart || prev.renewalWindowStart,
-      renewalWindowEnd: ex.renewalEnd || prev.renewalWindowEnd,
-      counterparty: ex.counterparty || prev.counterparty,
-      vatAmount:
-        ex.vatAmount !== undefined && ex.vatAmount !== null
-          ? String(ex.vatAmount)
-          : prev.vatAmount,
-      taxAmount:
-        ex.taxAmount !== undefined && ex.taxAmount !== null
-          ? String(ex.taxAmount)
-          : prev.taxAmount,
-      netAmount:
-        ex.netAmount !== undefined && ex.netAmount !== null
-          ? String(ex.netAmount)
-          : prev.netAmount,
-      totalAmount:
-        ex.totalAmount !== undefined && ex.totalAmount !== null
-          ? String(ex.totalAmount)
-          : prev.totalAmount,
-    }));
+    applyExtractedToForm(item);
   };
 
   // Upload Document Contract section only: show upload in a table, separate from other content
@@ -584,6 +612,11 @@ export function ContractsManagement({ language = 'en', parents = [], selectedPar
             </div>
           )}
         </div>
+        {learningCount > 0 && (
+          <p className="contract-learning-badge">
+            🧠 Model trained on <strong>{learningCount}</strong> contract{learningCount !== 1 ? 's' : ''} — extraction accuracy improves with every upload.
+          </p>
+        )}
         <div className="lit-form-grid">
           <div className="lit-field">
             <label>Contract ID / File ID</label>
@@ -636,9 +669,9 @@ export function ContractsManagement({ language = 'en', parents = [], selectedPar
             </select>
           </div>
           <div className="lit-field">
-            <label>Title</label>
+            <label>Title <AiBadge meta={aiExtractedMeta.title} /></label>
             <input
-              className="lit-input"
+              className={`lit-input${aiExtractedMeta.title ? ' lit-input--ai' : ''}`}
               type="text"
               value={form.title}
               onChange={(e) => handleFormChange('title', e.target.value)}
@@ -646,9 +679,9 @@ export function ContractsManagement({ language = 'en', parents = [], selectedPar
             />
           </div>
           <div className="lit-field">
-            <label>Counterparty / Parties</label>
+            <label>Counterparty / Parties <AiBadge meta={aiExtractedMeta.counterparty} /></label>
             <input
-              className="lit-input"
+              className={`lit-input${aiExtractedMeta.counterparty ? ' lit-input--ai' : ''}`}
               type="text"
               value={form.counterparty}
               onChange={(e) => handleFormChange('counterparty', e.target.value)}
@@ -656,27 +689,27 @@ export function ContractsManagement({ language = 'en', parents = [], selectedPar
             />
           </div>
           <div className="lit-field">
-            <label>Effective date</label>
+            <label>Effective date <AiBadge meta={aiExtractedMeta.effectiveDate} /></label>
             <input
-              className="lit-input"
+              className={`lit-input${aiExtractedMeta.effectiveDate ? ' lit-input--ai' : ''}`}
               type="date"
               value={form.effectiveDate}
               onChange={(e) => handleFormChange('effectiveDate', e.target.value)}
             />
           </div>
           <div className="lit-field">
-            <label>Expiry date</label>
+            <label>Expiry date <AiBadge meta={aiExtractedMeta.expiryDate} /></label>
             <input
-              className="lit-input"
+              className={`lit-input${aiExtractedMeta.expiryDate ? ' lit-input--ai' : ''}`}
               type="date"
               value={form.expiryDate}
               onChange={(e) => handleFormChange('expiryDate', e.target.value)}
             />
           </div>
           <div className="lit-field">
-            <label>Net amount</label>
+            <label>Net amount <AiBadge meta={aiExtractedMeta.netAmount} /></label>
             <input
-              className="lit-input"
+              className={`lit-input${aiExtractedMeta.netAmount ? ' lit-input--ai' : ''}`}
               type="number"
               min="0"
               step="0.01"
@@ -686,9 +719,9 @@ export function ContractsManagement({ language = 'en', parents = [], selectedPar
             />
           </div>
           <div className="lit-field">
-            <label>VAT amount</label>
+            <label>VAT amount <AiBadge meta={aiExtractedMeta.vatAmount} /></label>
             <input
-              className="lit-input"
+              className={`lit-input${aiExtractedMeta.vatAmount ? ' lit-input--ai' : ''}`}
               type="number"
               min="0"
               step="0.01"
@@ -698,9 +731,9 @@ export function ContractsManagement({ language = 'en', parents = [], selectedPar
             />
           </div>
           <div className="lit-field">
-            <label>Taxes</label>
+            <label>Taxes <AiBadge meta={aiExtractedMeta.taxAmount} /></label>
             <input
-              className="lit-input"
+              className={`lit-input${aiExtractedMeta.taxAmount ? ' lit-input--ai' : ''}`}
               type="number"
               min="0"
               step="0.01"
@@ -710,9 +743,9 @@ export function ContractsManagement({ language = 'en', parents = [], selectedPar
             />
           </div>
           <div className="lit-field">
-            <label>Total amount</label>
+            <label>Total amount <AiBadge meta={aiExtractedMeta.totalAmount} /></label>
             <input
-              className="lit-input"
+              className={`lit-input${aiExtractedMeta.totalAmount ? ' lit-input--ai' : ''}`}
               type="number"
               min="0"
               step="0.01"
@@ -722,25 +755,25 @@ export function ContractsManagement({ language = 'en', parents = [], selectedPar
             />
           </div>
           <div className="lit-field">
-            <label>Renewal window start</label>
+            <label>Renewal window start <AiBadge meta={aiExtractedMeta.renewalWindowStart} /></label>
             <input
-              className="lit-input"
+              className={`lit-input${aiExtractedMeta.renewalWindowStart ? ' lit-input--ai' : ''}`}
               type="date"
               value={form.renewalWindowStart}
               onChange={(e) => handleFormChange('renewalWindowStart', e.target.value)}
             />
           </div>
           <div className="lit-field">
-            <label>Renewal window end</label>
+            <label>Renewal window end <AiBadge meta={aiExtractedMeta.renewalWindowEnd} /></label>
             <input
-              className="lit-input"
+              className={`lit-input${aiExtractedMeta.renewalWindowEnd ? ' lit-input--ai' : ''}`}
               type="date"
               value={form.renewalWindowEnd}
               onChange={(e) => handleFormChange('renewalWindowEnd', e.target.value)}
             />
           </div>
           <div className="lit-field">
-            <label>Risk level</label>
+            <label>Risk level <AiBadge meta={aiExtractedMeta.riskLevel} /></label>
             <select
               className="lit-input"
               value={form.riskLevel}

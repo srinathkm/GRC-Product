@@ -28,9 +28,11 @@ export const MODULE_SCHEMAS = {
 
   poa: {
     // structured
+    parent:           'Full legal name of the company or organisation that is GRANTING this Power of Attorney (the principal / grantor). Look for "THIS POWER OF ATTORNEY is made by", "Grantor:", "Principal:", "Company:", or the first legal entity executing the document. This is the organisation name, not the attorney\'s name.',
+    opco:             'Name of the specific subsidiary or operating company if the grantor is a subsidiary (e.g. "XYZ Trading LLC" within "ABC Holdings Group"). Return null if the document names only one entity.',
     fileId:           'The unique document reference or notarisation reference number (e.g. TEST-POA-BANK-0001-2024 or DXB/NOT/2024/BPO/009114). Look for labels like "Reference No.", "Ref:", "Notarisation Ref", "File No."',
     holderName:       'Full legal name of the attorney-in-fact, grantee, or power of attorney holder. Look for headings like "ATTORNEY-IN-FACT", "GRANTEE", "Attorney", "Authorised Person", "Part 2 – Full Name"',
-    holderRole:       'Job title or designation of the attorney (e.g. Finance Manager, Head of Operations). Look near the holder name.',
+    holderRole:       'Job title or designation of the attorney (e.g. Finance Manager, Head of Operations, Legal Counsel). Look near the holder name or after words like "designation:", "title:", "position:", "capacity:".',
     poaType:          'Category of this POA — infer from the title or subject matter. Must be one of: Banking, General, Government, Real Estate, Corporate, Limited, Special',
     jurisdiction:     'The city, emirate, or country where the POA is executed or governing law applies (e.g. Dubai, KSA, Abu Dhabi). Extract ONLY the place name.',
     issuingAuthority: 'The governing law or issuing authority (e.g. "UAE Federal Law — Central Bank of UAE Regulations", "Laws of the Emirate of Dubai")',
@@ -44,8 +46,10 @@ export const MODULE_SCHEMAS = {
   },
 
   contracts: {
+    parent:              'Full legal name of the company that commissioned or is the primary client / first party in this contract (not the vendor or counterparty). Look for "Party 1:", "Client:", "Customer:", "Buyer:", "Company:", or the first entity listed in the parties section.',
+    opco:                'Name of the specific subsidiary or operating entity entering into this contract, if different from the parent holding company. Return null if only one entity is named.',
     title:               'Short descriptive title of the contract (e.g. Master Services Agreement – IT Infrastructure)',
-    counterparty:        'Name of the vendor, supplier, or counterparty (not the company who commissioned this GRC platform)',
+    counterparty:        'Name of the vendor, supplier, or counterparty (not the company who commissioned this GRC platform). Look for "Party 2:", "Vendor:", "Supplier:", "Service Provider:".',
     contractType:        'Contract type — one of: Vendor, NDA, Lease, Employment, Service, Partnership, Other',
     effectiveDate:       'Contract commencement / effective / start date (YYYY-MM-DD)',
     expiryDate:          'Contract expiry or end date (YYYY-MM-DD)',
@@ -59,6 +63,8 @@ export const MODULE_SCHEMAS = {
   },
 
   ip: {
+    parent:           'Full legal name of the company or organisation that owns or applied for this IP right (the applicant / owner / proprietor). Look for "Applicant:", "Owner:", "Proprietor:", "Holder:", "Registered to:", or the entity named as the IP rights holder.',
+    opco:             'Name of the specific subsidiary holding this IP right, if different from the parent group. Return null if only one entity is mentioned.',
     mark:             'Trademark name, patent title, or IP asset name exactly as it appears on the certificate. Look for "Mark:", "Trade Mark Name:", "Patent Title:", "IP Name:"',
     ipType:           'Type of IP right — one of: Trademark, Patent, Design Right, Trade Name, Copyright, Domain. Infer from document title or content.',
     class:            'WIPO Nice Classification number or patent classification (e.g. Class 36, IPC A61K). Look for "Class:", "Classes:", "Classification:"',
@@ -73,6 +79,8 @@ export const MODULE_SCHEMAS = {
   },
 
   licences: {
+    parent:           'Full legal name of the company or entity to whom this licence is granted (the licensee). Look for "Licensed to:", "Licensee:", "Company Name:", "Trading Name:", "Registered Name:", or the entity named on the licence certificate.',
+    opco:             'Name of the specific branch, outlet, or operating subsidiary if the licence is issued to a subsidiary of the parent group. Return null if only one entity is named.',
     licenceType:      'Category of licence (e.g. Commercial, Financial Services, Healthcare, Import/Export, Technology). Look for "Licence Type:", "Type of Licence:", or infer from document title.',
     licenceNo:        'Licence or permit number. Look for "Licence No.", "License No.", "Permit No.", "Certificate No.", "Reference No."',
     jurisdiction:     'Country, emirate, or free zone where the licence is issued. Look for "Issued in:", "Jurisdiction:", "Emirate:", or the name of the issuing authority\'s location.',
@@ -85,6 +93,8 @@ export const MODULE_SCHEMAS = {
   },
 
   litigations: {
+    parent:           'Full legal name of the company that is the primary party (client / defendant / respondent) in this litigation — i.e. the entity using this GRC platform. Look for the first party named in the heading, caption, or preamble. Exclude law firm names.',
+    opco:             'Name of the specific subsidiary or operating entity involved in this litigation, if different from the parent holding. Return null if only one entity is named.',
     caseId:           'Official court or arbitration reference / case number. Look for "Case No.", "Case Reference:", "Ref:", "Arbitration No.", "Claim No."',
     court:            'Court or arbitration body name (e.g. DIFC Court of First Instance, DIAC, Dubai Courts). Look for "Court:", "Before:", "Forum:", "Tribunal:"',
     jurisdiction:     'Legal jurisdiction where proceedings are taking place.',
@@ -101,6 +111,7 @@ export const MODULE_SCHEMAS = {
   },
 
   ubo: {
+    parent:                    'Full legal name of the company or entity in which this person is a beneficial owner. Look for the company name at the top of the form or in the preamble.',
     fullName:                  'Full legal name of the beneficial owner as on their ID',
     nationality:               'Nationality (full country name, e.g. United Arab Emirates)',
     dateOfBirth:               'Date of birth (YYYY-MM-DD)',

@@ -851,3 +851,63 @@
   color: var(--danger, #f87171);
   margin: 0.5rem 0 0;
 }
+
+/* ── AI extraction badges ─────────────────────────────────────────────────── */
+
+/* Per-field AI confidence badge shown inline in the label */
+.lo-field-ai-badge {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 0.45rem;
+  padding: 0.1rem 0.45rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+  border-radius: 999px;
+  background: rgba(99, 102, 241, 0.15);
+  color: #818cf8;
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  cursor: default;
+  vertical-align: middle;
+}
+
+/* High-confidence AI field: subtle left-border accent */
+.lo-field--ai-high {
+  border-left: 3px solid rgba(99, 102, 241, 0.5);
+  padding-left: 0.6rem;
+  border-radius: 0 6px 6px 0;
+}
+
+/* Medium confidence */
+.lo-field--ai-med {
+  border-left: 3px solid rgba(245, 158, 11, 0.5);
+  padding-left: 0.6rem;
+  border-radius: 0 6px 6px 0;
+}
+
+/* Low confidence */
+.lo-field--ai-low {
+  border-left: 3px solid rgba(239, 68, 68, 0.4);
+  padding-left: 0.6rem;
+  border-radius: 0 6px 6px 0;
+}
+
+/* Learning count indicator shown above the form fields */
+.lo-learning-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  padding: 0.55rem 0.9rem;
+  border-radius: 8px;
+  background: rgba(99, 102, 241, 0.08);
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  font-size: 0.82rem;
+  color: var(--text-secondary, #94a3b8);
+}
+
+.lo-learning-icon {
+  font-size: 1rem;
+  flex-shrink: 0;
+}

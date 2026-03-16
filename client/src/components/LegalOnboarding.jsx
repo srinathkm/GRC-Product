@@ -350,20 +350,33 @@ function AIProgressPanel({ steps }) {
 
 // ─────────────────────────────────────────────
 // FormField — renders a single field based on type
+// aiMeta: { confidence: 0–1, label: string } when field was AI-extracted
 // ─────────────────────────────────────────────
-function FormField({ field, value, onChange }) {
+function FormField({ field, value, onChange, aiMeta }) {
   const handleChange = (e) => {
     const val = field.type === 'checkbox' ? e.target.checked : e.target.value;
     onChange(field.key, val);
   };
 
+  // Determine AI confidence tier for styling
+  const hasAi = aiMeta && aiMeta.confidence > 0;
+  const aiClass = hasAi
+    ? aiMeta.confidence >= 0.8 ? 'lo-field--ai-high'
+    : aiMeta.confidence >= 0.5 ? 'lo-field--ai-med'
+    : 'lo-field--ai-low'
+    : '';
+  const aiLabel = hasAi
+    ? `AI ${Math.round(aiMeta.confidence * 100)}%${aiMeta.label ? ` · found under "${aiMeta.label}"` : ''}`
+    : null;
+
   if (field.type === 'checkbox') {
     return (
-      <div className="lo-field lo-field--checkbox">
+      <div className={`lo-field lo-field--checkbox ${aiClass}`}>
         <label className="lo-field-checkbox-label">
           <input type="checkbox" checked={!!value} onChange={handleChange} />
           <span>{field.label}</span>
         </label>
+        {hasAi && <span className="lo-field-ai-badge" title={aiLabel}>AI {Math.round(aiMeta.confidence * 100)}%</span>}
         {field.hint && <span className="lo-field-hint">{field.hint}</span>}
       </div>
     );
@@ -373,12 +386,17 @@ function FormField({ field, value, onChange }) {
   const isWide = field.type === 'textarea';
   return (
     <div
-      className={`lo-field ${field.required ? 'lo-field--required' : ''}`}
+      className={`lo-field ${field.required ? 'lo-field--required' : ''} ${aiClass}`}
       style={isWide ? { gridColumn: '1 / -1' } : undefined}
     >
       <label className="lo-field-label" htmlFor={`field-${field.key}`}>
         {field.label}
         {field.required && <span className="lo-field-required-star" aria-hidden>*</span>}
+        {hasAi && (
+          <span className="lo-field-ai-badge" title={aiLabel}>
+            AI {Math.round(aiMeta.confidence * 100)}%
+          </span>
+        )}
       </label>
       {field.type === 'textarea' ? (
         <textarea
@@ -524,6 +542,11 @@ export function LegalOnboarding({ language = 'en', parents = [] }) {
   const [isExtracting, setIsExtracting] = useState(false);
   const [extractError, setExtractError] = useState('');
 
+  // AI extraction metadata — tracks per-field confidence & document label
+  const [extractedMeta, setExtractedMeta] = useState({});   // { key: {confidence, label} }
+  const [originalExtracted, setOriginalExtracted] = useState({}); // snapshot for feedback diff
+  const [learningCount, setLearningCount] = useState(0);     // # docs the model has learned from
+
   // Custom field mapping state
   const [savedMappings, setSavedMappings] = useState([]);
   const [activeMapping, setActiveMapping] = useState(null); // { id, name, fieldMap }
@@ -554,6 +577,9 @@ export function LegalOnboarding({ language = 'en', parents = [] }) {
     setFormData({});
     setUploadedFiles([]);
     setAiProgress([]);
+    setExtractedMeta({});
+    setOriginalExtracted({});
+    setLearningCount(0);
     setActiveMapping(null);
     setShowMappingToast(false);
     setExtractError('');
@@ -669,12 +695,16 @@ export function LegalOnboarding({ language = 'en', parents = [] }) {
       clearInterval(interval);
       setAiProgress((prev) => prev.map((s) => ({ ...s, status: 'done' })));
 
-      // Normalise: /api/extract returns { fields: { key: {value, confidence} } }
+      // Normalise: /api/extract returns { fields: { key: {value, confidence, label} }, learningCount }
       //            /api/poa/extract returns { extracted: { key: value } }
       const flat = {};
+      const meta = {};
       if (data.fields) {
         for (const [k, f] of Object.entries(data.fields)) {
-          if (f && f.value !== undefined && f.value !== null && f.value !== '') flat[k] = f.value;
+          if (f && f.value !== undefined && f.value !== null && f.value !== '') {
+            flat[k] = f.value;
+            meta[k] = { confidence: f.confidence ?? 0.7, label: f.label ?? '' };
+          }
         }
       } else if (data.extracted) {
         for (const [k, v] of Object.entries(data.extracted)) {
@@ -684,7 +714,10 @@ export function LegalOnboarding({ language = 'en', parents = [] }) {
 
       if (Object.keys(flat).length > 0) {
         setFormData((prev) => ({ ...prev, ...flat }));
+        setExtractedMeta(meta);
+        setOriginalExtracted(flat); // snapshot for feedback comparison on save
       }
+      if (data.learningCount !== undefined) setLearningCount(data.learningCount);
     } catch (e) {
       clearInterval(interval);
       setAiProgress((prev) => prev.map((s) => ({ ...s, status: 'done' })));
@@ -730,6 +763,29 @@ export function LegalOnboarding({ language = 'en', parents = [] }) {
       return;
     }
 
+    // Send user corrections as learning feedback (fire-and-forget).
+    // Any field the user changed from the AI-extracted value is a correction signal.
+    if (Object.keys(originalExtracted).length > 0) {
+      const corrections = {};
+      for (const [key, origVal] of Object.entries(originalExtracted)) {
+        const currentVal = formData[key];
+        if (
+          currentVal !== undefined && currentVal !== null && currentVal !== '' &&
+          String(currentVal) !== String(origVal)
+        ) {
+          corrections[key] = currentVal;
+        }
+      }
+      if (Object.keys(corrections).length > 0) {
+        const moduleId = { licence: 'licences', litigation: 'litigations' }[config.id] ?? config.id;
+        fetch(`${API}/extract/feedback`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ module: moduleId, corrections }),
+        }).catch(() => {}); // fire-and-forget — learning, not critical
+      }
+    }
+
     try {
       const res = await fetch(config.endpoint, {
         method: 'POST',
@@ -753,6 +809,9 @@ export function LegalOnboarding({ language = 'en', parents = [] }) {
     setFormData({});
     setUploadedFiles([]);
     setAiProgress([]);
+    setExtractedMeta({});
+    setOriginalExtracted({});
+    setLearningCount(0);
     setActiveMapping(null);
     setShowMappingToast(false);
     setExtractError('');
@@ -897,6 +956,12 @@ export function LegalOnboarding({ language = 'en', parents = [] }) {
               {isExtracting && (
                 <p className="lo-extracting-msg">Extracting document data, please wait…</p>
               )}
+              {learningCount > 0 && (
+                <div className="lo-learning-badge">
+                  <span className="lo-learning-icon">🧠</span>
+                  Model trained on <strong>{learningCount}</strong> document{learningCount !== 1 ? 's' : ''} — extraction accuracy improves with each upload.
+                </div>
+              )}
               <div className="lo-fields-grid">
                 {config.fields.map((field) => (
                   <FormField
@@ -904,6 +969,7 @@ export function LegalOnboarding({ language = 'en', parents = [] }) {
                     field={field}
                     value={formData[field.key]}
                     onChange={handleFieldChange}
+                    aiMeta={extractedMeta[field.key]}
                   />
                 ))}
               </div>

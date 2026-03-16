@@ -3385,3 +3385,51 @@ textarea::placeholder {
   background: rgba(239, 68, 68, 0.15);
   color: #f87171;
 }
+
+/* ── Contract / Lit form AI extraction badges ──────────────────────────────── */
+
+/* Inline AI confidence badge rendered next to field labels */
+.ai-badge {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 0.4rem;
+  padding: 0.08rem 0.4rem;
+  font-size: 0.67rem;
+  font-weight: 600;
+  border-radius: 999px;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  cursor: default;
+  vertical-align: middle;
+}
+.ai-badge--high {
+  background: rgba(99, 102, 241, 0.15);
+  color: #818cf8;
+  border: 1px solid rgba(99, 102, 241, 0.3);
+}
+.ai-badge--med {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+.ai-badge--low {
+  background: rgba(239, 68, 68, 0.12);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.25);
+}
+
+/* Input field with AI-extracted value — subtle left accent */
+.lit-input--ai {
+  border-left: 3px solid rgba(99, 102, 241, 0.5) !important;
+}
+
+/* Learning count indicator shown above the contract form */
+.contract-learning-badge {
+  margin: 0 0 0.85rem;
+  padding: 0.5rem 0.85rem;
+  border-radius: 8px;
+  background: rgba(99, 102, 241, 0.08);
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  font-size: 0.81rem;
+  color: var(--text-secondary, #94a3b8);
+}
