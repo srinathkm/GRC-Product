@@ -33,10 +33,15 @@
 
 import { Router }  from 'express';
 import multer      from 'multer';
+import { readFile } from 'fs/promises';
+import { dirname, join } from 'path';
+import { fileURLToPath } from 'url';
 import { extractTextFromBuffer } from '../services/text-extract.js';
-import { extractDocumentFields, getModuleSchema, listModules } from '../services/documentIntelligence.js';
+import { extractDocumentFields, generateContextualSummary, getModuleSchema, listModules } from '../services/documentIntelligence.js';
 import { recordExtraction, recordFeedback, getLearningStats, getModuleMappings } from '../services/fieldLearningService.js';
 import { isLlmConfigured } from '../services/llm.js';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const MAX_FILE_SIZE   = 25 * 1024 * 1024; // 25 MB per file
 const MAX_BATCH_FILES = 50;
@@ -203,5 +208,58 @@ extractRouter.get('/learning-stats', async (req, res) => {
     return res.json({ stats });
   } catch (err) {
     return res.status(500).json({ error: err.message });
+  }
+});
+
+// ── POST /api/extract/summarize  (AI 3-point contextual summary) ──────────────
+// Body: { module, fields: { key: value }, opco?, parent? }
+// Loads existing records for the same org as context, then generates a grounded
+// executive summary with strict anti-hallucination constraints.
+extractRouter.post('/summarize', async (req, res) => {
+  try {
+    if (!isLlmConfigured()) {
+      return res.status(503).json({ error: 'LLM is not configured on this server.' });
+    }
+
+    const { module: moduleType, fields, opco, parent } = req.body || {};
+    if (!validateModule(moduleType, res)) return;
+    if (!fields || typeof fields !== 'object') {
+      return res.status(400).json({ error: 'fields object is required' });
+    }
+
+    // Load existing records for this organisation to provide context
+    let existingRecords = [];
+    try {
+      const dataFileMap = {
+        poa: 'poa.json',
+        contracts: 'contracts.json',
+        ip: 'ip.json',
+        licences: 'licences.json',
+        litigations: 'litigations.json',
+        ubo: 'ubo.json',
+      };
+      const dataFile = dataFileMap[moduleType];
+      if (dataFile) {
+        const raw = await readFile(join(__dirname, `../data/${dataFile}`), 'utf-8');
+        const all = JSON.parse(raw);
+        if (Array.isArray(all)) {
+          // Filter to same org; fall back to all records if no match
+          const byOrg = all.filter((r) =>
+            (opco && String(r.opco || '').toLowerCase() === String(opco).toLowerCase()) ||
+            (parent && String(r.parent || '').toLowerCase() === String(parent).toLowerCase())
+          );
+          existingRecords = (byOrg.length > 0 ? byOrg : all).slice(0, 10);
+        }
+      }
+    } catch { /* data file may not exist yet */ }
+
+    const summary = await generateContextualSummary(moduleType, fields, existingRecords);
+    if (!summary) {
+      return res.status(422).json({ error: 'Summary could not be generated. Check LLM configuration.' });
+    }
+
+    return res.json({ summary });
+  } catch (err) {
+    return res.status(500).json({ error: err.message || 'Summarize failed' });
   }
 });

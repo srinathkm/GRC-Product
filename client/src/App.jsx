@@ -345,13 +345,21 @@ export default function App() {
               onParentHoldingChange={setSelectedParentHolding}
             />
           )}
-          {(currentView === 'contracts-management' || currentView === 'contracts-upload') && (
+          {currentView === 'contracts-management' && (
             <ContractsManagement
               language={language}
               parents={parentHoldingList}
               selectedParentHolding={selectedParentHolding}
               onParentHoldingChange={setSelectedParentHolding}
               currentView={currentView}
+            />
+          )}
+          {currentView === 'contracts-upload' && (
+            <LegalOnboarding
+              language={language}
+              parents={parentHoldingList}
+              initialModule="contracts"
+              singleModule
             />
           )}
           {currentView === 'esg' && (

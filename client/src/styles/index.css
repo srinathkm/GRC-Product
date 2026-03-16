@@ -3433,3 +3433,39 @@ textarea::placeholder {
   font-size: 0.81rem;
   color: var(--text-secondary, #94a3b8);
 }
+
+/* AI Summarize button in contracts form */
+.contract-summarize-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.4rem;
+  flex-wrap: wrap;
+}
+.contract-btn-summarize {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.85rem;
+  font-size: 0.81rem;
+  font-weight: 600;
+  border-radius: 8px;
+  cursor: pointer;
+  border: 1px solid rgba(139, 92, 246, 0.5);
+  background: rgba(139, 92, 246, 0.12);
+  color: #a78bfa;
+  transition: background 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+.contract-btn-summarize:hover:not(:disabled) {
+  background: rgba(139, 92, 246, 0.22);
+  border-color: rgba(139, 92, 246, 0.7);
+}
+.contract-btn-summarize:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.contract-summarize-error {
+  font-size: 0.78rem;
+  color: #f87171;
+}

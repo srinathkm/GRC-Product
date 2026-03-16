@@ -65,6 +65,10 @@ export function ContractsManagement({ language = 'en', parents = [], selectedPar
   const originalExtractedRef = useRef({});                     // snapshot of AI values for feedback diff
   const [learningCount, setLearningCount] = useState(0);
 
+  // AI contextual summary for Notes field
+  const [isSummarizing, setIsSummarizing] = useState(false);
+  const [summarizeError, setSummarizeError] = useState('');
+
   const [form, setForm] = useState({
     contractId: '',
     parent: selectedParentHolding || '',
@@ -425,6 +429,33 @@ export function ContractsManagement({ language = 'en', parents = [], selectedPar
   const applyUploadToForm = (item) => {
     applyExtractedToForm(item);
   };
+
+  // ── AI Summarize — generates grounded 3-point executive summary into Notes ──
+  const handleSummarize = useCallback(async () => {
+    setSummarizeError('');
+    setIsSummarizing(true);
+    try {
+      const res = await fetch('/api/extract/summarize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          module: 'contracts',
+          fields: { ...form, notes: undefined }, // exclude notes to avoid circular input
+          opco: form.opco || '',
+          parent: form.parent || '',
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Summary generation failed');
+      if (data.summary) {
+        setForm((prev) => ({ ...prev, notes: data.summary }));
+      }
+    } catch (e) {
+      setSummarizeError(e.message);
+    } finally {
+      setIsSummarizing(false);
+    }
+  }, [form]);
 
   // Upload Document Contract section only: show upload in a table, separate from other content
   if (currentView === 'contracts-upload') {
@@ -839,13 +870,26 @@ export function ContractsManagement({ language = 'en', parents = [], selectedPar
             />
           </div>
           <div className="lit-field lit-field-wide">
-            <label>Notes</label>
+            <label>Notes / AI Summary</label>
             <textarea
               className="lit-input"
-              rows={2}
+              rows={5}
               value={form.notes}
               onChange={(e) => handleFormChange('notes', e.target.value)}
+              placeholder="Use 'AI Summarize' to auto-generate a contextual 3-point executive summary from the contract data."
             />
+            <div className="contract-summarize-row">
+              <button
+                type="button"
+                className="contract-btn-summarize"
+                disabled={isSummarizing}
+                onClick={handleSummarize}
+                title="Generate a grounded 3-point executive summary (context, impact, next steps)"
+              >
+                {isSummarizing ? '⏳ Generating summary…' : '✨ AI Summarize'}
+              </button>
+              {summarizeError && <span className="contract-summarize-error">{summarizeError}</span>}
+            </div>
           </div>
         </div>
         <div className="lit-form-actions">

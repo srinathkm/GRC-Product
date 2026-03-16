@@ -178,8 +178,8 @@ contractsRouter.post('/', async (req, res) => {
     const opco = (body.opco || '').trim();
     const contractType = (body.contractType || '').trim();
     const title = (body.title || '').trim();
-    if (!parent || !contractType) {
-      return res.status(400).json({ error: 'parent and contractType are required' });
+    if (!contractType) {
+      return res.status(400).json({ error: 'contractType is required' });
     }
     const nowIso = new Date().toISOString();
     const all = await loadContracts();

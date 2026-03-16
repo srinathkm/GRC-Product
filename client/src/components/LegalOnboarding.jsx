@@ -108,6 +108,43 @@ const MODULE_CONFIGS = {
       'Extracting validity and renewal dates',
     ],
   },
+  contracts: {
+    id: 'contracts',
+    label: 'Contract Onboarding',
+    icon: '📋',
+    description: 'Upload contract documents for intelligent extraction. AI reads and understands the contract to extract parties, commercial terms, dates, financial values, renewal windows and risk level — all fields pre-filled for your review.',
+    endpoint: `${API}/contracts`,
+    extractEndpoint: `${API}/extract`,
+    aiExtract: true,
+    acceptBulk: false,
+    requiredKeys: ['contractType'],
+    fields: [
+      { key: 'opco',               label: 'Organisation / OpCo',       type: 'text',     hint: 'Legal entity named in the contract — auto-extracted from document.' },
+      { key: 'parent',             label: 'Parent Holding',             type: 'text' },
+      { key: 'contractType',       label: 'Contract Type',              type: 'select',   required: true, options: ['Vendor', 'Employment', 'Service', 'NDA', 'Lease', 'Partnership', 'Other'] },
+      { key: 'title',              label: 'Title',                      type: 'text',     hint: 'Contract title or reference.' },
+      { key: 'counterparty',       label: 'Counterparty / Vendor',      type: 'text',     hint: 'Other party to the contract.' },
+      { key: 'effectiveDate',      label: 'Effective Date',             type: 'date' },
+      { key: 'expiryDate',         label: 'Expiry Date',                type: 'date' },
+      { key: 'netAmount',          label: 'Net Amount',                 type: 'number',   hint: 'Before VAT / taxes.' },
+      { key: 'vatAmount',          label: 'VAT Amount',                 type: 'number' },
+      { key: 'taxAmount',          label: 'Other Taxes',                type: 'number' },
+      { key: 'totalAmount',        label: 'Total Amount',               type: 'number' },
+      { key: 'renewalWindowStart', label: 'Renewal Window Start',       type: 'date' },
+      { key: 'renewalWindowEnd',   label: 'Renewal Window End',         type: 'date' },
+      { key: 'riskLevel',          label: 'Risk Level',                 type: 'select',   options: ['Low', 'Medium', 'High'] },
+      { key: 'status',             label: 'Status',                     type: 'select',   options: ['Draft', 'Pending Review', 'Pending Approval (Legal)', 'Pending Approval (Finance)', 'Active', 'Expired', 'Terminated'] },
+      { key: 'notes',              label: 'Notes / AI Summary',         type: 'textarea', hint: 'Use "AI Summarize" to auto-generate a contextual 3-point executive summary.' },
+    ],
+    aiSteps: [
+      'Extracting contract text and structure',
+      'Identifying parties and organisation names',
+      'Parsing commercial terms, dates and financial amounts',
+      'Extracting renewal windows and risk indicators',
+      'Generating contextual AI summary',
+    ],
+  },
+
   litigation: {
     id: 'litigation',
     label: 'Litigations Management',
@@ -350,9 +387,12 @@ function AIProgressPanel({ steps }) {
 
 // ─────────────────────────────────────────────
 // FormField — renders a single field based on type
-// aiMeta: { confidence: 0–1, label: string } when field was AI-extracted
+// aiMeta:      { confidence: 0–1, label: string } when field was AI-extracted
+// onSummarize: callback for notes fields to trigger AI summary generation
+// isSummarizing: boolean loading state for the summarize button
+// summarizeError: error string if summary failed
 // ─────────────────────────────────────────────
-function FormField({ field, value, onChange, aiMeta }) {
+function FormField({ field, value, onChange, aiMeta, onSummarize, isSummarizing, summarizeError }) {
   const handleChange = (e) => {
     const val = field.type === 'checkbox' ? e.target.checked : e.target.value;
     onChange(field.key, val);
@@ -399,14 +439,30 @@ function FormField({ field, value, onChange, aiMeta }) {
         )}
       </label>
       {field.type === 'textarea' ? (
-        <textarea
-          id={`field-${field.key}`}
-          className="lo-field-input lo-field-textarea"
-          value={value || ''}
-          onChange={handleChange}
-          rows={4}
-          placeholder={field.hint || ''}
-        />
+        <>
+          <textarea
+            id={`field-${field.key}`}
+            className="lo-field-input lo-field-textarea"
+            value={value || ''}
+            onChange={handleChange}
+            rows={field.key === 'notes' ? 6 : 4}
+            placeholder={field.hint || ''}
+          />
+          {field.key === 'notes' && onSummarize && (
+            <div className="lo-summarize-row">
+              <button
+                type="button"
+                className="lo-btn-summarize"
+                onClick={onSummarize}
+                disabled={isSummarizing}
+                title="Generate a grounded 3-point executive summary from the document data"
+              >
+                {isSummarizing ? '⏳ Generating summary…' : '✨ AI Summarize'}
+              </button>
+              {summarizeError && <span className="lo-summarize-error">{summarizeError}</span>}
+            </div>
+          )}
+        </>
       ) : field.type === 'select' ? (
         <select
           id={`field-${field.key}`}
@@ -533,9 +589,9 @@ function LegalOnboardingPanel({ wizardStep, config, aiProgress, uploadedFiles, a
 // ─────────────────────────────────────────────
 // Main LegalOnboarding component
 // ─────────────────────────────────────────────
-export function LegalOnboarding({ language = 'en', parents = [] }) {
+export function LegalOnboarding({ language = 'en', parents = [], initialModule, singleModule = false }) {
   const [wizardStep, setWizardStep] = useState(1);
-  const [selectedModule, setSelectedModule] = useState('poa');
+  const [selectedModule, setSelectedModule] = useState(initialModule || 'poa');
   const [uploadedFiles, setUploadedFiles] = useState([]);
   const [formData, setFormData] = useState({});
   const [aiProgress, setAiProgress] = useState([]);
@@ -546,6 +602,10 @@ export function LegalOnboarding({ language = 'en', parents = [] }) {
   const [extractedMeta, setExtractedMeta] = useState({});   // { key: {confidence, label} }
   const [originalExtracted, setOriginalExtracted] = useState({}); // snapshot for feedback diff
   const [learningCount, setLearningCount] = useState(0);     // # docs the model has learned from
+
+  // AI contextual summary (Notes field)
+  const [isSummarizing, setIsSummarizing] = useState(false);
+  const [summarizeError, setSummarizeError] = useState('');
 
   // Custom field mapping state
   const [savedMappings, setSavedMappings] = useState([]);
@@ -816,7 +876,36 @@ export function LegalOnboarding({ language = 'en', parents = [] }) {
     setShowMappingToast(false);
     setExtractError('');
     setSaveError('');
+    setSummarizeError('');
     setJustSaved(null);
+  }
+
+  // ── AI Summarize — generates grounded 3-point executive summary into Notes ──
+  async function handleSummarize() {
+    setSummarizeError('');
+    setIsSummarizing(true);
+    const moduleId = { licence: 'licences', litigation: 'litigations' }[config.id] ?? config.id;
+    try {
+      const res = await fetch(`${API}/extract/summarize`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          module: moduleId,
+          fields: { ...formData, notes: undefined }, // exclude existing notes to avoid circular input
+          opco: formData.opco || '',
+          parent: formData.parent || '',
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Summary generation failed');
+      if (data.summary) {
+        setFormData((prev) => ({ ...prev, notes: data.summary }));
+      }
+    } catch (e) {
+      setSummarizeError(e.message);
+    } finally {
+      setIsSummarizing(false);
+    }
   }
 
   // ── Breadcrumb steps ──
@@ -867,19 +956,21 @@ export function LegalOnboarding({ language = 'en', parents = [] }) {
                 Choose the Legal module for which you are uploading documents, then upload your file.
               </p>
 
-              {/* Module cards */}
-              <div className="lo-module-cards">
-                {Object.values(MODULE_CONFIGS).map((mod) => (
-                  <button
-                    key={mod.id}
-                    className={`lo-module-card ${selectedModule === mod.id ? 'lo-module-card--active' : ''}`}
-                    onClick={() => handleModuleChange(mod.id)}
-                  >
-                    <span className="lo-module-card-icon">{mod.icon}</span>
-                    <span className="lo-module-card-label">{mod.label}</span>
-                  </button>
-                ))}
-              </div>
+              {/* Module cards — hidden when singleModule=true (e.g. contracts-upload view) */}
+              {!singleModule && (
+                <div className="lo-module-cards">
+                  {Object.values(MODULE_CONFIGS).map((mod) => (
+                    <button
+                      key={mod.id}
+                      className={`lo-module-card ${selectedModule === mod.id ? 'lo-module-card--active' : ''}`}
+                      onClick={() => handleModuleChange(mod.id)}
+                    >
+                      <span className="lo-module-card-icon">{mod.icon}</span>
+                      <span className="lo-module-card-label">{mod.label}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
 
               {/* Upload zone */}
               <div
@@ -970,6 +1061,9 @@ export function LegalOnboarding({ language = 'en', parents = [] }) {
                     value={formData[field.key]}
                     onChange={handleFieldChange}
                     aiMeta={extractedMeta[field.key]}
+                    onSummarize={field.key === 'notes' ? handleSummarize : undefined}
+                    isSummarizing={field.key === 'notes' ? isSummarizing : undefined}
+                    summarizeError={field.key === 'notes' ? summarizeError : undefined}
                   />
                 ))}
               </div>
