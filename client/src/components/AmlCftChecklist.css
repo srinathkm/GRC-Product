@@ -1,11 +1,11 @@
-/* AmlCftChecklist.css — UAE AML/CFT Compliance Checklist */
+/* AmlCftChecklist.css — UAE AML/CFT Compliance Checklist (dark-theme aware) */
 
 .aml-checklist {
   margin-top: 2rem;
-  border: 1px solid var(--border, #e5e7eb);
+  border: 2px solid #3b82f6;
   border-radius: 10px;
   overflow: hidden;
-  background: var(--surface, #fff);
+  background: var(--surface, #1a2332);
 }
 
 /* ── Collapsible section header ── */
@@ -15,17 +15,18 @@
   align-items: center;
   gap: 0.75rem;
   padding: 1rem 1.25rem;
-  background: var(--surface, #fff);
+  background: linear-gradient(135deg, #1e3a5f 0%, #1a2e4a 100%);
   border: none;
   cursor: pointer;
   text-align: left;
   font-size: 1rem;
   font-weight: 600;
-  color: var(--text, #111827);
+  color: #e2e8f0;
   transition: background 0.15s;
+  border-bottom: 1px solid #2d4a6e;
 }
 .aml-checklist-toggle:hover {
-  background: var(--surface-hover, #f9fafb);
+  background: linear-gradient(135deg, #254b78 0%, #1e3a5f 100%);
 }
 .aml-checklist-toggle-icon {
   font-size: 1.2rem;
@@ -33,7 +34,7 @@
 .aml-checklist-toggle-chevron {
   margin-left: auto;
   font-size: 0.85rem;
-  color: var(--text-muted, #6b7280);
+  color: #94a3b8;
   transition: transform 0.2s;
 }
 .aml-checklist-toggle-chevron.open {
@@ -42,19 +43,20 @@
 
 /* ── Overall progress bar ── */
 .aml-checklist-progress-bar-wrap {
-  padding: 0 1.25rem 0.75rem;
-  border-bottom: 1px solid var(--border, #e5e7eb);
+  padding: 0.75rem 1.25rem;
+  border-bottom: 1px solid var(--border, #2d3a4f);
+  background: var(--surface, #1a2332);
 }
 .aml-checklist-progress-label {
   display: flex;
   justify-content: space-between;
   font-size: 0.78rem;
-  color: var(--text-muted, #6b7280);
+  color: var(--text-muted, #9baec8);
   margin-bottom: 4px;
 }
 .aml-checklist-progress-bar {
   height: 6px;
-  background: var(--border, #e5e7eb);
+  background: var(--border, #2d3a4f);
   border-radius: 3px;
   overflow: hidden;
 }
@@ -71,12 +73,13 @@
   align-items: center;
   gap: 0.75rem;
   padding: 0.75rem 1.25rem;
-  border-bottom: 1px solid var(--border, #e5e7eb);
+  border-bottom: 1px solid var(--border, #2d3a4f);
   flex-wrap: wrap;
+  background: var(--surface, #1a2332);
 }
 .aml-checklist-toolbar-label {
   font-size: 0.82rem;
-  color: var(--text-muted, #6b7280);
+  color: var(--text-muted, #9baec8);
 }
 .aml-checklist-upload-btn {
   display: inline-flex;
@@ -85,15 +88,15 @@
   padding: 0.35rem 0.85rem;
   border-radius: 6px;
   border: 1px solid #7c3aed;
-  background: #f5f3ff;
-  color: #7c3aed;
+  background: rgba(124, 58, 237, 0.15);
+  color: #a78bfa;
   font-size: 0.8rem;
   font-weight: 500;
   cursor: pointer;
   transition: background 0.15s;
 }
 .aml-checklist-upload-btn:hover {
-  background: #ede9fe;
+  background: rgba(124, 58, 237, 0.25);
 }
 .aml-checklist-upload-btn:disabled {
   opacity: 0.6;
@@ -124,20 +127,22 @@
   border-radius: 4px;
 }
 .aml-checklist-auto-msg.success {
-  background: #d1fae5;
-  color: #065f46;
+  background: rgba(16, 185, 129, 0.15);
+  color: #6ee7b7;
+  border: 1px solid rgba(16, 185, 129, 0.3);
 }
 .aml-checklist-auto-msg.error {
-  background: #fee2e2;
-  color: #991b1b;
+  background: rgba(239, 68, 68, 0.15);
+  color: #fca5a5;
+  border: 1px solid rgba(239, 68, 68, 0.3);
 }
 
 /* ── Domain accordion ── */
 .aml-domains-list {
-  padding: 0.5rem 0;
+  padding: 0.25rem 0;
 }
 .aml-domain {
-  border-bottom: 1px solid var(--border, #e5e7eb);
+  border-bottom: 1px solid var(--border, #2d3a4f);
 }
 .aml-domain:last-child {
   border-bottom: none;
@@ -156,15 +161,15 @@
   transition: background 0.15s;
 }
 .aml-domain-header:hover {
-  background: var(--surface-hover, #f9fafb);
+  background: var(--surface-hover, #243044);
 }
 .aml-domain-id {
   display: inline-block;
-  min-width: 36px;
+  min-width: 38px;
   padding: 2px 6px;
   border-radius: 4px;
-  background: #eff6ff;
-  color: #1d4ed8;
+  background: rgba(59, 130, 246, 0.2);
+  color: #93c5fd;
   font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.03em;
@@ -172,18 +177,18 @@
 .aml-domain-name {
   font-size: 0.88rem;
   font-weight: 600;
-  color: var(--text, #111827);
+  color: var(--text, #e6edf3);
   flex: 1;
 }
 .aml-domain-progress {
   font-size: 0.75rem;
-  color: var(--text-muted, #6b7280);
+  color: var(--text-muted, #9baec8);
   white-space: nowrap;
   margin-right: 0.25rem;
 }
 .aml-domain-chevron {
   font-size: 0.75rem;
-  color: var(--text-muted, #6b7280);
+  color: var(--text-muted, #9baec8);
   transition: transform 0.2s;
 }
 .aml-domain-chevron.open {
@@ -193,7 +198,7 @@
 /* ── Item list ── */
 .aml-items-list {
   padding: 0.25rem 0 0.5rem;
-  background: var(--surface-secondary, #f9fafb);
+  background: rgba(0, 0, 0, 0.15);
 }
 
 .aml-item {
@@ -201,7 +206,7 @@
   grid-template-columns: 1fr auto;
   gap: 0.5rem;
   padding: 0.75rem 1.5rem;
-  border-bottom: 1px solid var(--border, #e5e7eb);
+  border-bottom: 1px solid var(--border, #2d3a4f);
   align-items: start;
 }
 .aml-item:last-child {
@@ -223,22 +228,22 @@
   flex-shrink: 0;
   font-size: 0.7rem;
   font-weight: 700;
-  color: #6b7280;
+  color: var(--text-muted, #9baec8);
   padding-top: 1px;
   min-width: 60px;
 }
 .aml-item-control {
   font-size: 0.83rem;
-  color: var(--text, #111827);
+  color: var(--text, #e6edf3);
   line-height: 1.5;
 }
 .aml-critical-badge {
   flex-shrink: 0;
   font-size: 0.65rem;
   font-weight: 700;
-  background: #fef2f2;
-  color: #b91c1c;
-  border: 1px solid #fecaca;
+  background: rgba(185, 28, 28, 0.2);
+  color: #fca5a5;
+  border: 1px solid rgba(185, 28, 28, 0.4);
   border-radius: 3px;
   padding: 1px 5px;
   white-space: nowrap;
@@ -258,13 +263,13 @@
 .aml-item-meta-label {
   font-size: 0.68rem;
   font-weight: 600;
-  color: #9ca3af;
+  color: #64748b;
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
 .aml-item-meta-value {
   font-size: 0.74rem;
-  color: var(--text-muted, #6b7280);
+  color: var(--text-muted, #9baec8);
 }
 
 /* Evidence note */
@@ -275,18 +280,22 @@
   width: 100%;
   font-size: 0.77rem;
   padding: 0.4rem 0.6rem;
-  border: 1px solid var(--border, #e5e7eb);
+  border: 1px solid var(--border, #2d3a4f);
   border-radius: 5px;
-  background: #fff;
-  color: var(--text, #111827);
+  background: var(--surface, #1a2332);
+  color: var(--text, #e6edf3);
   resize: vertical;
   min-height: 48px;
   font-family: inherit;
   transition: border-color 0.15s;
+  box-sizing: border-box;
 }
 .aml-item-evidence-note textarea:focus {
   outline: none;
-  border-color: #2563eb;
+  border-color: #3b82f6;
+}
+.aml-item-evidence-note textarea::placeholder {
+  color: #4b5563;
 }
 
 /* Right side — status picker */
@@ -300,7 +309,7 @@
 
 .aml-status-group {
   display: flex;
-  border: 1px solid var(--border, #e5e7eb);
+  border: 1px solid var(--border, #2d3a4f);
   border-radius: 6px;
   overflow: hidden;
 }
@@ -311,29 +320,29 @@
   font-size: 0.75rem;
   font-weight: 500;
   cursor: pointer;
-  color: #6b7280;
+  color: var(--text-muted, #9baec8);
   transition: background 0.12s, color 0.12s;
-  border-right: 1px solid var(--border, #e5e7eb);
+  border-right: 1px solid var(--border, #2d3a4f);
 }
 .aml-status-btn:last-child {
   border-right: none;
 }
 .aml-status-btn:hover {
-  background: #f3f4f6;
+  background: var(--surface-hover, #243044);
 }
 .aml-status-btn.active-yes {
-  background: #d1fae5;
-  color: #065f46;
+  background: rgba(16, 185, 129, 0.2);
+  color: #6ee7b7;
   font-weight: 700;
 }
 .aml-status-btn.active-no {
-  background: #fee2e2;
-  color: #991b1b;
+  background: rgba(239, 68, 68, 0.2);
+  color: #fca5a5;
   font-weight: 700;
 }
 .aml-status-btn.active-na {
-  background: #f3f4f6;
-  color: #374151;
+  background: var(--surface-hover, #243044);
+  color: var(--text-muted, #9baec8);
   font-weight: 700;
 }
 
@@ -342,8 +351,8 @@
   font-size: 0.68rem;
   padding: 2px 6px;
   border-radius: 3px;
-  background: #fef9c3;
-  color: #854d0e;
-  border: 1px solid #fef08a;
+  background: rgba(251, 191, 36, 0.15);
+  color: #fbbf24;
+  border: 1px solid rgba(251, 191, 36, 0.3);
   white-space: nowrap;
 }
