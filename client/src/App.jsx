@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { t } from './i18n';
 import { MainNav } from './components/MainNav';
 import { Dashboard } from './components/Dashboard';
-import { ChatPanel } from './components/ChatPanel';
 import { ParentHoldingOverview } from './components/ParentHoldingOverview';
 import { EsgSummary } from './components/EsgSummary';
 import { MultiJurisdictionMatrix } from './components/MultiJurisdictionMatrix';
@@ -399,9 +398,6 @@ export default function App() {
                 onParentHoldingChange={setSelectedParentHolding}
               />
             </main>
-            <aside className="chat-area">
-              <ChatPanel />
-            </aside>
           </div>
           {currentView === 'task-tracker' && <TaskTracker />}
           {PLACEHOLDER_VIEWS[currentView] && (

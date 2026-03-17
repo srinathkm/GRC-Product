@@ -78,18 +78,10 @@ a:hover {
 }
 
 .governance-layout {
-  display: grid;
-  grid-template-columns: 1fr 380px;
-  grid-template-rows: 1fr;
+  display: flex;
+  flex-direction: column;
   flex: 1;
   min-height: 0;
-}
-
-@media (max-width: 1024px) {
-  .governance-layout {
-    grid-template-columns: 1fr;
-    grid-template-rows: auto 1fr;
-  }
 }
 
 .header {

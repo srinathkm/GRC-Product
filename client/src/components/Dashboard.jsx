@@ -24,8 +24,6 @@ export function Dashboard({
   const [changes, setChanges] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [email, setEmail] = useState('');
-  const [emailStatus, setEmailStatus] = useState(null);
   const [expandedChangeId, setExpandedChangeId] = useState(null);
   const [viewDetailsContext, setViewDetailsContext] = useState(null);
   const [selectedOpCo, setSelectedOpCo] = useState('');
@@ -182,30 +180,6 @@ export function Dashboard({
         URL.revokeObjectURL(url);
       })
       .catch((e) => alert('PDF download failed: ' + (e.message || String(e))));
-  };
-
-  const handleSendEmail = (e) => {
-    e.preventDefault();
-    if (!email.trim()) return;
-    setEmailStatus('sending');
-    const body = { to: email.trim(), days: selectedDays };
-    if (isFilteredByFramework) body.framework = selectedFramework;
-    fetch(`${API}/email`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    })
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.error) throw new Error(data.error);
-        setEmailStatus('sent');
-        setEmail('');
-      })
-      .catch((e) => {
-        setEmailStatus('error');
-        setTimeout(() => setEmailStatus(null), 3000);
-        alert(e.message);
-      });
   };
 
   return (
@@ -421,32 +395,6 @@ export function Dashboard({
           onCreated={() => setAssignTaskContext(null)}
         />
       )}
-
-      <section className="pdf-email-section">
-        <h3>Send changes by email</h3>
-        <form className="email-form" onSubmit={handleSendEmail}>
-          <input
-            type="email"
-            placeholder="Recipient email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-          <button type="submit" className="btn">
-            {emailStatus === 'sending' ? 'Sending…' : 'Send'}
-          </button>
-        </form>
-        {emailStatus === 'sent' && (
-          <p style={{ marginTop: '0.5rem', color: 'var(--success)', fontSize: '0.9rem' }}>
-            Email sent successfully.
-          </p>
-        )}
-        {emailStatus === 'error' && (
-          <p style={{ marginTop: '0.5rem', color: '#ef4444', fontSize: '0.9rem' }}>
-            Failed to send. Check server SMTP config.
-          </p>
-        )}
-      </section>
 
       <AmlCftChecklist opco={selectedOpCo || selectedParent || 'global'} language={language} />
     </>
