@@ -82,12 +82,11 @@ export const dashboardRouter = Router();
 dashboardRouter.get('/summary', async (req, res) => {
   try {
     const days = parseInt(req.query.days, 10) || 30;
-    const opcoFilter = req.query.opco ? req.query.opco.trim() : null;
     const now = new Date();
     const today = now.toISOString().slice(0, 10);
 
     // ── Load all data sources in parallel ──────────────────────────────────
-    const [changesRaw, companies, onboarding, poaAll, ipAll, licencesAll, litigationsAll, contractsAll, feedMeta] =
+    const [changesRaw, companies, onboarding, poa, ip, licences, litigations, contracts, feedMeta] =
       await Promise.all([
         safeRead(paths.changes, []),
         safeRead(paths.companies, {}),
@@ -100,51 +99,7 @@ dashboardRouter.get('/summary', async (req, res) => {
         safeRead(paths.feedMeta, null),
       ]);
 
-    const allChanges = normalizeDates(changesRaw);
-
-    // ── Resolve frameworks for the selected OpCo ───────────────────────────
-    // Build opcoFrameworks: the set of framework names the selected OpCo belongs to,
-    // derived from companies.json (framework-keyed) and onboarding-opcos.json.
-    // All name comparisons are case-insensitive to handle inconsistent casing in data.
-    let opcoFrameworks = null;
-    if (opcoFilter) {
-      opcoFrameworks = new Set();
-      const opcoLower = opcoFilter.toLowerCase();
-      // companies.json: { [framework]: [{ parent, companies: [] }] }
-      for (const [fw, entries] of Object.entries(companies)) {
-        if (!Array.isArray(entries)) continue;
-        for (const entry of entries) {
-          if ((entry.companies || []).some((c) => c && c.toLowerCase() === opcoLower)) {
-            opcoFrameworks.add(fw);
-          }
-        }
-      }
-      // onboarding-opcos.json: check applicableFrameworks and applicableFrameworksByLocation
-      for (const row of onboarding) {
-        if (!row.opco || row.opco.toLowerCase() !== opcoLower) continue;
-        // explicit list takes priority
-        for (const fw of row.applicableFrameworks || []) opcoFrameworks.add(fw);
-        // fallback: extract from location-based pairs
-        for (const pair of row.applicableFrameworksByLocation || []) {
-          if (pair.framework) opcoFrameworks.add(pair.framework);
-        }
-      }
-      // Remove "Onboarded" pseudo-framework — it has no matching changes
-      opcoFrameworks.delete('Onboarded');
-    }
-
-    // ── Apply OpCo filter ──────────────────────────────────────────────────
-    // Regulatory changes: use framework membership (not affectedCompanies, which is
-    // sparsely populated) so all framework changes relevant to the OpCo are shown.
-    const opcoLower = opcoFilter ? opcoFilter.toLowerCase() : null;
-    const changes = opcoFrameworks
-      ? allChanges.filter((c) => opcoFrameworks.has(c.framework))
-      : allChanges;
-    const poa         = opcoLower ? poaAll.filter((r) => r.opco && r.opco.toLowerCase() === opcoLower)         : poaAll;
-    const ip          = opcoLower ? ipAll.filter((r) => r.opco && r.opco.toLowerCase() === opcoLower)          : ipAll;
-    const licences    = opcoLower ? licencesAll.filter((r) => r.opco && r.opco.toLowerCase() === opcoLower)    : licencesAll;
-    const litigations = opcoLower ? litigationsAll.filter((r) => r.opco && r.opco.toLowerCase() === opcoLower) : litigationsAll;
-    const contracts   = opcoLower ? contractsAll.filter((r) => r.opco && r.opco.toLowerCase() === opcoLower)   : contractsAll;
+    const changes = normalizeDates(changesRaw);
 
     // ── Entity counts ──────────────────────────────────────────────────────
     const parentSet = new Set();
@@ -177,7 +132,6 @@ dashboardRouter.get('/summary', async (req, res) => {
       if (!c.deadline) return false;
       return isExpired(c.deadline);
     });
-    const overdueFrameworkSet = new Set(overdueChanges.map((c) => c.framework).filter(Boolean));
 
     // Top frameworks by change volume (for bar chart)
     const topFrameworks = Object.entries(frameworkCounts)
@@ -263,13 +217,8 @@ dashboardRouter.get('/summary', async (req, res) => {
     // ── OpCo alert heat map (top 8 OpCos by total change exposure) ─────────
     const opcoChangeCounts = {};
     for (const c of recentChanges) {
-      if (opcoFilter) {
-        // Only show the selected OpCo — don't bleed in unrelated companies
-        opcoChangeCounts[opcoFilter] = (opcoChangeCounts[opcoFilter] || 0) + 1;
-      } else {
-        for (const co of c.affectedCompanies || []) {
-          if (co) opcoChangeCounts[co] = (opcoChangeCounts[co] || 0) + 1;
-        }
+      for (const co of c.affectedCompanies || []) {
+        if (co) opcoChangeCounts[co] = (opcoChangeCounts[co] || 0) + 1;
       }
     }
     const topOpcoAlerts = Object.entries(opcoChangeCounts)
@@ -286,8 +235,6 @@ dashboardRouter.get('/summary', async (req, res) => {
     res.json({
       generatedAt: now.toISOString(),
       periodDays: days,
-      opcoFilter: opcoFilter || null,
-      opcoFrameworks: opcoFrameworks ? [...opcoFrameworks] : null,
 
       entities: {
         totalParents: parentSet.size,
@@ -299,7 +246,6 @@ dashboardRouter.get('/summary', async (req, res) => {
         total: recentChanges.length,
         critical: criticalChanges.length,
         overdue: overdueChanges.length,
-        overdueFrameworks: overdueFrameworkSet.size,
         frameworkBreakdown: frameworkCounts,
         topFrameworks,
       },

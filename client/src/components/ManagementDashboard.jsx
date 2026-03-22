@@ -218,31 +218,18 @@ function QuickActions({ onNavigate }) {
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
-export function ManagementDashboard({ onNavigateToView, selectedOpco = '', onOpcoChange }) {
+export function ManagementDashboard({ onNavigateToView }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [days, setDays] = useState(30);
   const [refreshing, setRefreshing] = useState(false);
-  const [opcoList, setOpcoList] = useState([]);
-  const [boardPackGenerating, setBoardPackGenerating] = useState(false);
 
-  // Fetch available OpCos once on mount
-  useEffect(() => {
-    fetch(`${API}/companies/roles`)
-      .then((r) => r.json())
-      .then((json) => { if (Array.isArray(json.opcos)) setOpcoList(json.opcos); })
-      .catch(() => {});
-  }, []);
-
-  const load = useCallback((d, opco, isRefresh = false) => {
+  const load = useCallback((d, isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
     else setLoading(true);
     setError(null);
-    const url = opco
-      ? `${API}/dashboard/summary?days=${d}&opco=${encodeURIComponent(opco)}`
-      : `${API}/dashboard/summary?days=${d}`;
-    fetch(url)
+    fetch(`${API}/dashboard/summary?days=${d}`)
       .then((r) => r.json())
       .then((json) => {
         if (json.error) throw new Error(json.error);
@@ -252,37 +239,9 @@ export function ManagementDashboard({ onNavigateToView, selectedOpco = '', onOpc
       .finally(() => { setLoading(false); setRefreshing(false); });
   }, []);
 
-  useEffect(() => { load(days, selectedOpco); }, [days, selectedOpco, load]);
+  useEffect(() => { load(days); }, [days, load]);
 
-  const handleRefresh = () => load(days, selectedOpco, true);
-
-  const handleBoardPack = useCallback(async () => {
-    if (boardPackGenerating) return;
-    setBoardPackGenerating(true);
-    try {
-      const body = { periodDays: days };
-      if (selectedOpco) body.opco = selectedOpco;
-      if (data?.opcoFilter === null && !selectedOpco) body.parentHolding = '';
-      const res = await fetch('/api/board-pack', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      if (!res.ok) throw new Error(`Server error ${res.status}`);
-      const blob = await res.blob();
-      const disposition = res.headers.get('Content-Disposition') || '';
-      const match = disposition.match(/filename="([^"]+)"/);
-      const filename = match ? match[1] : 'Board_Compliance_Pack.pdf';
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = filename; a.click();
-      URL.revokeObjectURL(url);
-    } catch (e) {
-      alert(`Board Pack generation failed: ${e.message}`);
-    } finally {
-      setBoardPackGenerating(false);
-    }
-  }, [boardPackGenerating, days, selectedOpco, data]);
+  const handleRefresh = () => load(days, true);
 
   const navigate = (view) => {
     if (onNavigateToView) onNavigateToView(view);
@@ -293,16 +252,10 @@ export function ManagementDashboard({ onNavigateToView, selectedOpco = '', onOpc
   if (!data)   return null;
 
   const { entities, regulatoryChanges, poa, licences, contracts, litigations, ip,
-          upcomingExpiry, topOpcoAlerts, feedStatus, complianceHealthScore, generatedAt,
-          opcoFrameworks } = data;
+          upcomingExpiry, topOpcoAlerts, feedStatus, complianceHealthScore, generatedAt } = data;
 
   const totalExpiring = (poa.expiringSoon || 0) + (licences.expiringSoon || 0) + (contracts.expiringSoon || 0);
   const totalExpired  = (poa.expired || 0) + (licences.expired || 0) + (contracts.expired || 0);
-
-  // When a specific OpCo is selected, only show that OpCo in the heat map
-  const filteredOpcoAlerts = selectedOpco
-    ? topOpcoAlerts.filter((a) => a.opco.toLowerCase() === selectedOpco.toLowerCase())
-    : topOpcoAlerts;
 
   return (
     <div className="mgmt-dash">
@@ -311,10 +264,7 @@ export function ManagementDashboard({ onNavigateToView, selectedOpco = '', onOpc
         <div>
           <h2 className="mgmt-dash-title">Management Dashboard</h2>
           <div className="mgmt-dash-subtitle">
-            {selectedOpco
-              ? <><span style={{ color: 'var(--accent)', fontWeight: 600 }}>{selectedOpco}</span> · OpCo view</>
-              : <>Cross-portfolio compliance intelligence · {entities.totalParents} parent{entities.totalParents !== 1 ? 's' : ''} · {entities.totalOpcos} OpCos</>
-            }
+            Cross-portfolio compliance intelligence · {entities.totalParents} parent{entities.totalParents !== 1 ? 's' : ''} · {entities.totalOpcos} OpCos
           </div>
         </div>
         <div className="mgmt-dash-header-right">
@@ -326,20 +276,6 @@ export function ManagementDashboard({ onNavigateToView, selectedOpco = '', onOpc
           <span className="mgmt-dash-last-updated">
             Updated {generatedAt ? new Date(generatedAt).toLocaleTimeString() : '—'}
           </span>
-          {opcoList.length > 0 && (
-            <select
-              className="mgmt-dash-period-select"
-              value={selectedOpco}
-              onChange={(e) => onOpcoChange && onOpcoChange(e.target.value)}
-              aria-label="Filter by OpCo"
-              style={{ minWidth: '160px' }}
-            >
-              <option value="">All OpCos</option>
-              {opcoList.map((o) => (
-                <option key={o} value={o}>{o}</option>
-              ))}
-            </select>
-          )}
           <select
             className="mgmt-dash-period-select"
             value={days}
@@ -350,18 +286,6 @@ export function ManagementDashboard({ onNavigateToView, selectedOpco = '', onOpc
             <option value={180}>Last 6 months</option>
             <option value={365}>Last 1 year</option>
           </select>
-          <button
-            type="button"
-            className="btn btn-board-pack"
-            onClick={handleBoardPack}
-            disabled={boardPackGenerating}
-            title={selectedOpco ? `Generate Board Pack for ${selectedOpco}` : 'Generate Board Compliance Pack for this period'}
-          >
-            {boardPackGenerating
-              ? <><span className="bp-spinner" />Generating…</>
-              : <><span className="bp-icon">📋</span>Board Pack</>
-            }
-          </button>
           <button
             type="button"
             className="btn btn-secondary"
@@ -382,7 +306,7 @@ export function ManagementDashboard({ onNavigateToView, selectedOpco = '', onOpc
           <div className="mgmt-kpi-tile health-score" style={{ '--kpi-accent': complianceHealthScore >= 80 ? '#22c55e' : complianceHealthScore >= 60 ? '#3b82f6' : '#ef4444' }}>
             <HealthGauge score={complianceHealthScore} />
             <div className="mgmt-kpi-label" style={{ textAlign: 'center', marginTop: '0.2rem' }}>Compliance Health</div>
-            <div className="mgmt-kpi-sub" style={{ textAlign: 'center' }}>{selectedOpco ? `${selectedOpco} score` : 'Portfolio-wide score'}</div>
+            <div className="mgmt-kpi-sub" style={{ textAlign: 'center' }}>Portfolio-wide score</div>
           </div>
 
           <KpiTile
@@ -412,29 +336,14 @@ export function ManagementDashboard({ onNavigateToView, selectedOpco = '', onOpc
             onClick={() => navigate('poa-management')}
           />
 
-          {/* Active Entities tile: hidden when a specific OpCo is selected */}
-          {!selectedOpco && (
-            <KpiTile
-              icon="🏢"
-              value={entities.totalOpcos}
-              label="Active Entities"
-              sub={`${entities.totalParents} parent holdings`}
-              accentColor="#8b5cf6"
-              onClick={() => navigate('org-overview')}
-            />
-          )}
-
-          {/* When an OpCo is selected, show overdue framework items instead */}
-          {selectedOpco && (
-            <KpiTile
-              icon="⏰"
-              value={regulatoryChanges.overdueFrameworks ?? regulatoryChanges.overdue}
-              label="Overdue Framework Items"
-              sub={`${regulatoryChanges.overdue} overdue change${regulatoryChanges.overdue !== 1 ? 's' : ''} across frameworks`}
-              accentColor={regulatoryChanges.overdue > 0 ? '#ef4444' : '#22c55e'}
-              onClick={() => navigate('governance-framework')}
-            />
-          )}
+          <KpiTile
+            icon="🏢"
+            value={entities.totalOpcos}
+            label="Active Entities"
+            sub={`${entities.totalParents} parent holdings`}
+            accentColor="#8b5cf6"
+            onClick={() => navigate('org-overview')}
+          />
         </div>
       </div>
 
@@ -485,7 +394,7 @@ export function ManagementDashboard({ onNavigateToView, selectedOpco = '', onOpc
           <p style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginBottom: '0.6rem', marginTop: 0 }}>
             Colour intensity = regulatory change exposure. Click any cell for entity details.
           </p>
-          <OpcoHeatMap topOpcoAlerts={filteredOpcoAlerts} onNavigate={navigate} />
+          <OpcoHeatMap topOpcoAlerts={topOpcoAlerts} onNavigate={navigate} />
         </div>
       </div>
 

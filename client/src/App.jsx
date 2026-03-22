@@ -20,9 +20,6 @@ import { LitigationsManagement } from './components/LitigationsManagement';
 import { ContractsManagement } from './components/ContractsManagement';
 import { Help } from './components/Help';
 import { ManagementDashboard } from './components/ManagementDashboard';
-import { TaskTracker } from './components/TaskTracker';
-import { LegalOnboarding } from './components/LegalOnboarding';
-import GlobalAssistant from './components/GlobalAssistant';
 
 const FRAMEWORKS = [
   'DFSA Rulebook',
@@ -68,10 +65,10 @@ const ROLE_MODULE_IDS = {
 
 // Views accessible per role (for redirect when switching roles)
 const ROLE_VIEW_IDS = {
-  'legal-team': ['mgmt-dashboard', 'task-tracker', 'org-overview', 'org-dashboard', 'legal-onboarding', 'poa-management', 'ip-management', 'licence-management', 'litigations-management', 'contracts-management', 'contracts-upload'],
-  'governance-team': ['mgmt-dashboard', 'task-tracker', 'onboarding', 'org-overview', 'org-dashboard', 'parent-overview', 'governance-framework', 'multi-jurisdiction', 'ubo'],
-  'data-security-team': ['mgmt-dashboard', 'task-tracker', 'org-overview', 'org-dashboard', 'data-sovereignty', 'data-security'],
-  board: ['mgmt-dashboard', 'task-tracker', 'org-overview', 'org-dashboard', 'analysis', 'ma-simulator'],
+  'legal-team': ['mgmt-dashboard', 'org-overview', 'org-dashboard', 'poa-management', 'ip-management', 'licence-management', 'litigations-management', 'contracts-management', 'contracts-upload'],
+  'governance-team': ['mgmt-dashboard', 'onboarding', 'org-overview', 'org-dashboard', 'parent-overview', 'governance-framework', 'multi-jurisdiction', 'ubo'],
+  'data-security-team': ['mgmt-dashboard', 'org-overview', 'org-dashboard', 'data-sovereignty', 'data-security'],
+  board: ['mgmt-dashboard', 'org-overview', 'org-dashboard', 'analysis', 'ma-simulator'],
 };
 
 const ROLE_OPTIONS = [
@@ -268,11 +265,7 @@ export default function App() {
         <MainNav language={language} currentView={currentView} onSelect={setCurrentView} allowedModuleIds={allowedModuleIds} />
         <div className="app-content">
           {currentView === 'mgmt-dashboard' && (
-            <ManagementDashboard
-              onNavigateToView={setCurrentView}
-              selectedOpco={selectedOpco}
-              onOpcoChange={setSelectedOpco}
-            />
+            <ManagementDashboard onNavigateToView={setCurrentView} />
           )}
           {currentView === 'onboarding' && (
             <Onboarding
