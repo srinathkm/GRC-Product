@@ -1,842 +1,1109 @@
-import { useState, useMemo, useEffect } from 'react';
+/**
+ * EsgSummary — redesigned for GCC organisations
+ *
+ * 5-tab architecture:
+ *   Overview   – C-level dashboard: group score, pillar cards, insights, targets
+ *   Metrics    – Live data entry for E / S / G metrics per OpCo + period
+ *   Analysis   – Period trends, OpCo comparison, completeness heat-map, gap analysis
+ *   Compliance – GCC regulatory framework tracker (UAE / KSA / GCC-global)
+ *   Reports    – Disclosure checklist, CSV export, TCFD/GRI index
+ *
+ * All scores are server-computed from actual entered data (not hard-coded).
+ * M&A exports (getEsgDataForMa / getEsgSummaryForMa) are preserved for backward compat.
+ */
+import { useState, useEffect, useRef } from 'react';
 import './EsgSummary.css';
 
 const API = '/api';
 
-const OPERATIONAL_CAPABILITIES = [
-  {
-    id: 'data-collection',
-    title: 'Data collection & aggregation',
-    description: 'Structured collection of environmental (emissions, energy, water, waste), social (workforce, safety, diversity), and governance (board, ethics, anti-corruption) data from business units and subsidiaries.',
-  },
-  {
-    id: 'metrics-definition',
-    title: 'Metrics definition & taxonomy',
-    description: 'Alignment with standard ESG metrics (GRI, SASB, TCFD) and internal taxonomy; definition of KPIs, boundaries (Scope 1/2/3), and calculation methodologies.',
-  },
-  {
-    id: 'reporting-disclosure',
-    title: 'Reporting & disclosure',
-    description: 'Production of sustainability reports, ESG disclosures for regulators and exchanges (e.g. Tadawul, ADX, DFM), and investor-grade reporting (annual, interim).',
-  },
-  {
-    id: 'assurance-audit',
-    title: 'Assurance & audit',
-    description: 'Internal controls over ESG data; external assurance (limited/reasonable) for selected metrics; audit trails and evidence for verification.',
-  },
-  {
-    id: 'governance-structure',
-    title: 'Governance structure',
-    description: 'Board oversight of ESG; dedicated committees (sustainability/ESG); ownership of ESG strategy and targets; integration with risk and compliance.',
-  },
-  {
-    id: 'stakeholder-engagement',
-    title: 'Stakeholder engagement',
-    description: 'Processes to identify and engage stakeholders (investors, employees, communities, regulators); materiality assessment and double materiality where required.',
-  },
-  {
-    id: 'scenario-analysis',
-    title: 'Scenario & climate analysis',
-    description: 'Climate scenario analysis (e.g. 1.5°C/2°C pathways); transition and physical risk assessment; alignment with net-zero or science-based targets where applicable.',
-  },
-  {
-    id: 'systems-integration',
-    title: 'Systems & integration',
-    description: 'ESG data platforms; integration with ERP, EHS, HR and other source systems; workflow for data validation, sign-off and submission.',
-  },
+// ─────────────────────────────────────────────────────────────────────────────
+// CONSTANTS
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** GCC regulatory frameworks mapped to region and compliance driver. */
+const GCC_FRAMEWORKS = [
+  // UAE
+  { id: 'uae-net-zero', region: 'UAE', name: 'UAE Net Zero by 2050', pillar: 'E', driver: 'National Strategy', description: 'Carbon neutrality target; organisations expected to disclose emissions pathways and climate transition plans.', mandatory: true },
+  { id: 'cbuae-sf', region: 'UAE', name: 'CBUAE Sustainable Finance Framework', pillar: 'E/S/G', driver: 'Regulator', description: 'Central Bank of UAE guidance on sustainability disclosures for licensed financial institutions.', mandatory: true },
+  { id: 'sca-esg', region: 'UAE', name: 'SCA ESG Disclosure Guidelines', pillar: 'E/S/G', driver: 'Exchange / Regulator', description: 'Securities & Commodities Authority disclosure requirements for public-listed companies.', mandatory: true },
+  { id: 'dfm-adx', region: 'UAE', name: 'DFM / ADX Sustainability Reporting', pillar: 'E/S/G', driver: 'Exchange', description: 'Dubai Financial Market & Abu Dhabi Securities Exchange mandatory sustainability reports.', mandatory: true },
+  { id: 'emiratisation', region: 'UAE', name: 'Emiratisation (NAFIS / MoHRE)', pillar: 'S', driver: 'Federal Law', description: '2% annual incremental Emiratisation for private sector (>50 employees); sector-specific quotas for banking, insurance.', mandatory: true },
+  { id: 'uae-pdpl', region: 'UAE', name: 'UAE PDPL (Data Privacy)', pillar: 'G', description: 'Personal Data Protection Law — governance, consent and data processing obligations.', mandatory: true, driver: 'Federal Law' },
+  // KSA
+  { id: 'vision2030', region: 'KSA', name: 'Saudi Vision 2030', pillar: 'E/S/G', driver: 'National Strategy', description: 'Economic diversification, clean energy (50% renewable by 2030), social inclusion and governance reforms.', mandatory: false },
+  { id: 'tadawul-esg', region: 'KSA', name: 'Tadawul ESG Listing Requirements', pillar: 'E/S/G', driver: 'Exchange', description: 'Saudi Exchange sustainability disclosure guidelines aligned with UN SSE and GRI.', mandatory: true },
+  { id: 'cma-ksa', region: 'KSA', name: 'CMA Corporate Governance Code', pillar: 'G', driver: 'Regulator', description: 'Capital Market Authority code covering board structure, audit, related-party transactions and non-financial reporting.', mandatory: true },
+  { id: 'saudisation', region: 'KSA', name: 'Saudisation (Nitaqat)', pillar: 'S', driver: 'Ministry of HR', description: 'Minimum Saudi national workforce percentages by sector and company size band.', mandatory: true },
+  { id: 'ksa-netzero', region: 'KSA', name: 'Saudi Net Zero 2060 / Green Saudi', pillar: 'E', driver: 'National Strategy', description: 'Kingdom-level carbon neutrality target; 1.5bn tree planting; 50% renewable energy by 2030.', mandatory: false },
+  // GCC / Global
+  { id: 'tcfd', region: 'Global', name: 'TCFD', pillar: 'E', driver: 'Best Practice', description: 'Task Force on Climate-related Financial Disclosures: Governance, Strategy, Risk Management, Metrics & Targets.', mandatory: false },
+  { id: 'gri', region: 'Global', name: 'GRI Standards', pillar: 'E/S/G', driver: 'Best Practice', description: 'Global Reporting Initiative universal sustainability reporting standards; widely adopted across MENA.', mandatory: false },
+  { id: 'issb-ifrs', region: 'Global', name: 'IFRS S1 / S2 (ISSB)', pillar: 'E/S/G', driver: 'Accounting Standard', description: 'International Sustainability Standards Board — general sustainability and climate-related financial disclosures.', mandatory: false },
+  { id: 'un-sdgs', region: 'Global', name: 'UN Sustainable Development Goals', pillar: 'E/S/G', driver: 'Best Practice', description: 'Map activities and metrics to the 17 SDGs; national alignment with UAE and KSA vision targets.', mandatory: false },
+  { id: 'cdp', region: 'Global', name: 'CDP Carbon Disclosure', pillar: 'E', driver: 'Investor', description: 'Annual carbon, water and forest disclosure requested by investors and supply chain partners.', mandatory: false },
 ];
 
-const MENA_FRAMEWORKS = [
-  { name: 'GRI Standards', region: 'Global (widely used in MENA)', focus: 'Universal sustainability reporting; environmental, social, governance disclosures.' },
-  { name: 'SASB Standards', region: 'Global (MENA adoption growing)', focus: 'Industry-specific ESG metrics; investor-focused materiality.' },
-  { name: 'TCFD', region: 'Global (recommended in UAE/KSA)', focus: 'Climate-related financial disclosures; governance, strategy, risk, metrics.' },
-  { name: 'UN Sustainable Development Goals', region: 'Global / MENA alignment', focus: 'Mapping ESG activities to SDGs; national alignment (e.g. UAE, KSA visions).' },
-  { name: 'CDP (Carbon Disclosure Project)', region: 'Global (MENA participation)', focus: 'Climate, water, forests disclosure; supply chain and investor requests.' },
-  { name: 'CBUAE Principles for Sustainability-Related Disclosures', region: 'UAE', focus: 'Central Bank of UAE guidance for sustainability disclosures by financial institutions.' },
-  { name: 'UAE Sustainable Finance Framework / SFWG', region: 'UAE', focus: 'Sustainable Finance Working Group; coordination across ministries and regulators.' },
-  { name: 'Tadawul Sustainability Disclosure Guidelines', region: 'Saudi Arabia', focus: 'Listed company sustainability reporting; alignment with UN SSE.' },
-  { name: 'CMA Corporate Governance Code & ESG', region: 'Saudi Arabia', focus: 'Capital Market Authority; governance, board, non-financial reporting for listed companies.' },
-  { name: 'DFM / ADX sustainability reporting', region: 'UAE', focus: 'Dubai & Abu Dhabi exchanges; mandatory sustainability reports for listed companies.' },
-  { name: 'Bahrain BHB sustainability requirements', region: 'Bahrain', focus: 'Bahrain Bourse ESG and sustainability disclosure expectations.' },
+/** Environmental metric field definitions — drives form rendering and tooltips. */
+const ENV_FIELDS = [
+  { id: 'scope1Emissions', label: 'Scope 1 Emissions', unit: 'tCO₂e', type: 'number', hint: 'Direct emissions from owned/controlled sources (combustion, fleet, fugitives).' },
+  { id: 'scope2Emissions', label: 'Scope 2 Emissions', unit: 'tCO₂e', type: 'number', hint: 'Indirect emissions from purchased electricity, steam, heat.' },
+  { id: 'scope3Emissions', label: 'Scope 3 Emissions', unit: 'tCO₂e', type: 'number', hint: 'Value-chain emissions (supply chain, travel, investments). Required by TCFD / ISSB.' },
+  { id: 'energyConsumption', label: 'Total Energy Consumption', unit: 'MWh', type: 'number', hint: 'All energy consumed across operations (electricity + fuel + heat).' },
+  { id: 'renewableEnergyPct', label: 'Renewable Energy Share', unit: '%', type: 'number', min: 0, max: 100, hint: 'Percentage of total energy from renewable sources (solar, wind, hydro).' },
+  { id: 'waterConsumption', label: 'Water Consumption', unit: 'm³', type: 'number', hint: 'Total fresh water withdrawn across all operations.' },
+  { id: 'wasteGenerated', label: 'Waste Generated', unit: 'tonnes', type: 'number', hint: 'Total waste produced before treatment/disposal.' },
+  { id: 'wasteDiversionPct', label: 'Waste Diverted from Landfill', unit: '%', type: 'number', min: 0, max: 100, hint: 'Percentage recycled, composted or recovered (not landfilled or incinerated without energy recovery).' },
+  { id: 'greenBuildingCertified', label: 'Green Building Certification', unit: '', type: 'boolean', hint: 'LEED, Estidama, GSAS or equivalent certification on primary premises.' },
+  { id: 'totalEmployees', label: 'Total Employees (for intensity)', unit: 'FTE', type: 'number', hint: 'Full-time equivalent headcount — used to compute per-FTE intensity ratios.' },
 ];
 
-/** Exchange options for framework alignment (GCC). */
-const EXCHANGE_OPTIONS = [
-  { id: 'tadawul', label: 'Tadawul', framework: 'Tadawul Sustainability Disclosure Guidelines', jurisdiction: 'KSA' },
-  { id: 'dfm-adx', label: 'DFM / ADX', framework: 'DFM / ADX sustainability reporting', jurisdiction: 'UAE' },
-  { id: 'bhb', label: 'BHB', framework: 'Bahrain BHB sustainability requirements', jurisdiction: 'Bahrain' },
+/** Social metric field definitions. */
+const SOCIAL_FIELDS = [
+  { id: 'totalEmployees', label: 'Total Employees', unit: 'FTE', type: 'number', hint: 'Total full-time equivalent headcount at period end.' },
+  { id: 'emiratizationPct', label: 'Emiratisation Rate', unit: '%', type: 'number', min: 0, max: 100, hint: 'UAE: % of workforce that are UAE nationals. 2% annual increment required (private sector >50 employees).' },
+  { id: 'emiratizationTarget', label: 'Emiratisation Target', unit: '%', type: 'number', min: 0, max: 100, hint: 'Your regulatory or voluntary Emiratisation target for this period.' },
+  { id: 'saudizationPct', label: 'Saudisation Rate (Nitaqat)', unit: '%', type: 'number', min: 0, max: 100, hint: 'KSA: % of workforce that are Saudi nationals.' },
+  { id: 'saudizationTarget', label: 'Saudisation Target', unit: '%', type: 'number', min: 0, max: 100, hint: 'Nitaqat-mandated or internal Saudisation target.' },
+  { id: 'genderDiversityPct', label: 'Female Employees', unit: '%', type: 'number', min: 0, max: 100, hint: 'Percentage of total workforce identifying as female.' },
+  { id: 'trainingHoursPerEmployee', label: 'Training Hours per FTE / Year', unit: 'hrs', type: 'number', hint: 'Average training and development hours per full-time employee annually.' },
+  { id: 'employeeTurnoverPct', label: 'Employee Turnover Rate', unit: '%', type: 'number', min: 0, max: 100, hint: 'Voluntary and involuntary turnover as % of average workforce.' },
+  { id: 'ltir', label: 'Lost Time Incident Rate (LTIR)', unit: 'per M hrs', type: 'number', hint: 'Number of lost-time injuries per million hours worked. Lower is better.' },
+  { id: 'communityInvestmentRevenuePct', label: 'Community Investment', unit: '% revenue', type: 'number', hint: 'Charitable and community spend as % of net revenue.' },
+  { id: 'employeeSatisfactionScore', label: 'Employee Satisfaction Score', unit: '/100', type: 'number', min: 0, max: 100, hint: 'Latest internal engagement or satisfaction survey score.' },
 ];
 
-/** ESG rating bands (0–100). */
-function getEsgRating(score) {
-  if (score >= 71) return 'Leading';
-  if (score >= 41) return 'Progressing';
-  return 'Developing';
-}
-
-/** Anonymised GCC sector benchmarks by industry vertical (mock). Percentile = share of peers at or below group score. */
-const SECTOR_BENCHMARKS = [
-  {
-    industry: 'Financial services',
-    sectorMedian: 76,
-    peerCount: 28,
-    scores: [62, 65, 68, 69, 71, 72, 73, 74, 75, 76, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 94],
-  },
-  {
-    industry: 'Energy',
-    sectorMedian: 74,
-    peerCount: 18,
-    scores: [58, 62, 65, 68, 70, 72, 73, 74, 75, 76, 77, 78, 80, 82, 84, 86, 88, 90],
-  },
-  {
-    industry: 'Real estate',
-    sectorMedian: 72,
-    peerCount: 22,
-    scores: [55, 58, 62, 65, 67, 69, 70, 71, 72, 73, 74, 75, 76, 78, 80, 82, 84, 86, 88, 90, 91, 93],
-  },
-  {
-    industry: 'Telecom & technology',
-    sectorMedian: 80,
-    peerCount: 14,
-    scores: [68, 72, 75, 77, 79, 80, 81, 82, 84, 86, 88, 90, 92, 94],
-  },
-  {
-    industry: 'Transportation',
-    sectorMedian: 73,
-    peerCount: 16,
-    scores: [58, 62, 65, 68, 70, 72, 73, 74, 75, 76, 77, 78, 80, 82, 84, 88],
-  },
-  {
-    industry: 'Industrials & logistics',
-    sectorMedian: 73,
-    peerCount: 20,
-    scores: [58, 62, 65, 68, 70, 72, 73, 74, 75, 76, 77, 78, 79, 80, 82, 84, 86, 88, 90, 92],
-  },
-  {
-    industry: 'Mining & metals',
-    sectorMedian: 71,
-    peerCount: 12,
-    scores: [58, 62, 65, 68, 70, 71, 72, 73, 75, 78, 82, 86],
-  },
+/** Governance metric field definitions. */
+const GOV_FIELDS = [
+  { id: 'boardSize', label: 'Board Size', unit: 'directors', type: 'number', hint: 'Total number of directors on the board.' },
+  { id: 'independentDirectorsPct', label: 'Independent Directors', unit: '%', type: 'number', min: 0, max: 100, hint: 'Percentage of directors classified as independent. Minimum 33% recommended by SCA/CMA.' },
+  { id: 'femaleBoardMembersPct', label: 'Female Board Members', unit: '%', type: 'number', min: 0, max: 100, hint: 'Percentage of board seats held by women.' },
+  { id: 'boardMeetingsPerYear', label: 'Board Meetings per Year', unit: 'meetings', type: 'number', hint: 'Number of formal board meetings held in the reporting period.' },
+  { id: 'antiCorruptionPolicy', label: 'Anti-corruption Policy', unit: '', type: 'boolean', hint: 'A documented and communicated anti-bribery and anti-corruption policy is in place.' },
+  { id: 'whistleblowerMechanism', label: 'Whistleblower Mechanism', unit: '', type: 'boolean', hint: 'An accessible, confidential reporting channel exists for misconduct and ethical breaches.' },
+  { id: 'dataPrivacyCertification', label: 'Data Privacy Certification', unit: '', type: 'boolean', hint: 'ISO 27001, UAE PDPL or equivalent data privacy controls are certified or formally assessed.' },
+  { id: 'esgReportPublished', label: 'ESG Report Published', unit: '', type: 'boolean', hint: 'A sustainability / ESG report was published for the current reporting year.' },
+  { id: 'thirdPartyAudit', label: 'Third-Party ESG Audit', unit: '', type: 'boolean', hint: 'ESG data independently assured by an external auditor (limited or reasonable assurance).' },
+  { id: 'esgLinkedRemuneration', label: 'ESG-Linked Executive Remuneration', unit: '', type: 'boolean', hint: 'Executive KPIs or LTIP include ESG performance metrics.' },
 ];
 
-/**
- * Map parent holding name to industry vertical based on actual/public sector (banks → Financial services, railways → Transportation, etc.).
- * Uses explicit entity mapping first, then keyword fallback for any parent from API.
- */
-function getIndustryForParent(parentName) {
-  if (!parentName) return 'Financial services';
-  const row = MOCK_ESG_DATA.find((d) => d.entity === parentName);
-  if (row?.industry) return row.industry;
-  const name = parentName.toLowerCase();
-  if (/\b(bank|nbd|finance|investment bank|capital|islamic bank)\b/i.test(name)) return 'Financial services';
-  if (/\b(aramco|oil|energy|petroleum|refining)\b/i.test(name)) return 'Energy';
-  if (/\b(rail|railway|railways|port|dp world|transport|shipping|logistics|maritime)\b/i.test(name)) return 'Transportation';
-  if (/\b(stc|telecom|telecommunications|technology|ict)\b/i.test(name)) return 'Telecom & technology';
-  if (/\b(emaar|property|properties|real estate|developments)\b/i.test(name)) return 'Real estate';
-  if (/\b(ma\'aden|maaden|mining|metals|aluminium)\b/i.test(name)) return 'Mining & metals';
-  if (/\b(sabic|chemical|industrial|manufacturing)\b/i.test(name)) return 'Industrials & logistics';
-  return 'Financial services';
-}
-
-/** Capability improvements for "What If" simulation: id → E/S/G score deltas (applied when toggle is on). */
-const CAPABILITY_IMPACT = {
-  'data-collection': { env: 2, social: 2, gov: 1 },
-  'metrics-definition': { env: 2, social: 1, gov: 2 },
-  'reporting-disclosure': { env: 1, social: 1, gov: 2 },
-  'assurance-audit': { env: 0, social: 1, gov: 4 },
-  'governance-structure': { env: 0, social: 1, gov: 3 },
-  'stakeholder-engagement': { env: 1, social: 3, gov: 1 },
-  'scenario-analysis': { env: 3, social: 0, gov: 1 },
-  'systems-integration': { env: 1, social: 1, gov: 2 },
+/** Anonymised GCC sector peer benchmarks. */
+const SECTOR_BENCHMARKS = {
+  'Financial services':       { median: 58, p25: 42, p75: 68, peers: 24 },
+  'Energy & utilities':       { median: 52, p25: 38, p75: 65, peers: 16 },
+  'Real estate':              { median: 54, p25: 40, p75: 63, peers: 20 },
+  'Telecom & technology':     { median: 62, p25: 48, p75: 74, peers: 18 },
+  'Transportation & logistics':{ median: 49, p25: 35, p75: 61, peers: 14 },
+  'Industrials':              { median: 47, p25: 33, p75: 59, peers: 19 },
+  'Healthcare':               { median: 60, p25: 45, p75: 70, peers: 12 },
 };
 
-const WEIGHT_PRESETS = [
-  { id: 'equal', label: 'Equal (1/3 each)', e: 33.33, s: 33.33, g: 33.34 },
-  { id: 'financials', label: 'Financials (materiality)', e: 25, s: 35, g: 40 },
-  { id: 'energy', label: 'Energy / Industrials', e: 45, s: 25, g: 30 },
-  { id: 'custom', label: 'Custom', e: null, s: null, g: null },
-];
+/** Generate last N quarters as YYYY-QN strings. */
+function generatePeriods(n = 8) {
+  const periods = [];
+  const now = new Date();
+  let year = now.getFullYear();
+  let q = Math.ceil((now.getMonth() + 1) / 3);
+  for (let i = 0; i < n; i++) {
+    periods.push(`${year}-Q${q}`);
+    q--;
+    if (q < 1) { q = 4; year--; }
+  }
+  return periods;
+}
+const PERIODS = generatePeriods(8);
 
-function EsgScoreCalculator({ chartEntityData, chartEntity }) {
-  const [scoreE, setScoreE] = useState(chartEntityData.env || 0);
-  const [scoreS, setScoreS] = useState(chartEntityData.social || 0);
-  const [scoreG, setScoreG] = useState(chartEntityData.gov || 0);
-  const [weightPreset, setWeightPreset] = useState('equal');
-  const [weightE, setWeightE] = useState(33.33);
-  const [weightS, setWeightS] = useState(33.33);
-  const [weightG, setWeightG] = useState(33.34);
+// ─────────────────────────────────────────────────────────────────────────────
+// HELPERS
+// ─────────────────────────────────────────────────────────────────────────────
+function scoreColor(s) {
+  if (s >= 71) return '#22c55e';
+  if (s >= 51) return '#84cc16';
+  if (s >= 31) return '#f59e0b';
+  return '#ef4444';
+}
+function ratingLabel(s) {
+  if (s >= 71) return 'Leading';
+  if (s >= 51) return 'Progressing';
+  if (s >= 31) return 'Developing';
+  if (s > 0)  return 'Nascent';
+  return 'No data';
+}
+function ratingClass(s) {
+  if (s >= 71) return 'leading';
+  if (s >= 51) return 'progressing';
+  if (s >= 31) return 'developing';
+  return 'nascent';
+}
+function trend(current, previous) {
+  if (previous == null || previous === 0) return null;
+  return current - previous;
+}
 
-  useEffect(() => {
-    setScoreE(chartEntityData.env || 0);
-    setScoreS(chartEntityData.social || 0);
-    setScoreG(chartEntityData.gov || 0);
-  }, [chartEntityData.env, chartEntityData.social, chartEntityData.gov]);
+// ─────────────────────────────────────────────────────────────────────────────
+// PURE UI COMPONENTS (all module-level for React Fast Refresh)
+// ─────────────────────────────────────────────────────────────────────────────
 
-  const handlePresetChange = (presetId) => {
-    setWeightPreset(presetId);
-    const p = WEIGHT_PRESETS.find((x) => x.id === presetId);
-    if (p && p.e != null) {
-      setWeightE(p.e);
-      setWeightS(p.s);
-      setWeightG(p.g);
-    }
-  };
-
-  const totalWeight = weightE + weightS + weightG;
-  const overallScore = totalWeight > 0
-    ? (scoreE * weightE + scoreS * weightS + scoreG * weightG) / totalWeight
-    : 0;
-  const isValidWeights = Math.abs(totalWeight - 100) < 0.1;
-
+/** Circular score display. */
+function ScoreRing({ score, label, size = 96 }) {
+  const r = (size / 2) - 8;
+  const circumference = 2 * Math.PI * r;
+  const fill = score > 0 ? (score / 100) * circumference : 0;
+  const color = scoreColor(score);
   return (
-    <div className="esg-calc">
-      <div className="esg-calc-row">
-        <div className="esg-calc-block">
-          <label>Pillar scores (0–100)</label>
-          <div className="esg-calc-inputs">
-            <div className="esg-calc-input-group">
-              <span className="esg-calc-input-label">E</span>
-              <input
-                type="number"
-                min={0}
-                max={100}
-                value={scoreE}
-                onChange={(e) => setScoreE(Number(e.target.value) || 0)}
-              />
-            </div>
-            <div className="esg-calc-input-group">
-              <span className="esg-calc-input-label">S</span>
-              <input
-                type="number"
-                min={0}
-                max={100}
-                value={scoreS}
-                onChange={(e) => setScoreS(Number(e.target.value) || 0)}
-              />
-            </div>
-            <div className="esg-calc-input-group">
-              <span className="esg-calc-input-label">G</span>
-              <input
-                type="number"
-                min={0}
-                max={100}
-                value={scoreG}
-                onChange={(e) => setScoreG(Number(e.target.value) || 0)}
-              />
-            </div>
-          </div>
-          <button
-            type="button"
-            className="esg-calc-populate-btn"
-            onClick={() => {
-              setScoreE(chartEntityData.env || 0);
-              setScoreS(chartEntityData.social || 0);
-              setScoreG(chartEntityData.gov || 0);
-            }}
-          >
-            Use scores from «{chartEntity}»
-          </button>
-        </div>
-        <div className="esg-calc-block">
-          <label>Weights (%) — industry / materiality</label>
-          <select
-            className="esg-calc-preset"
-            value={weightPreset}
-            onChange={(e) => handlePresetChange(e.target.value)}
-          >
-            {WEIGHT_PRESETS.map((p) => (
-              <option key={p.id} value={p.id}>{p.label}</option>
-            ))}
-          </select>
-          <div className="esg-calc-inputs">
-            <div className="esg-calc-input-group">
-              <span className="esg-calc-input-label">wE</span>
-              <input
-                type="number"
-                min={0}
-                max={100}
-                step={0.5}
-                value={weightE}
-                onChange={(e) => { setWeightE(Number(e.target.value) || 0); setWeightPreset('custom'); }}
-              />
-            </div>
-            <div className="esg-calc-input-group">
-              <span className="esg-calc-input-label">wS</span>
-              <input
-                type="number"
-                min={0}
-                max={100}
-                step={0.5}
-                value={weightS}
-                onChange={(e) => { setWeightS(Number(e.target.value) || 0); setWeightPreset('custom'); }}
-              />
-            </div>
-            <div className="esg-calc-input-group">
-              <span className="esg-calc-input-label">wG</span>
-              <input
-                type="number"
-                min={0}
-                max={100}
-                step={0.5}
-                value={weightG}
-                onChange={(e) => { setWeightG(Number(e.target.value) || 0); setWeightPreset('custom'); }}
-              />
-            </div>
-          </div>
-          {!isValidWeights && totalWeight > 0 && (
-            <p className="esg-calc-warn">Weights should sum to 100%. Current sum: {totalWeight.toFixed(1)}%</p>
-          )}
-        </div>
-      </div>
-      <div className="esg-calc-formula">
-        <span>Overall ESG = (E×wE + S×wS + G×wG) / 100</span>
-        <span className="esg-calc-result">
-          = ({scoreE}×{weightE} + {scoreS}×{weightS} + {scoreG}×{weightG}) / 100 = <strong>{overallScore.toFixed(1)}</strong>
-        </span>
-      </div>
-      <div className="esg-calc-overall">
-        <span className="esg-calc-overall-label">Calculated overall ESG score</span>
-        <span className="esg-calc-overall-value">{overallScore.toFixed(1)}</span>
+    <div className="esg2-score-ring" style={{ width: size, height: size }}>
+      <svg width={size} height={size}>
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth={7} />
+        <circle
+          cx={size / 2} cy={size / 2} r={r} fill="none"
+          stroke={color} strokeWidth={7} strokeLinecap="round"
+          strokeDasharray={`${fill} ${circumference}`}
+          transform={`rotate(-90 ${size / 2} ${size / 2})`}
+        />
+      </svg>
+      <div className="esg2-score-ring-inner">
+        <span className="esg2-score-ring-num" style={{ color }}>{score > 0 ? score : '—'}</span>
+        {label && <span className="esg2-score-ring-label">{label}</span>}
       </div>
     </div>
   );
 }
 
-const MOCK_ESG_DATA = [
-  { entity: 'Group Consolidated', jurisdiction: 'Multi', env: 78, social: 82, gov: 85, overall: 82, previousQuarterOverall: 79, year: 2024, industry: 'Financial services', revenueShare: 1 },
-  { entity: 'Emirates NBD Group', jurisdiction: 'UAE', env: 72, social: 79, gov: 88, overall: 80, previousQuarterOverall: 78, year: 2024, industry: 'Financial services', revenueShare: 1 },
-  { entity: 'Saudi National Bank Group', jurisdiction: 'KSA', env: 75, social: 83, gov: 86, overall: 81, previousQuarterOverall: 79, year: 2024, industry: 'Financial services', revenueShare: 1 },
-  { entity: 'Saudi Aramco', jurisdiction: 'KSA', env: 68, social: 76, gov: 90, overall: 78, previousQuarterOverall: 76, year: 2024, industry: 'Energy', revenueShare: 1 },
-  { entity: 'SABIC', jurisdiction: 'KSA', env: 74, social: 80, gov: 84, overall: 79, previousQuarterOverall: 77, year: 2024, industry: 'Industrials & logistics', revenueShare: 1 },
-  { entity: 'Dubai Islamic Bank Group', jurisdiction: 'UAE', env: 70, social: 77, gov: 82, overall: 76, previousQuarterOverall: 74, year: 2024, industry: 'Financial services', revenueShare: 1 },
-  { entity: 'STC', jurisdiction: 'KSA', env: 80, social: 85, gov: 87, overall: 84, previousQuarterOverall: 82, year: 2024, industry: 'Telecom & technology', revenueShare: 1 },
-  { entity: 'Ma\'aden', jurisdiction: 'KSA', env: 65, social: 72, gov: 80, overall: 72, previousQuarterOverall: 70, year: 2024, industry: 'Mining & metals', revenueShare: 1 },
-  { entity: 'DP World', jurisdiction: 'UAE', env: 71, social: 78, gov: 83, overall: 77, previousQuarterOverall: 75, year: 2024, industry: 'Transportation', revenueShare: 1 },
-];
-
-/** Simple hash for deterministic variance from a string. */
-function hashStr(s) {
-  let h = 0;
-  for (let i = 0; i < (s || '').length; i++) h = ((h << 5) - h) + (s || '').charCodeAt(i) | 0;
-  return Math.abs(h);
+/** Horizontal filled bar showing a 0-100 score. */
+function ScoreBar({ label, score, color, subLabel }) {
+  return (
+    <div className="esg2-score-bar-row">
+      <div className="esg2-score-bar-meta">
+        <span className="esg2-score-bar-label">{label}</span>
+        {subLabel && <span className="esg2-score-bar-sub">{subLabel}</span>}
+        <span className="esg2-score-bar-value" style={{ color: color || scoreColor(score) }}>{score > 0 ? score : '—'}</span>
+      </div>
+      <div className="esg2-score-bar-track">
+        <div className="esg2-score-bar-fill" style={{ width: `${score}%`, background: color || scoreColor(score) }} />
+      </div>
+    </div>
+  );
 }
 
-/** Base ESG score for an OpCo: from MOCK_ESG_DATA if entity matches, else parent row with small variance. */
-function getScoreForOpco(opcoName, parentRow) {
-  const exact = MOCK_ESG_DATA.find((d) => d.entity === opcoName);
-  if (exact) return { env: exact.env, social: exact.social, gov: exact.gov, overall: exact.overall };
-  if (!parentRow) return { env: 70, social: 75, gov: 78, overall: 74 };
-  const h = hashStr(opcoName);
-  const clamp = (x) => Math.max(0, Math.min(100, Math.round(x)));
-  const env = clamp((parentRow.env || 72) + (h % 7) - 3);
-  const social = clamp((parentRow.social || 78) + ((h >> 3) % 7) - 3);
-  const gov = clamp((parentRow.gov || 82) + ((h >> 6) % 7) - 3);
-  const overall = clamp((env + social + gov) / 3);
-  return { env, social, gov, overall };
+/** Trend chip: +N or -N vs previous period. */
+function TrendChip({ current, previous }) {
+  const delta = trend(current, previous);
+  if (delta === null) return null;
+  const up = delta >= 0;
+  return (
+    <span className={`esg2-trend-chip ${up ? 'up' : 'down'}`}>
+      {up ? '▲' : '▼'} {Math.abs(delta)}
+    </span>
+  );
 }
 
-/** Structured ESG data for target OpCo (M&A PDF). */
-export function getEsgDataForMa(opcoOrParent) {
-  const row = MOCK_ESG_DATA.find((d) => d.entity === opcoOrParent || (opcoOrParent && (d.entity.includes(opcoOrParent) || opcoOrParent.includes(d.entity))));
-  if (!row) return null;
-  return {
-    entity: row.entity,
-    jurisdiction: row.jurisdiction,
-    year: row.year,
-    env: row.env,
-    social: row.social,
-    gov: row.gov,
-    overall: row.overall,
-  };
+/** Completion badge showing data completeness %. */
+function CompletenessChip({ pct }) {
+  const cls = pct >= 80 ? 'high' : pct >= 40 ? 'mid' : 'low';
+  return <span className={`esg2-completeness-chip ${cls}`}>{pct}% data</span>;
 }
 
-/** Build ESG summary string for M&A assessment PDF (target OpCo or parent name). */
-export function getEsgSummaryForMa(opcoOrParent) {
-  const data = getEsgDataForMa(opcoOrParent);
-  if (!data) return '';
-  return `${data.entity} (${data.jurisdiction}, ${data.year}): Environmental ${data.env}, Social ${data.social}, Governance ${data.gov}; Overall ESG score ${data.overall}/100.`;
+/** Single metric input field for the Metrics panel. */
+function MetricInput({ fieldDef, value, onChange }) {
+  const { id, label, unit, type, min, max, hint } = fieldDef;
+  if (type === 'boolean') {
+    return (
+      <div className="esg2-metric-field esg2-metric-field-bool">
+        <label className="esg2-metric-label" title={hint}>
+          {label}
+          {hint && <span className="esg2-metric-hint-icon" title={hint}>ⓘ</span>}
+        </label>
+        <div className="esg2-bool-toggle">
+          <button
+            type="button"
+            className={`esg2-bool-btn ${value === true ? 'active' : ''}`}
+            onClick={() => onChange(id, value === true ? null : true)}
+          >Yes</button>
+          <button
+            type="button"
+            className={`esg2-bool-btn ${value === false ? 'active' : ''}`}
+            onClick={() => onChange(id, value === false ? null : false)}
+          >No</button>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div className="esg2-metric-field">
+      <label className="esg2-metric-label" htmlFor={`mf-${id}`} title={hint}>
+        {label}{unit ? <span className="esg2-metric-unit"> ({unit})</span> : null}
+        {hint && <span className="esg2-metric-hint-icon" title={hint}>ⓘ</span>}
+      </label>
+      <input
+        id={`mf-${id}`}
+        type="number"
+        className="esg2-metric-input"
+        value={value === null || value === undefined ? '' : value}
+        min={min}
+        max={max}
+        step="any"
+        placeholder="Enter value"
+        onChange={(e) => onChange(id, e.target.value === '' ? null : Number(e.target.value))}
+      />
+    </div>
+  );
 }
 
-export function EsgSummary({ language = 'en', selectedParentHolding = '', companiesRefreshKey = 0 }) {
-  const [selectedJurisdiction, setSelectedJurisdiction] = useState('all');
-  const [selectedPillar, setSelectedPillar] = useState('overall');
-  const [chartEntity, setChartEntity] = useState(selectedParentHolding || 'Group Consolidated');
-  const [selectedExchange, setSelectedExchange] = useState('tadawul');
-  const [opcosForParent, setOpcosForParent] = useState([]);
-  const [simulationOpco, setSimulationOpco] = useState('');
-  const [simulationToggles, setSimulationToggles] = useState({});
+/** Framework compliance status row for the Compliance panel. */
+function FrameworkStatusRow({ fw, statusObj, onUpdate }) {
+  const status = statusObj?.status || 'not-started';
+  const statusLabels = { 'not-started': 'Not started', 'in-progress': 'In progress', 'completed': 'Completed', 'not-applicable': 'N/A' };
+  const statusClass = { 'not-started': 'ns', 'in-progress': 'ip', 'completed': 'done', 'not-applicable': 'na' };
+  return (
+    <div className={`esg2-fw-row esg2-fw-row-${statusClass[status]}`}>
+      <div className="esg2-fw-row-info">
+        <div className="esg2-fw-row-name">
+          {fw.mandatory && <span className="esg2-fw-mandatory-dot" title="Mandatory" />}
+          {fw.name}
+        </div>
+        <div className="esg2-fw-row-meta">
+          <span className="esg2-fw-region">{fw.region}</span>
+          <span className="esg2-fw-pillar">{fw.pillar}</span>
+          <span className="esg2-fw-driver">{fw.driver}</span>
+        </div>
+        <div className="esg2-fw-desc">{fw.description}</div>
+      </div>
+      <div className="esg2-fw-row-actions">
+        <select
+          className="esg2-fw-status-select"
+          value={status}
+          onChange={(e) => onUpdate(fw.id, fw.name, e.target.value, statusObj?.notes || '')}
+        >
+          {Object.entries(statusLabels).map(([v, l]) => (
+            <option key={v} value={v}>{l}</option>
+          ))}
+        </select>
+        {statusObj?.lastReviewDate && (
+          <span className="esg2-fw-reviewed">Reviewed {statusObj.lastReviewDate}</span>
+        )}
+      </div>
+    </div>
+  );
+}
 
-  useEffect(() => {
-    if (selectedParentHolding) setChartEntity(selectedParentHolding);
-    else setChartEntity('Group Consolidated');
-  }, [selectedParentHolding]);
+/** Insight card — actionable gap/opportunity. */
+function InsightCard({ icon, title, detail, priority }) {
+  const cls = priority === 'high' ? 'red' : priority === 'medium' ? 'amber' : 'green';
+  return (
+    <div className={`esg2-insight-card esg2-insight-${cls}`}>
+      <div className="esg2-insight-icon">{icon}</div>
+      <div>
+        <div className="esg2-insight-title">{title}</div>
+        <div className="esg2-insight-detail">{detail}</div>
+      </div>
+    </div>
+  );
+}
 
-  useEffect(() => {
-    if (!selectedParentHolding) {
-      setOpcosForParent([]);
-      setSimulationOpco('');
-      return;
-    }
-    fetch(`${API}/companies/by-parent?parent=${encodeURIComponent(selectedParentHolding)}`)
-      .then((r) => r.json())
-      .then((data) => {
-        const list = data.opcos || [];
-        setOpcosForParent(list);
-        setSimulationOpco((prev) => (list.some((o) => (o.name || o) === prev) ? prev : ''));
-      })
-      .catch(() => setOpcosForParent([]));
-  }, [selectedParentHolding, companiesRefreshKey]);
+/** Score breakdown row (shown in Analysis). */
+function BreakdownRow({ label, value, score, unit }) {
+  if (value == null) return null;
+  return (
+    <div className="esg2-breakdown-row">
+      <span className="esg2-breakdown-label">{label}</span>
+      <span className="esg2-breakdown-value">{typeof value === 'number' ? `${value}${unit ? ' ' + unit : ''}` : value}</span>
+      <span className="esg2-breakdown-score" style={{ color: scoreColor(score) }}>{score}/100</span>
+    </div>
+  );
+}
 
-  // Default exchange from parent jurisdiction
-  useEffect(() => {
-    const row = MOCK_ESG_DATA.find((d) => d.entity === selectedParentHolding);
-    if (!row) return;
-    if (row.jurisdiction === 'KSA') setSelectedExchange('tadawul');
-    else if (row.jurisdiction === 'UAE') setSelectedExchange('dfm-adx');
-    else if (row.jurisdiction === 'Bahrain') setSelectedExchange('bhb');
-  }, [selectedParentHolding]);
+// ─────────────────────────────────────────────────────────────────────────────
+// OVERVIEW PANEL
+// ─────────────────────────────────────────────────────────────────────────────
+function OverviewPanel({ groupScores, opcoScores, selectedParent, onTabSwitch }) {
+  if (!groupScores) {
+    return (
+      <div className="esg2-empty-state">
+        <div className="esg2-empty-icon">📊</div>
+        <h3>No ESG data yet for {selectedParent || 'this group'}</h3>
+        <p>Start by entering your first set of ESG metrics in the <strong>Metrics</strong> tab. Scores are computed automatically from the data you enter.</p>
+        <button className="esg2-btn esg2-btn-primary" onClick={() => onTabSwitch('metrics')}>Enter ESG Metrics</button>
+      </div>
+    );
+  }
 
-  const groupEsgRow = useMemo(() => {
-    const entity = selectedParentHolding || 'Group Consolidated';
-    return MOCK_ESG_DATA.find((d) => d.entity === entity) || MOCK_ESG_DATA[0];
-  }, [selectedParentHolding]);
+  const { env, social, gov, overall, rating, opcoCount } = groupScores;
 
-  const groupScore = groupEsgRow?.overall ?? 0;
-  const groupScorePrevQuarter = groupEsgRow?.previousQuarterOverall ?? groupScore;
-  const trendDelta = Math.round(groupScore - groupScorePrevQuarter);
-  const rating = getEsgRating(groupScore);
-  const exchangeOption = EXCHANGE_OPTIONS.find((e) => e.id === selectedExchange) || EXCHANGE_OPTIONS[0];
-  const frameworkName = exchangeOption.framework;
+  // Build insights from scores
+  const insights = [];
+  if (env < 40) insights.push({ icon: '🌱', title: 'Environmental score needs attention', detail: `Group E score is ${env}/100. Enter Scope 1/2 emissions and renewable energy data to identify improvement areas.`, priority: 'high' });
+  if (social < 40) insights.push({ icon: '👥', title: 'Social metrics require data', detail: `Group S score is ${social}/100. Emiratisation/Saudisation compliance and gender diversity are primary drivers.`, priority: 'high' });
+  if (gov < 50) insights.push({ icon: '🏛', title: 'Governance policies incomplete', detail: `Group G score is ${gov}/100. Anti-corruption policy, whistleblower mechanism and ESG report publication are quick wins.`, priority: 'medium' });
+  if (overall >= 71) insights.push({ icon: '🏆', title: 'Leading ESG performance', detail: 'Group score is in the Leading band. Focus on third-party assurance and TCFD/ISSB alignment to maintain leadership.', priority: 'low' });
 
-  const industryBenchmark = useMemo(() => {
-    const parentName = selectedParentHolding || groupEsgRow?.entity;
-    const industry = getIndustryForParent(parentName);
-    const bench = SECTOR_BENCHMARKS.find((b) => b.industry === industry);
-    if (!bench) return null;
-    const sorted = [...bench.scores].sort((a, b) => a - b);
-    const atOrBelow = sorted.filter((s) => s <= groupScore).length;
-    const percentile = sorted.length > 0 ? Math.round((atOrBelow / sorted.length) * 100) : 50;
-    const deltaToMedian = groupScore - bench.sectorMedian;
-    return { industry: bench.industry, sectorMedian: bench.sectorMedian, peerCount: bench.peerCount, percentile, deltaToMedian };
-  }, [selectedParentHolding, groupEsgRow?.entity, groupScore]);
-
-  const uniqueOpcoNames = useMemo(() => {
-    const names = (opcosForParent || []).map((o) => (o && o.name) ? o.name : o);
-    return [...new Set(names)].filter(Boolean).sort();
-  }, [opcosForParent]);
-
-  const baseScoresByOpco = useMemo(() => {
-    const out = {};
-    uniqueOpcoNames.forEach((name) => {
-      out[name] = getScoreForOpco(name, groupEsgRow);
-    });
-    return out;
-  }, [uniqueOpcoNames, groupEsgRow]);
-
-  const currentGroupScoreFromOpcos = useMemo(() => {
-    if (uniqueOpcoNames.length === 0) return groupScore;
-    const sum = uniqueOpcoNames.reduce((acc, name) => acc + (baseScoresByOpco[name]?.overall ?? 0), 0);
-    return uniqueOpcoNames.length > 0 ? Math.round((sum / uniqueOpcoNames.length) * 10) / 10 : groupScore;
-  }, [uniqueOpcoNames, baseScoresByOpco, groupScore]);
-
-  const simulatedOpcoScore = useMemo(() => {
-    if (!simulationOpco || !baseScoresByOpco[simulationOpco]) return null;
-    const base = baseScoresByOpco[simulationOpco];
-    let env = base.env;
-    let social = base.social;
-    let gov = base.gov;
-    Object.entries(simulationToggles).forEach(([capId, on]) => {
-      if (!on) return;
-      const d = CAPABILITY_IMPACT[capId];
-      if (d) {
-        env += d.env;
-        social += d.social;
-        gov += d.gov;
-      }
-    });
-    const clamp = (x) => Math.max(0, Math.min(100, Math.round(x)));
-    env = clamp(env);
-    social = clamp(social);
-    gov = clamp(gov);
-    const overall = Math.round((env + social + gov) / 3 * 10) / 10;
-    return { env, social, gov, overall };
-  }, [simulationOpco, baseScoresByOpco, simulationToggles]);
-
-  const simulatedGroupScore = useMemo(() => {
-    if (uniqueOpcoNames.length === 0) return currentGroupScoreFromOpcos;
-    if (!simulationOpco || !simulatedOpcoScore) return currentGroupScoreFromOpcos;
-    const n = uniqueOpcoNames.length;
-    const sum = uniqueOpcoNames.reduce((acc, name) => {
-      const overall = name === simulationOpco ? simulatedOpcoScore.overall : (baseScoresByOpco[name]?.overall ?? 0);
-      return acc + overall;
-    }, 0);
-    return Math.round((sum / n) * 10) / 10;
-  }, [uniqueOpcoNames, simulationOpco, simulatedOpcoScore, baseScoresByOpco, currentGroupScoreFromOpcos]);
-
-  const simulationDelta = simulatedGroupScore - currentGroupScoreFromOpcos;
-  const simulatedRating = getEsgRating(simulatedGroupScore);
-
-  const jurisdictions = useMemo(() => {
-    const set = new Set(MOCK_ESG_DATA.map((d) => d.jurisdiction));
-    return ['all', ...Array.from(set)];
-  }, []);
-
-  const filteredData = useMemo(() => {
-    let list = [...MOCK_ESG_DATA];
-    if (selectedParentHolding) {
-      list = list.filter((d) => d.entity === selectedParentHolding);
-    }
-    if (selectedJurisdiction !== 'all') {
-      list = list.filter((d) => d.jurisdiction === selectedJurisdiction);
-    }
-    return list;
-  }, [selectedJurisdiction, selectedParentHolding]);
-
-  const chartEntityData = useMemo(() => {
-    const row = MOCK_ESG_DATA.find((d) => d.entity === chartEntity);
-    if (!row) return { env: 0, social: 0, gov: 0 };
-    return { env: row.env, social: row.social, gov: row.gov };
-  }, [chartEntity]);
-
-  const analysisStats = useMemo(() => {
-    if (filteredData.length === 0) return null;
-    const pillar = selectedPillar === 'overall' ? 'overall' : selectedPillar;
-    const values = filteredData.map((d) => d[pillar] ?? 0);
-    const sum = values.reduce((a, b) => a + b, 0);
-    const avg = sum / values.length;
-    const min = Math.min(...values);
-    const max = Math.max(...values);
-    return { avg: Math.round(avg), min, max, count: values.length };
-  }, [filteredData, selectedPillar]);
+  const latestOpcos = Object.entries(opcoScores || {}).map(([opco, records]) => ({ opco, ...(records[0]?.computed || {}) })).sort((a, b) => (b.overall || 0) - (a.overall || 0));
 
   return (
-    <div className="esg-summary">
-      <h2 className="esg-summary-title">ESG Summary</h2>
-      {selectedParentHolding && (
-        <p className="esg-parent-banner">Showing data for <strong>{selectedParentHolding}</strong> (selected in Parent Holding Overview)</p>
-      )}
-
-      <div className="esg-hero">
-        <div className="esg-hero-score-block">
-          <div className="esg-hero-label">Group ESG Health Score</div>
-          <div className="esg-hero-score-row">
-            <span className="esg-hero-score-value">{groupScore}</span>
-            <span className="esg-hero-score-scale">/ 100</span>
-            <span className={`esg-hero-trend esg-hero-trend-${trendDelta >= 0 ? 'up' : 'down'}`} title="vs. last quarter">
-              {trendDelta >= 0 ? '↑' : '↓'} {Math.abs(trendDelta)}
-            </span>
-          </div>
-          <div className="esg-hero-meta">
-            <span className={`esg-hero-rating esg-hero-rating-${rating.toLowerCase()}`}>{rating}</span>
-            <span className="esg-hero-trend-label">vs. last quarter</span>
+    <div className="esg2-overview">
+      {/* Group health score */}
+      <div className="esg2-hero-section">
+        <div className="esg2-hero-score">
+          <ScoreRing score={overall} size={128} />
+          <div className="esg2-hero-text">
+            <div className={`esg2-rating-badge esg2-rating-${ratingClass(overall)}`}>{ratingLabel(overall)}</div>
+            <h2 className="esg2-hero-title">Group ESG Health</h2>
+            <p className="esg2-hero-sub">{selectedParent || 'Group consolidated'} · {opcoCount} operating compan{opcoCount !== 1 ? 'ies' : 'y'}</p>
           </div>
         </div>
-        <div className="esg-hero-exchange-block">
-          <label htmlFor="esg-exchange-select" className="esg-hero-exchange-label">Exchange</label>
-          <select
-            id="esg-exchange-select"
-            className="esg-hero-exchange-select"
-            value={selectedExchange}
-            onChange={(e) => setSelectedExchange(e.target.value)}
-          >
-            {EXCHANGE_OPTIONS.map((opt) => (
-              <option key={opt.id} value={opt.id}>{opt.label}</option>
-            ))}
-          </select>
-          <div className="esg-hero-framework">Aligns to: <strong>{frameworkName}</strong></div>
+        <div className="esg2-pillars-row">
+          <div className="esg2-pillar-card esg2-pillar-e">
+            <span className="esg2-pillar-icon">🌱</span>
+            <span className="esg2-pillar-score" style={{ color: scoreColor(env) }}>{env || '—'}</span>
+            <span className="esg2-pillar-name">Environmental</span>
+            <ScoreBar label="" score={env} color="#22c55e" />
+          </div>
+          <div className="esg2-pillar-card esg2-pillar-s">
+            <span className="esg2-pillar-icon">👥</span>
+            <span className="esg2-pillar-score" style={{ color: scoreColor(social) }}>{social || '—'}</span>
+            <span className="esg2-pillar-name">Social</span>
+            <ScoreBar label="" score={social} color="#3b82f6" />
+          </div>
+          <div className="esg2-pillar-card esg2-pillar-g">
+            <span className="esg2-pillar-icon">🏛</span>
+            <span className="esg2-pillar-score" style={{ color: scoreColor(gov) }}>{gov || '—'}</span>
+            <span className="esg2-pillar-name">Governance</span>
+            <ScoreBar label="" score={gov} color="#8b5cf6" />
+          </div>
         </div>
       </div>
 
-      {industryBenchmark && (
-        <section className="esg-section esg-benchmark-section">
-          <h3 className="esg-section-title">Industry benchmarking (GCC, anonymised)</h3>
-          <p className="esg-section-desc">
-            Where the group&apos;s ESG score sits relative to sector peers in the GCC by industry vertical.
-          </p>
-          <div className="esg-benchmark-panel">
-            <div className="esg-benchmark-row">
-              <span className="esg-benchmark-label">Industry vertical</span>
-              <span className="esg-benchmark-value">{industryBenchmark.industry}</span>
-            </div>
-            <div className="esg-benchmark-row">
-              <span className="esg-benchmark-label">Group score</span>
-              <span className="esg-benchmark-value">{groupScore}</span>
-            </div>
-            <div className="esg-benchmark-row">
-              <span className="esg-benchmark-label">Sector median</span>
-              <span className="esg-benchmark-value">{industryBenchmark.sectorMedian}</span>
-            </div>
-            <div className="esg-benchmark-row">
-              <span className="esg-benchmark-label">Percentile ranking</span>
-              <span className="esg-benchmark-value">{industryBenchmark.percentile}th percentile</span>
-            </div>
-            <div className="esg-benchmark-row">
-              <span className="esg-benchmark-label">Delta to sector median</span>
-              <span className={`esg-benchmark-delta ${industryBenchmark.deltaToMedian >= 0 ? 'esg-benchmark-delta-positive' : 'esg-benchmark-delta-negative'}`}>
-                {industryBenchmark.deltaToMedian >= 0 ? '+' : ''}{industryBenchmark.deltaToMedian} pts
-              </span>
-            </div>
-            <div className="esg-benchmark-footer">
-              Peer count (anonymised): {industryBenchmark.peerCount} entities in GCC
-            </div>
+      {/* Insights */}
+      {insights.length > 0 && (
+        <div className="esg2-section">
+          <h3 className="esg2-section-title">Key Insights &amp; Action Items</h3>
+          <div className="esg2-insights-grid">
+            {insights.map((ins, i) => <InsightCard key={i} {...ins} />)}
           </div>
-        </section>
+        </div>
       )}
 
-      <section className="esg-section esg-simulation-section">
-        <h3 className="esg-section-title">ESG Score Impact Simulation</h3>
-        <p className="esg-section-desc">
-          Select an OpCo and toggle capability improvements to see how the group ESG score would change (e.g. implement TCFD climate scenario analysis or achieve third-party ESG assurance).
-        </p>
-        {!selectedParentHolding ? (
-          <p className="esg-simulation-empty">Select a parent holding in Parent Holding Overview to run a simulation.</p>
-        ) : (
-          <div className="esg-simulation-block">
-            <div className="esg-simulation-controls">
-              <div className="esg-simulation-control-row">
-                <label htmlFor="esg-simulation-opco">OpCo</label>
-                <select
-                  id="esg-simulation-opco"
-                  className="esg-simulation-select"
-                  value={simulationOpco}
-                  onChange={(e) => setSimulationOpco(e.target.value)}
-                >
-                  <option value="">Select OpCo…</option>
-                  {uniqueOpcoNames.map((name) => (
-                    <option key={name} value={name}>{name}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="esg-simulation-toggles">
-                <span className="esg-simulation-toggles-label">Capability improvements</span>
-                {OPERATIONAL_CAPABILITIES.map((cap) => (
-                  <label key={cap.id} className="esg-simulation-toggle">
-                    <input
-                      type="checkbox"
-                      checked={!!simulationToggles[cap.id]}
-                      onChange={() => setSimulationToggles((prev) => ({ ...prev, [cap.id]: !prev[cap.id] }))}
-                    />
-                    <span>{cap.title}</span>
-                  </label>
-                ))}
-              </div>
+      {/* OpCo leaderboard */}
+      {latestOpcos.length > 0 && (
+        <div className="esg2-section">
+          <h3 className="esg2-section-title">Operating Company Scores</h3>
+          <div className="esg2-opco-table">
+            <div className="esg2-opco-table-head">
+              <span>OpCo</span><span>E</span><span>S</span><span>G</span><span>Overall</span><span>Rating</span><span>Completeness</span>
             </div>
-            <div className="esg-simulation-outcome">
-              <h4 className="esg-simulation-outcome-title">Impact</h4>
-              {uniqueOpcoNames.length === 0 ? (
-                <p className="esg-simulation-outcome-empty">No OpCos found for this parent. Simulation uses group score only.</p>
-              ) : simulationOpco ? (
-                <>
-                  <div className="esg-simulation-opco-scores">
-                    <div className="esg-simulation-opco-row">
-                      <span className="esg-simulation-opco-name">{simulationOpco}</span>
-                      <span className="esg-simulation-opco-current">
-                        Current: E {baseScoresByOpco[simulationOpco]?.env ?? '—'} / S {baseScoresByOpco[simulationOpco]?.social ?? '—'} / G {baseScoresByOpco[simulationOpco]?.gov ?? '—'} → {baseScoresByOpco[simulationOpco]?.overall ?? '—'}
-                      </span>
-                    </div>
-                    {simulatedOpcoScore && (
-                      <div className="esg-simulation-opco-row esg-simulation-opco-simulated">
-                        <span className="esg-simulation-opco-name">After improvements</span>
-                        <span className="esg-simulation-opco-value">
-                          E {simulatedOpcoScore.env} / S {simulatedOpcoScore.social} / G {simulatedOpcoScore.gov} → <strong>{simulatedOpcoScore.overall}</strong>
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                  <div className="esg-simulation-group-row">
-                    <span className="esg-simulation-group-label">Group ESG score</span>
-                    <span className="esg-simulation-group-current">{currentGroupScoreFromOpcos}</span>
-                    <span className="esg-simulation-group-arrow">→</span>
-                    <span className="esg-simulation-group-simulated">{simulatedGroupScore}</span>
-                    {simulationDelta !== 0 && (
-                      <span className={`esg-simulation-delta ${simulationDelta >= 0 ? 'esg-simulation-delta-positive' : 'esg-simulation-delta-negative'}`}>
-                        {simulationDelta >= 0 ? '+' : ''}{simulationDelta.toFixed(1)} pts
-                      </span>
-                    )}
-                  </div>
-                  <div className="esg-simulation-rating-row">
-                    <span className="esg-simulation-rating-label">Rating</span>
-                    <span className="esg-simulation-rating-current">{getEsgRating(currentGroupScoreFromOpcos)}</span>
-                    <span className="esg-simulation-group-arrow">→</span>
-                    <span className={`esg-simulation-rating-badge esg-simulation-rating-${simulatedRating.toLowerCase()}`}>{simulatedRating}</span>
-                  </div>
-                </>
-              ) : (
-                <p className="esg-simulation-outcome-hint">Select an OpCo and toggle one or more capability improvements to see the impact on the group ESG score.</p>
-              )}
-            </div>
+            {latestOpcos.map(({ opco, env: e, social: s, gov: g, overall: o, rating: r, completeness: c }) => (
+              <div key={opco} className="esg2-opco-table-row">
+                <span className="esg2-opco-name">{opco}</span>
+                <span style={{ color: scoreColor(e || 0) }}>{e || '—'}</span>
+                <span style={{ color: scoreColor(s || 0) }}>{s || '—'}</span>
+                <span style={{ color: scoreColor(g || 0) }}>{g || '—'}</span>
+                <span className="esg2-opco-overall" style={{ color: scoreColor(o || 0) }}><strong>{o || '—'}</strong></span>
+                <span className={`esg2-rating-chip esg2-rating-${ratingClass(o || 0)}`}>{ratingLabel(o || 0)}</span>
+                <CompletenessChip pct={c || 0} />
+              </div>
+            ))}
           </div>
-        )}
-      </section>
+        </div>
+      )}
 
-      <section className="esg-section">
-        <h3 className="esg-section-title">Operational capabilities for ESG score calculation</h3>
-        <p className="esg-section-desc">
-          The following capabilities are required to collect, measure, and report ESG performance and to support a robust ESG score.
-        </p>
-        <div className="esg-capabilities-grid">
-          {OPERATIONAL_CAPABILITIES.map((cap) => (
-            <div key={cap.id} className="esg-capability-card">
-              <h4 className="esg-capability-title">{cap.title}</h4>
-              <p className="esg-capability-desc">{cap.description}</p>
-            </div>
+      {/* Quick actions */}
+      <div className="esg2-section esg2-quick-actions">
+        <button className="esg2-btn esg2-btn-primary" onClick={() => onTabSwitch('metrics')}>📝 Enter Metrics</button>
+        <button className="esg2-btn esg2-btn-secondary" onClick={() => onTabSwitch('analysis')}>📈 View Analysis</button>
+        <button className="esg2-btn esg2-btn-secondary" onClick={() => onTabSwitch('compliance')}>✅ Check Compliance</button>
+        <button className="esg2-btn esg2-btn-secondary" onClick={() => onTabSwitch('reports')}>📄 Reports</button>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// METRICS PANEL
+// ─────────────────────────────────────────────────────────────────────────────
+function MetricsPanel({ opcos, selectedParent }) {
+  const [selectedOpco, setSelectedOpco] = useState('');
+  const [selectedPeriod, setSelectedPeriod] = useState(PERIODS[0]);
+  const [activePillar, setActivePillar] = useState('environmental');
+  const [formData, setFormData] = useState({ environmental: {}, social: {}, governance: {} });
+  const [liveScore, setLiveScore] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [saveMsg, setSaveMsg] = useState('');
+  const [loading, setLoading] = useState(false);
+  const saveTimer = useRef(null);
+
+  const opco = selectedOpco || opcos[0] || '';
+
+  // Load existing record when opco+period changes
+  useEffect(() => {
+    if (!opco || !selectedPeriod || !selectedParent) return;
+    setLoading(true);
+    fetch(`${API}/esg/metrics?parent=${encodeURIComponent(selectedParent)}&opco=${encodeURIComponent(opco)}&period=${encodeURIComponent(selectedPeriod)}`)
+      .then(r => r.json())
+      .then(data => {
+        const record = (data.metrics || [])[0];
+        if (record) {
+          setFormData({ environmental: record.environmental || {}, social: record.social || {}, governance: record.governance || {} });
+          setLiveScore(record.computed || null);
+        } else {
+          setFormData({ environmental: {}, social: {}, governance: {} });
+          setLiveScore(null);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [opco, selectedPeriod, selectedParent]);
+
+  // Auto-save on field change
+  function handleFieldChange(pillar, id, value) {
+    const updated = { ...formData, [pillar]: { ...formData[pillar], [id]: value } };
+    setFormData(updated);
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => autoSave(updated), 1500);
+  }
+
+  async function autoSave(data) {
+    if (!opco || !selectedPeriod || !selectedParent) return;
+    setSaving(true);
+    try {
+      const res = await fetch(`${API}/esg/metrics`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ parent: selectedParent, opco, period: selectedPeriod, ...data }),
+      });
+      const saved = await res.json();
+      setLiveScore(saved.computed || null);
+      setSaveMsg('Saved ✓');
+      setTimeout(() => setSaveMsg(''), 2000);
+    } catch (_) {
+      setSaveMsg('Save failed');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const pillarFields = { environmental: ENV_FIELDS, social: SOCIAL_FIELDS, governance: GOV_FIELDS };
+  const pillarColors = { environmental: '#22c55e', social: '#3b82f6', governance: '#8b5cf6' };
+  const pillarIcons = { environmental: '🌱', social: '👥', governance: '🏛' };
+
+  return (
+    <div className="esg2-metrics-panel">
+      {/* Selector bar */}
+      <div className="esg2-metrics-selectors">
+        <div className="esg2-selector-group">
+          <label>Operating Company</label>
+          <select value={opco} onChange={e => setSelectedOpco(e.target.value)}>
+            {opcos.map(o => <option key={o} value={o}>{o}</option>)}
+          </select>
+        </div>
+        <div className="esg2-selector-group">
+          <label>Reporting Period</label>
+          <select value={selectedPeriod} onChange={e => setSelectedPeriod(e.target.value)}>
+            {PERIODS.map(p => <option key={p} value={p}>{p}</option>)}
+          </select>
+        </div>
+        <div className="esg2-metrics-save-state">
+          {saving && <span className="esg2-saving">Saving…</span>}
+          {!saving && saveMsg && <span className={`esg2-save-msg ${saveMsg.includes('✓') ? 'ok' : 'err'}`}>{saveMsg}</span>}
+        </div>
+      </div>
+
+      {/* Live score preview */}
+      {liveScore && (
+        <div className="esg2-live-score-bar">
+          <span className="esg2-live-label">Live score preview:</span>
+          {[['E', liveScore.env?.score, '#22c55e'], ['S', liveScore.social?.score, '#3b82f6'], ['G', liveScore.gov?.score, '#8b5cf6']].map(([l, s, c]) => (
+            <span key={l} className="esg2-live-chip" style={{ borderColor: c }}>
+              <span style={{ color: c }}>{l}</span> <strong style={{ color: scoreColor(s || 0) }}>{s || '—'}</strong>
+            </span>
+          ))}
+          <span className="esg2-live-chip esg2-live-overall">
+            Overall <strong style={{ color: scoreColor(liveScore.overall || 0) }}>{liveScore.overall || '—'}</strong>
+          </span>
+          <CompletenessChip pct={liveScore.completeness || 0} />
+        </div>
+      )}
+
+      {/* Pillar tabs */}
+      <div className="esg2-pillar-tabs">
+        {['environmental', 'social', 'governance'].map(p => (
+          <button
+            key={p}
+            className={`esg2-pillar-tab ${activePillar === p ? 'active' : ''}`}
+            style={activePillar === p ? { borderBottomColor: pillarColors[p], color: pillarColors[p] } : {}}
+            onClick={() => setActivePillar(p)}
+          >
+            {pillarIcons[p]} {p.charAt(0).toUpperCase() + p.slice(1)}
+          </button>
+        ))}
+      </div>
+
+      {loading ? (
+        <div className="esg2-loading">Loading record…</div>
+      ) : (
+        <div className="esg2-fields-grid">
+          {pillarFields[activePillar].map(field => (
+            <MetricInput
+              key={field.id}
+              fieldDef={field}
+              value={formData[activePillar]?.[field.id]}
+              onChange={(id, val) => handleFieldChange(activePillar, id, val)}
+            />
           ))}
         </div>
-      </section>
+      )}
 
-      <section className="esg-section esg-calculation-section">
-        <h3 className="esg-section-title">ESG score calculation (global standard procedure)</h3>
-        <p className="esg-section-desc">
-          Globally, ESG scores are calculated using a weighted aggregation of the three pillars (Environmental, Social, Governance), typically on a 0–100 scale. Major providers (MSCI, S&P Global, LSEG, Sustainalytics) follow a similar hierarchy.
-        </p>
-        <div className="esg-methodology-steps">
-          <div className="esg-methodology-step">
-            <span className="esg-step-num">1</span>
-            <div>
-              <strong>Key issue / question assessment</strong> — Score at question level using frameworks (data availability, quality, relevance, performance).
-            </div>
-          </div>
-          <div className="esg-methodology-step">
-            <span className="esg-step-num">2</span>
-            <div>
-              <strong>Pillar scores</strong> — Aggregate question-level scores into criteria and themes, then roll up into separate E, S and G dimension scores (0–100).
-            </div>
-          </div>
-          <div className="esg-methodology-step">
-            <span className="esg-step-num">3</span>
-            <div>
-              <strong>Weighted aggregation</strong> — Combine pillar scores using industry-specific or materiality-based weights: <em>Overall ESG = (E × wE) + (S × wS) + (G × wG)</em>, with wE + wS + wG = 100%.
-            </div>
-          </div>
-          <div className="esg-methodology-step">
-            <span className="esg-step-num">4</span>
-            <div>
-              <strong>Adjustments (optional)</strong> — Apply risk exposure, management effectiveness and controversy screening where required by the methodology.
-            </div>
-          </div>
+      <div className="esg2-metrics-footer">
+        <span className="esg2-metrics-footer-hint">
+          Data is saved automatically as you type. Scores are recomputed on every save. All fields are optional — completeness percentage reflects how much data has been entered.
+        </span>
+        <button className="esg2-btn esg2-btn-secondary" onClick={() => autoSave(formData)}>
+          Save Now
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ANALYSIS PANEL
+// ─────────────────────────────────────────────────────────────────────────────
+function AnalysisPanel({ opcoScores, selectedParent }) {
+  const [selectedOpco, setSelectedOpco] = useState('');
+  const [selectedPillar, setSelectedPillar] = useState('overall');
+
+  const opcoNames = Object.keys(opcoScores || {});
+  const opco = selectedOpco || opcoNames[0] || '';
+  const opcoHistory = (opcoScores[opco] || []).slice(0, 6).reverse(); // oldest first for trend
+
+  // Pillar score data for selected opco across periods
+  const trendData = opcoHistory.map(r => ({
+    period: r.period,
+    env: r.computed?.env?.score || 0,
+    social: r.computed?.social?.score || 0,
+    gov: r.computed?.gov?.score || 0,
+    overall: r.computed?.overall || 0,
+  }));
+
+  // Latest scores for all OpCos (for comparison)
+  const opcoLatest = opcoNames.map(o => {
+    const latest = (opcoScores[o] || [])[0];
+    return { opco: o, env: latest?.computed?.env?.score || 0, social: latest?.computed?.social?.score || 0, gov: latest?.computed?.gov?.score || 0, overall: latest?.computed?.overall || 0, completeness: latest?.computed?.completeness || 0 };
+  }).sort((a, b) => b.overall - a.overall);
+
+  // Breakdown for selected opco (latest)
+  const latestRecord = (opcoScores[opco] || [])[0];
+  const breakdown = latestRecord?.computed || null;
+
+  // Sector benchmark
+  const sectorName = Object.keys(SECTOR_BENCHMARKS)[0];
+  const benchmark = SECTOR_BENCHMARKS[sectorName];
+  const latestOverall = latestRecord?.computed?.overall || 0;
+  const peerCount = benchmark.peers;
+  const belowPeer = benchmark.p25 > latestOverall;
+  const percentile = latestOverall >= benchmark.p75 ? 75 : latestOverall >= benchmark.median ? 50 : latestOverall >= benchmark.p25 ? 25 : 10;
+
+  if (opcoNames.length === 0) {
+    return (
+      <div className="esg2-empty-state">
+        <div className="esg2-empty-icon">📈</div>
+        <h3>No data available for analysis</h3>
+        <p>Enter ESG metrics in the <strong>Metrics</strong> tab to unlock trend charts, peer benchmarking and gap analysis.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="esg2-analysis-panel">
+      <div className="esg2-analysis-controls">
+        <div className="esg2-selector-group">
+          <label>View OpCo</label>
+          <select value={opco} onChange={e => setSelectedOpco(e.target.value)}>
+            {opcoNames.map(o => <option key={o} value={o}>{o}</option>)}
+          </select>
         </div>
-
-        <div className="esg-calculator-card">
-          <h4 className="esg-calculator-title">ESG score calculator</h4>
-          <p className="esg-calculator-desc">Compute overall ESG score from E, S, G pillar scores using standard weighted aggregation.</p>
-          <EsgScoreCalculator chartEntityData={chartEntityData} chartEntity={chartEntity} />
+        <div className="esg2-selector-group">
+          <label>Score pillar</label>
+          <select value={selectedPillar} onChange={e => setSelectedPillar(e.target.value)}>
+            <option value="overall">Overall</option>
+            <option value="env">Environmental (E)</option>
+            <option value="social">Social (S)</option>
+            <option value="gov">Governance (G)</option>
+          </select>
         </div>
-      </section>
+      </div>
 
-      <section className="esg-section">
-        <h3 className="esg-section-title">Data visualization & analysis</h3>
-
-        <div className="esg-viz-toolbar">
-          <div className="esg-viz-filter">
-            <label htmlFor="esg-jurisdiction">Jurisdiction</label>
-            <select
-              id="esg-jurisdiction"
-              value={selectedJurisdiction}
-              onChange={(e) => setSelectedJurisdiction(e.target.value)}
-            >
-              {jurisdictions.map((j) => (
-                <option key={j} value={j}>{j === 'all' ? 'All' : j}</option>
-              ))}
-            </select>
-          </div>
-          <div className="esg-viz-filter">
-            <label htmlFor="esg-pillar">Score pillar</label>
-            <select
-              id="esg-pillar"
-              value={selectedPillar}
-              onChange={(e) => setSelectedPillar(e.target.value)}
-            >
-              <option value="overall">Overall</option>
-              <option value="env">Environmental</option>
-              <option value="social">Social</option>
-              <option value="gov">Governance</option>
-            </select>
-          </div>
-          {analysisStats && (
-            <div className="esg-viz-stats">
-              <span>Average: <strong>{analysisStats.avg}</strong></span>
-              <span>Min: {analysisStats.min} / Max: {analysisStats.max}</span>
-              <span>Entities: {analysisStats.count}</span>
+      <div className="esg2-analysis-grid">
+        {/* Trend chart */}
+        <div className="esg2-analysis-card esg2-card-wide">
+          <h4 className="esg2-card-title">Period Trend — {opco}</h4>
+          {trendData.length < 2 ? (
+            <p className="esg2-no-data-hint">Enter data for at least 2 periods to see trends.</p>
+          ) : (
+            <div className="esg2-trend-chart">
+              {trendData.map((d, i) => {
+                const val = d[selectedPillar === 'env' ? 'env' : selectedPillar === 'social' ? 'social' : selectedPillar === 'gov' ? 'gov' : 'overall'];
+                const color = selectedPillar === 'env' ? '#22c55e' : selectedPillar === 'social' ? '#3b82f6' : selectedPillar === 'gov' ? '#8b5cf6' : scoreColor(val);
+                return (
+                  <div key={d.period} className="esg2-trend-col">
+                    <span className="esg2-trend-val" style={{ color }}>{val}</span>
+                    <div className="esg2-trend-bar-wrap">
+                      <div className="esg2-trend-bar" style={{ height: `${val}%`, background: color }} />
+                    </div>
+                    <span className="esg2-trend-period">{d.period.replace('-', '\n')}</span>
+                    {i > 0 && (
+                      <TrendChip
+                        current={val}
+                        previous={trendData[i - 1][selectedPillar === 'env' ? 'env' : selectedPillar === 'social' ? 'social' : selectedPillar === 'gov' ? 'gov' : 'overall']}
+                      />
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
 
-        <div className="esg-viz-row">
-          <div className="esg-chart-card">
-            <h4 className="esg-chart-title">E / S / G pillar scores</h4>
-            <div className="esg-chart-entity-select">
-              <label htmlFor="esg-chart-entity">Entity</label>
-              <select
-                id="esg-chart-entity"
-                value={chartEntity}
-                onChange={(e) => setChartEntity(e.target.value)}
-              >
-                {MOCK_ESG_DATA.map((d) => (
-                  <option key={d.entity} value={d.entity}>{d.entity}</option>
+        {/* Peer benchmarking */}
+        <div className="esg2-analysis-card">
+          <h4 className="esg2-card-title">GCC Peer Benchmarking</h4>
+          <div className="esg2-benchmark-body">
+            <div className="esg2-benchmark-score-line">
+              <span className="esg2-benchmark-your">Your score: <strong style={{ color: scoreColor(latestOverall) }}>{latestOverall}</strong></span>
+              <span className="esg2-benchmark-pct">~{percentile}th percentile</span>
+            </div>
+            <div className="esg2-benchmark-bar-group">
+              {[
+                { label: 'P25 peer', val: benchmark.p25, color: '#ef4444' },
+                { label: 'Peer median', val: benchmark.median, color: '#f59e0b' },
+                { label: 'P75 peer', val: benchmark.p75, color: '#22c55e' },
+                { label: 'Your score', val: latestOverall, color: scoreColor(latestOverall) },
+              ].map(b => (
+                <div key={b.label} className="esg2-bm-bar-row">
+                  <span className="esg2-bm-bar-label">{b.label}</span>
+                  <div className="esg2-bm-bar-track">
+                    <div className="esg2-bm-bar-fill" style={{ width: `${b.val}%`, background: b.color }} />
+                  </div>
+                  <span className="esg2-bm-bar-val" style={{ color: b.color }}>{b.val}</span>
+                </div>
+              ))}
+            </div>
+            {belowPeer && <p className="esg2-benchmark-alert">⚠ Score is below 25th percentile. Prioritise data completeness and quick-win governance policies.</p>}
+            <p className="esg2-benchmark-note">Anonymised GCC peer data · {peerCount} entities</p>
+          </div>
+        </div>
+
+        {/* Score breakdown */}
+        {breakdown && (
+          <div className="esg2-analysis-card">
+            <h4 className="esg2-card-title">Score Breakdown — {opco} (Latest)</h4>
+            <div className="esg2-pillar-scores-stack">
+              <ScoreBar label="Environmental" score={breakdown.env?.score || 0} color="#22c55e" subLabel={`${breakdown.env?.completeness || 0}% complete`} />
+              <ScoreBar label="Social" score={breakdown.social?.score || 0} color="#3b82f6" subLabel={`${breakdown.social?.completeness || 0}% complete`} />
+              <ScoreBar label="Governance" score={breakdown.gov?.score || 0} color="#8b5cf6" subLabel={`${breakdown.gov?.completeness || 0}% complete`} />
+            </div>
+            {/* Environmental drivers */}
+            {Object.keys(breakdown.env?.breakdown || {}).length > 0 && (
+              <div className="esg2-breakdown-section">
+                <h5>Environmental drivers</h5>
+                {Object.entries(breakdown.env.breakdown).map(([k, b]) => (
+                  <BreakdownRow key={k} label={k.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase())} value={b.value} score={b.score} unit={b.unit} />
                 ))}
-              </select>
-            </div>
-            <div className="esg-bar-chart">
-              <div className="esg-bar-row">
-                <span className="esg-bar-label">Environmental</span>
-                <div className="esg-bar-track">
-                  <div className="esg-bar-fill esg-bar-env" style={{ width: `${chartEntityData.env}%` }} />
-                </div>
-                <span className="esg-bar-value">{chartEntityData.env}%</span>
               </div>
-              <div className="esg-bar-row">
-                <span className="esg-bar-label">Social</span>
-                <div className="esg-bar-track">
-                  <div className="esg-bar-fill esg-bar-social" style={{ width: `${chartEntityData.social}%` }} />
-                </div>
-                <span className="esg-bar-value">{chartEntityData.social}%</span>
+            )}
+            {Object.keys(breakdown.gov?.breakdown || {}).length > 0 && (
+              <div className="esg2-breakdown-section">
+                <h5>Governance drivers</h5>
+                {Object.entries(breakdown.gov.breakdown).map(([k, b]) => (
+                  <BreakdownRow key={k} label={k.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase())} value={b.value} score={b.score} unit={b.unit} />
+                ))}
               </div>
-              <div className="esg-bar-row">
-                <span className="esg-bar-label">Governance</span>
-                <div className="esg-bar-track">
-                  <div className="esg-bar-fill esg-bar-gov" style={{ width: `${chartEntityData.gov}%` }} />
-                </div>
-                <span className="esg-bar-value">{chartEntityData.gov}%</span>
-              </div>
-            </div>
+            )}
           </div>
+        )}
 
-          <div className="esg-table-card">
-            <h4 className="esg-chart-title">ESG scores by entity (filtered)</h4>
-            <div className="esg-data-table-wrap">
-              <table className="esg-data-table">
-                <thead>
-                  <tr>
-                    <th>Entity</th>
-                    <th>Jurisdiction</th>
-                    <th>E</th>
-                    <th>S</th>
-                    <th>G</th>
-                    <th>Overall</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredData.map((row) => (
-                    <tr key={row.entity}>
-                      <td>{row.entity}</td>
-                      <td>{row.jurisdiction}</td>
-                      <td>{row.env}</td>
-                      <td>{row.social}</td>
-                      <td>{row.gov}</td>
-                      <td><strong>{row.overall}</strong></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+        {/* OpCo comparison heat-map */}
+        <div className="esg2-analysis-card esg2-card-wide">
+          <h4 className="esg2-card-title">OpCo Comparison (Latest Period)</h4>
+          <div className="esg2-heatmap">
+            <div className="esg2-heatmap-head">
+              <span>OpCo</span><span>E</span><span>S</span><span>G</span><span>Overall</span><span>Data</span>
             </div>
+            {opcoLatest.map(row => (
+              <div key={row.opco} className="esg2-heatmap-row">
+                <span className="esg2-heatmap-opco">{row.opco}</span>
+                {[row.env, row.social, row.gov, row.overall].map((s, i) => (
+                  <span key={i} className="esg2-heatmap-cell" style={{ background: s ? scoreColor(s) + '28' : 'transparent', color: s ? scoreColor(s) : 'var(--text-muted)' }}>
+                    {s || '—'}
+                  </span>
+                ))}
+                <span><CompletenessChip pct={row.completeness} /></span>
+              </div>
+            ))}
           </div>
         </div>
+      </div>
+    </div>
+  );
+}
 
-        <div className="esg-analysis-note">
-          Use the jurisdiction and score pillar filters above to analyse subsets. The bar chart shows Environmental, Social and Governance scores for the selected entity; the table shows all entities matching the selected jurisdiction.
+// ─────────────────────────────────────────────────────────────────────────────
+// COMPLIANCE PANEL
+// ─────────────────────────────────────────────────────────────────────────────
+function CompliancePanel({ frameworkStatus, selectedParent, onStatusUpdate }) {
+  const [regionFilter, setRegionFilter] = useState('all');
+
+  const regions = ['all', 'UAE', 'KSA', 'Global'];
+  const filtered = regionFilter === 'all' ? GCC_FRAMEWORKS : GCC_FRAMEWORKS.filter(f => f.region === regionFilter);
+
+  const completed = GCC_FRAMEWORKS.filter(f => (frameworkStatus[f.id]?.status || 'not-started') === 'completed').length;
+  const mandatory = GCC_FRAMEWORKS.filter(f => f.mandatory);
+  const mandatoryCompleted = mandatory.filter(f => (frameworkStatus[f.id]?.status || 'not-started') === 'completed').length;
+
+  return (
+    <div className="esg2-compliance-panel">
+      <div className="esg2-compliance-summary-bar">
+        <div className="esg2-compliance-stat">
+          <span className="esg2-cs-val">{completed}/{GCC_FRAMEWORKS.length}</span>
+          <span className="esg2-cs-label">Frameworks completed</span>
         </div>
-      </section>
+        <div className="esg2-compliance-stat">
+          <span className="esg2-cs-val" style={{ color: mandatoryCompleted === mandatory.length ? '#22c55e' : '#ef4444' }}>
+            {mandatoryCompleted}/{mandatory.length}
+          </span>
+          <span className="esg2-cs-label">Mandatory completed</span>
+        </div>
+        <div className="esg2-compliance-stat">
+          <span className="esg2-cs-val">{GCC_FRAMEWORKS.filter(f => (frameworkStatus[f.id]?.status || 'not-started') === 'in-progress').length}</span>
+          <span className="esg2-cs-label">In progress</span>
+        </div>
+      </div>
+
+      <div className="esg2-region-filter">
+        {regions.map(r => (
+          <button key={r} className={`esg2-region-btn ${regionFilter === r ? 'active' : ''}`} onClick={() => setRegionFilter(r)}>
+            {r === 'all' ? 'All regions' : r}
+          </button>
+        ))}
+      </div>
+
+      <div className="esg2-fw-list">
+        {filtered.map(fw => (
+          <FrameworkStatusRow
+            key={fw.id}
+            fw={fw}
+            statusObj={frameworkStatus[fw.id] || null}
+            onUpdate={onStatusUpdate}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// REPORTS PANEL
+// ─────────────────────────────────────────────────────────────────────────────
+function ReportsPanel({ opcoScores, frameworkStatus, selectedParent }) {
+  const opcoLatest = Object.entries(opcoScores || {}).map(([opco, records]) => ({
+    opco, parent: selectedParent, ...(records[0]?.computed || {}),
+    period: records[0]?.period || '',
+  }));
+
+  function exportCsv() {
+    const headers = ['Parent', 'OpCo', 'Period', 'E Score', 'S Score', 'G Score', 'Overall', 'Rating', 'Completeness'];
+    const rows = opcoLatest.map(r => [
+      r.parent, r.opco, r.period,
+      r.env?.score ?? '—', r.social?.score ?? '—', r.gov?.score ?? '—',
+      r.overall ?? '—', r.rating ?? '—', r.completeness ? `${r.completeness}%` : '—',
+    ]);
+    const csv = [headers, ...rows].map(r => r.map(v => `"${v}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `ESG_Scores_${(selectedParent || 'Group').replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  const disclosureChecklist = [
+    { label: 'Scope 1 & 2 Emissions disclosed', framework: 'TCFD / ISSB S2', done: opcoLatest.some(r => r.env?.breakdown?.carbonIntensity) },
+    { label: 'Scope 3 Emissions disclosed', framework: 'TCFD / ISSB S2', done: opcoLatest.some(r => r.env?.breakdown?.scope3) },
+    { label: 'Energy consumption disclosed', framework: 'GRI 302', done: false },
+    { label: 'Water withdrawal disclosed', framework: 'GRI 303', done: opcoLatest.some(r => r.env?.breakdown?.waterIntensity) },
+    { label: 'Waste metrics disclosed', framework: 'GRI 306', done: opcoLatest.some(r => r.env?.breakdown?.wasteDiversion) },
+    { label: 'Emiratisation / Saudisation rate', framework: 'Regulatory (UAE/KSA)', done: opcoLatest.some(r => r.social?.breakdown?.emiratization || r.social?.breakdown?.saudization) },
+    { label: 'Gender diversity metrics', framework: 'GRI 405', done: opcoLatest.some(r => r.social?.breakdown?.genderDiversity) },
+    { label: 'Workforce safety (LTIR)', framework: 'GRI 403', done: opcoLatest.some(r => r.social?.breakdown?.safety) },
+    { label: 'Board independence % disclosed', framework: 'GRI 405 / CMA', done: opcoLatest.some(r => r.gov?.breakdown?.boardIndependence) },
+    { label: 'ESG report published', framework: 'DFM/ADX / Tadawul', done: opcoLatest.some(r => r.gov?.breakdown?.transparency?.esgReportPublished) },
+    { label: 'Third-party ESG assurance', framework: 'ISSB S1', done: opcoLatest.some(r => r.gov?.breakdown?.transparency?.thirdPartyAudit) },
+  ];
+  const disclosedCount = disclosureChecklist.filter(d => d.done).length;
+
+  return (
+    <div className="esg2-reports-panel">
+      <div className="esg2-reports-actions">
+        <button className="esg2-btn esg2-btn-primary" onClick={exportCsv}>⬇ Export ESG Scores (CSV)</button>
+      </div>
+
+      <div className="esg2-section">
+        <h3 className="esg2-section-title">Disclosure Checklist ({disclosedCount}/{disclosureChecklist.length} items have data)</h3>
+        <div className="esg2-disclosure-list">
+          {disclosureChecklist.map((item, i) => (
+            <div key={i} className={`esg2-disclosure-row ${item.done ? 'done' : 'missing'}`}>
+              <span className="esg2-disclosure-icon">{item.done ? '✓' : '○'}</span>
+              <span className="esg2-disclosure-label">{item.label}</span>
+              <span className="esg2-disclosure-fw">{item.framework}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {opcoLatest.length > 0 && (
+        <div className="esg2-section">
+          <h3 className="esg2-section-title">Score Summary</h3>
+          <div className="esg2-opco-table">
+            <div className="esg2-opco-table-head">
+              <span>OpCo</span><span>Period</span><span>E</span><span>S</span><span>G</span><span>Overall</span><span>Rating</span>
+            </div>
+            {opcoLatest.map(r => (
+              <div key={r.opco} className="esg2-opco-table-row">
+                <span>{r.opco}</span>
+                <span className="esg2-period-chip">{r.period}</span>
+                <span style={{ color: scoreColor(r.env?.score || 0) }}>{r.env?.score || '—'}</span>
+                <span style={{ color: scoreColor(r.social?.score || 0) }}>{r.social?.score || '—'}</span>
+                <span style={{ color: scoreColor(r.gov?.score || 0) }}>{r.gov?.score || '—'}</span>
+                <span><strong style={{ color: scoreColor(r.overall || 0) }}>{r.overall || '—'}</strong></span>
+                <span className={`esg2-rating-chip esg2-rating-${ratingClass(r.overall || 0)}`}>{ratingLabel(r.overall || 0)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="esg2-section esg2-scoring-methodology">
+        <h3 className="esg2-section-title">Scoring Methodology (Transparent)</h3>
+        <div className="esg2-method-grid">
+          <div className="esg2-method-card">
+            <h4>🌱 Environmental (E)</h4>
+            <ul>
+              <li><strong>30%</strong> Carbon intensity (Scope 1+2 per FTE)</li>
+              <li><strong>25%</strong> Renewable energy share</li>
+              <li><strong>15%</strong> Water intensity (m³/FTE)</li>
+              <li><strong>15%</strong> Waste diversion from landfill</li>
+              <li><strong>10%</strong> Green building certification</li>
+              <li><strong>5%</strong> Scope 3 disclosure credit</li>
+            </ul>
+          </div>
+          <div className="esg2-method-card">
+            <h4>👥 Social (S)</h4>
+            <ul>
+              <li><strong>25%</strong> Emiratisation / Saudisation vs target</li>
+              <li><strong>20%</strong> Gender diversity (% female)</li>
+              <li><strong>20%</strong> Workplace safety (LTIR)</li>
+              <li><strong>15%</strong> Training hours per FTE/year</li>
+              <li><strong>10%</strong> Community investment (% revenue)</li>
+              <li><strong>10%</strong> Employee satisfaction score</li>
+            </ul>
+          </div>
+          <div className="esg2-method-card">
+            <h4>🏛 Governance (G)</h4>
+            <ul>
+              <li><strong>30%</strong> Policy adoption (anti-corruption + whistleblower + privacy)</li>
+              <li><strong>30%</strong> Transparency (ESG report + 3rd-party audit)</li>
+              <li><strong>25%</strong> Board independence %</li>
+              <li><strong>15%</strong> Female board members %</li>
+            </ul>
+          </div>
+        </div>
+        <p className="esg2-method-note">
+          Scores are computed server-side from entered data. Metrics with no data are excluded from the denominator — only entered metrics influence the score. Data completeness % indicates coverage reliability.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// M&A EXPORTS (backward compatibility — use live data when available)
+// ─────────────────────────────────────────────────────────────────────────────
+export function getEsgDataForMa(opcoOrParent) {
+  // Synchronous fallback — returns null if no data (async fetch not possible here)
+  try {
+    const raw = typeof localStorage !== 'undefined' ? localStorage.getItem('esg_ma_cache') : null;
+    if (!raw) return null;
+    const cache = JSON.parse(raw);
+    return cache[opcoOrParent] || null;
+  } catch (_) { return null; }
+}
+
+export function getEsgSummaryForMa(opcoOrParent) {
+  const data = getEsgDataForMa(opcoOrParent);
+  if (!data) return '';
+  return `${data.entity || opcoOrParent} (${data.jurisdiction || ''}, ${data.year || ''}): Environmental ${data.env || '—'}, Social ${data.social || '—'}, Governance ${data.gov || '—'}; Overall ESG score ${data.overall || '—'}/100.`;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MAIN COMPONENT
+// ─────────────────────────────────────────────────────────────────────────────
+export function EsgSummary({ language = 'en', selectedParentHolding = '', companiesRefreshKey = 0 }) {
+  const [activeTab, setActiveTab] = useState('overview');
+  const [opcos, setOpcos] = useState([]);
+  const [opcoScores, setOpcoScores] = useState({});
+  const [groupScores, setGroupScores] = useState(null);
+  const [frameworkStatus, setFrameworkStatus] = useState({});
+  const [loading, setLoading] = useState(false);
+  const [lastRefresh, setLastRefresh] = useState(null);
+
+  const parent = selectedParentHolding;
+
+  // Fetch OpCos
+  useEffect(() => {
+    if (!parent) { setOpcos([]); return; }
+    fetch(`${API}/companies/by-parent?parent=${encodeURIComponent(parent)}`)
+      .then(r => r.json())
+      .then(d => setOpcos((d.opcos || []).map(o => o.name || o).filter(Boolean)))
+      .catch(() => setOpcos([]));
+  }, [parent, companiesRefreshKey]);
+
+  // Fetch ESG scores
+  const fetchScores = () => {
+    if (!parent) return;
+    setLoading(true);
+    fetch(`${API}/esg/scores?parent=${encodeURIComponent(parent)}`)
+      .then(r => r.json())
+      .then(d => {
+        setOpcoScores(d.byOpco || {});
+        setGroupScores(d.group?.opcoCount > 0 ? d.group : null);
+        setLastRefresh(new Date());
+        // Cache for M&A exports
+        const cache = {};
+        Object.entries(d.byOpco || {}).forEach(([opco, records]) => {
+          const r = records[0];
+          if (r) cache[opco] = { entity: opco, jurisdiction: 'GCC', year: new Date().getFullYear(), env: r.computed?.env?.score, social: r.computed?.social?.score, gov: r.computed?.gov?.score, overall: r.computed?.overall };
+        });
+        try { localStorage.setItem('esg_ma_cache', JSON.stringify(cache)); } catch (_) {}
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => { fetchScores(); }, [parent, companiesRefreshKey]);
+
+  // Fetch framework status
+  useEffect(() => {
+    if (!parent) return;
+    fetch(`${API}/esg/framework-status?parent=${encodeURIComponent(parent)}`)
+      .then(r => r.json())
+      .then(d => {
+        const map = {};
+        Object.entries(d.frameworkStatus || {}).forEach(([key, val]) => {
+          const fwId = GCC_FRAMEWORKS.find(f => f.name === val.framework)?.id || val.framework;
+          map[fwId] = val;
+        });
+        setFrameworkStatus(map);
+      })
+      .catch(() => {});
+  }, [parent, companiesRefreshKey]);
+
+  async function handleFrameworkStatusUpdate(fwId, fwName, status, notes) {
+    if (!parent) return;
+    try {
+      await fetch(`${API}/esg/framework-status`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ parent, framework: fwName, status, notes }),
+      });
+      setFrameworkStatus(prev => ({ ...prev, [fwId]: { ...prev[fwId], status, notes, lastReviewDate: new Date().toISOString().slice(0, 10) } }));
+    } catch (_) {}
+  }
+
+  const TABS = [
+    { id: 'overview',    icon: '🎯', label: 'Overview' },
+    { id: 'metrics',     icon: '📝', label: 'Metrics' },
+    { id: 'analysis',    icon: '📈', label: 'Analysis' },
+    { id: 'compliance',  icon: '✅', label: 'GCC Compliance' },
+    { id: 'reports',     icon: '📄', label: 'Reports' },
+  ];
+
+  if (!parent) {
+    return (
+      <div className="esg2-no-parent">
+        <div className="esg2-empty-icon">🌿</div>
+        <h2>ESG Module</h2>
+        <p>Select a <strong>Parent Holding company</strong> in the Parent Holding Overview to view and manage ESG data.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="esg2-root">
+      {/* Header */}
+      <div className="esg2-header">
+        <div className="esg2-header-title">
+          <h2 className="esg2-title">ESG Performance</h2>
+          <span className="esg2-parent-chip">{parent}</span>
+        </div>
+        <div className="esg2-header-actions">
+          {lastRefresh && <span className="esg2-last-refresh">Updated {lastRefresh.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</span>}
+          <button className="esg2-btn esg2-btn-ghost" onClick={fetchScores} disabled={loading} title="Refresh scores">
+            {loading ? '⟳' : '↻'} Refresh
+          </button>
+        </div>
+      </div>
+
+      {/* Tab navigation */}
+      <nav className="esg2-tab-nav" role="tablist">
+        {TABS.map(tab => (
+          <button
+            key={tab.id}
+            role="tab"
+            aria-selected={activeTab === tab.id}
+            className={`esg2-tab-btn ${activeTab === tab.id ? 'active' : ''}`}
+            onClick={() => { setActiveTab(tab.id); if (tab.id !== 'metrics') fetchScores(); }}
+          >
+            <span className="esg2-tab-icon">{tab.icon}</span>
+            <span className="esg2-tab-label">{tab.label}</span>
+          </button>
+        ))}
+      </nav>
+
+      {/* Tab content */}
+      <div className="esg2-tab-content" role="tabpanel">
+        {activeTab === 'overview' && (
+          <OverviewPanel
+            groupScores={groupScores}
+            opcoScores={opcoScores}
+            selectedParent={parent}
+            onTabSwitch={setActiveTab}
+          />
+        )}
+        {activeTab === 'metrics' && (
+          <MetricsPanel
+            opcos={opcos.length > 0 ? opcos : Object.keys(opcoScores)}
+            selectedParent={parent}
+          />
+        )}
+        {activeTab === 'analysis' && (
+          <AnalysisPanel
+            opcoScores={opcoScores}
+            selectedParent={parent}
+          />
+        )}
+        {activeTab === 'compliance' && (
+          <CompliancePanel
+            frameworkStatus={frameworkStatus}
+            selectedParent={parent}
+            onStatusUpdate={handleFrameworkStatusUpdate}
+          />
+        )}
+        {activeTab === 'reports' && (
+          <ReportsPanel
+            opcoScores={opcoScores}
+            frameworkStatus={frameworkStatus}
+            selectedParent={parent}
+          />
+        )}
+      </div>
     </div>
   );
 }

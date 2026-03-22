@@ -3,8 +3,10 @@ import multer from 'multer';
 import { readFile, writeFile, mkdir } from 'fs/promises';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
-import { createChatCompletion, isLlmConfigured } from '../services/llm.js';
+import { isLlmConfigured } from '../services/llm.js';
 import { extractTextFromBuffer } from '../services/text-extract.js';
+import { extractDocumentFields } from '../services/documentIntelligence.js';
+import { recordExtraction } from '../services/fieldLearningService.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const DATA_PATH = join(__dirname, '../data/contracts.json');
@@ -55,82 +57,57 @@ async function saveContracts(list) {
 
 export const contractsRouter = Router();
 
-// Extract VAT/tax, net/total, dates and counterparty from contract text using LLM (if configured).
+/**
+ * Extract contract fields from document text using the universal documentIntelligence
+ * engine. This gives contracts the same two-pass strategy, learning-context injection,
+ * and continuous improvement as all other modules.
+ */
 async function extractContractFieldsFromText(text) {
   if (!text || !isLlmConfigured()) return null;
-  const snippet = text.length > 12000 ? text.slice(0, 12000) : text;
-  const systemPrompt =
-    'You are a contracts analyst. Read the contract text and extract key commercial fields as JSON. ' +
-    'If a field is not clearly present, return null for that field. ' +
-    'When dealing with renewal/notice language, you MUST convert the language into offsets in days relative to the expiry date: ' +
-    'negative numbers mean days BEFORE expiry, positive numbers mean days AFTER expiry. ' +
-    'IMPORTANT DISTINCTION: (1) Phrases like "at least 90 days BEFORE expiry to renew" describe a pre-expiry NOTICE window and should be encoded as negative offsets (e.g. -90). ' +
-    '(2) Phrases like "for 12 months FROM expiry", "renewal term of 1 year from the Expiry Date", or "renews for 12 months after the initial term" describe a new renewal TERM that begins AFTER expiry; these must be encoded as POSITIVE offsets so that renewalStartOffsetDays is a positive number of days AFTER expiry (e.g. approx +365 for 12 months).';
-  const userPrompt =
-    `Contract text (may be partial):\n\n${snippet}\n\n` +
-    'Return a JSON object with the following keys:\n' +
-    '- title: string or null (short descriptive title of the contract, e.g. \"Master Services Agreement - IT Infrastructure\").\n' +
-    '- vatAmount: number or null (VAT amount, e.g. 2500.00).\n' +
-    '- taxAmount: number or null (other taxes, if any).\n' +
-    '- netAmount: number or null (net amount before VAT/taxes).\n' +
-    '- totalAmount: number or null (total contract value including VAT/taxes if specified).\n' +
-    '- effectiveDate: string or null (YYYY-MM-DD; the date the contract becomes effective or start date).\n' +
-    '- expiryDate: string or null (YYYY-MM-DD; end/expiry date or term end).\n' +
-    '- renewalStart: string or null (YYYY-MM-DD or best approximation of when renewal window opens; if the exact date is not stated, you may leave this null and instead use renewalStartOffsetDays).\n' +
-    '- renewalEnd: string or null (YYYY-MM-DD or best approximation of when renewal window closes; if the exact date is not stated, you may leave this null and instead use renewalEndOffsetDays).\n' +
-    '- renewalStartOffsetDays: integer or null (number of days RELATIVE TO expiryDate when the renewal window or renewal term starts; negative means before expiry, positive means after. Examples: \"no later than 90 days before expiry\" => -90; \"within 30 days after expiry\" => +30; \"for 12 months from expiry\" or \"renewal term of 1 year from the Expiry Date\" => use a POSITIVE offset approximating that period in days, e.g. +365 for 12 months / 1 year).\n' +
-    '- renewalEndOffsetDays: integer or null (number of days RELATIVE TO expiryDate when the renewal window or renewal term ends; same sign convention as renewalStartOffsetDays).\n' +
-    '- counterparty: string or null (counterparty or vendor name, excluding the client organization).';
-  try {
-    const completion = await createChatCompletion({
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt },
-      ],
-      maxTokens: 700,
-      responseFormat: 'json',
-    });
-    const raw = completion.choices?.[0]?.message?.content?.trim() || '{}';
-    const jsonStr = raw.replace(/^```json?\s*|\s*```$/g, '').trim();
-    const parsed = JSON.parse(jsonStr || '{}');
 
-    let effectiveDate = parsed.effectiveDate ?? null;
-    let expiryDate = parsed.expiryDate ?? null;
-    let renewalStart = parsed.renewalStart ?? null;
-    let renewalEnd = parsed.renewalEnd ?? null;
+  const { fields, error } = await extractDocumentFields(text, 'contracts');
+  if (error || !fields || Object.keys(fields).length === 0) return null;
 
-    // Override renewal window calculation with a fixed 12-month rule:
-    // Renewal window start = expiry date + 12 months
-    // Renewal window end   = renewal window start + 12 months
-    if (expiryDate) {
-      const base = new Date(expiryDate);
-      if (!Number.isNaN(base.getTime())) {
-        const toIsoDate = (dt) => dt.toISOString().slice(0, 10);
-        const start = new Date(base.getTime());
-        start.setMonth(start.getMonth() + 12);
-        const end = new Date(start.getTime());
-        end.setMonth(end.getMonth() + 12);
-        renewalStart = toIsoDate(start);
-        renewalEnd = toIsoDate(end);
-      }
-    }
-
-    return {
-      title: parsed.title ?? null,
-      vatAmount: parsed.vatAmount ?? null,
-      taxAmount: parsed.taxAmount ?? null,
-      netAmount: parsed.netAmount ?? null,
-      totalAmount: parsed.totalAmount ?? null,
-      effectiveDate,
-      expiryDate,
-      renewalStart,
-      renewalEnd,
-      counterparty: parsed.counterparty ?? null,
-    };
-  } catch (e) {
-    console.error('Contract extract LLM error:', e.message);
-    return null;
+  // Flatten {value, confidence, label} → plain values
+  const flat = {};
+  for (const [k, v] of Object.entries(fields)) {
+    flat[k] = v?.value ?? null;
   }
+
+  // Apply fixed 12-month renewal business rule:
+  // renewal window start = expiryDate + 12 months
+  // renewal window end   = renewal window start + 12 months
+  let renewalStart = flat.renewalWindowStart ?? null;
+  let renewalEnd   = flat.renewalWindowEnd   ?? null;
+  if (flat.expiryDate) {
+    const base = new Date(flat.expiryDate);
+    if (!Number.isNaN(base.getTime())) {
+      const toIsoDate = (dt) => dt.toISOString().slice(0, 10);
+      const start = new Date(base.getTime());
+      start.setMonth(start.getMonth() + 12);
+      const end = new Date(start.getTime());
+      end.setMonth(end.getMonth() + 12);
+      renewalStart = toIsoDate(start);
+      renewalEnd   = toIsoDate(end);
+    }
+  }
+
+  return {
+    title:        flat.title        ?? null,
+    vatAmount:    flat.vatAmount    ?? null,
+    taxAmount:    flat.taxAmount    ?? null,
+    netAmount:    flat.netAmount    ?? null,
+    totalAmount:  flat.totalAmount  ?? null,
+    effectiveDate: flat.effectiveDate ?? null,
+    expiryDate:   flat.expiryDate   ?? null,
+    renewalStart,   // backward-compat names used by ContractsManagement.jsx
+    renewalEnd,
+    counterparty: flat.counterparty ?? null,
+    contractType: flat.contractType ?? null,
+    riskLevel:    flat.riskLevel    ?? null,
+    parent:       flat.parent       ?? null,
+    opco:         flat.opco         ?? null,
+  };
 }
 
 async function extractContractFieldsFromBuffer(buffer, mimetype) {
@@ -201,8 +178,8 @@ contractsRouter.post('/', async (req, res) => {
     const opco = (body.opco || '').trim();
     const contractType = (body.contractType || '').trim();
     const title = (body.title || '').trim();
-    if (!parent || !contractType) {
-      return res.status(400).json({ error: 'parent and contractType are required' });
+    if (!contractType) {
+      return res.status(400).json({ error: 'contractType is required' });
     }
     const nowIso = new Date().toISOString();
     const all = await loadContracts();
@@ -283,6 +260,13 @@ contractsRouter.post('/upload', contractUpload.array('files', 20), async (req, r
       const path = join(UPLOADS_DIR, fileId);
       await writeFile(path, file.buffer);
       const extracted = await extractContractFieldsFromBuffer(file.buffer, file.mimetype || 'application/octet-stream');
+      if (extracted) {
+        const learningFields = Object.fromEntries(
+          Object.entries(extracted).filter(([, v]) => v !== '' && v != null)
+            .map(([k, v]) => [k, { value: v, confidence: 0.8, label: '' }])
+        );
+        recordExtraction('contracts', learningFields).catch(() => {});
+      }
       results.push({
         fileId,
         contractId,

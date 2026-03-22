@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { t } from './i18n';
 import { MainNav } from './components/MainNav';
 import { Dashboard } from './components/Dashboard';
-import { ChatPanel } from './components/ChatPanel';
 import { ParentHoldingOverview } from './components/ParentHoldingOverview';
 import { EsgSummary } from './components/EsgSummary';
 import { MultiJurisdictionMatrix } from './components/MultiJurisdictionMatrix';
@@ -111,9 +110,11 @@ export default function App() {
   const [frameworkReferences, setFrameworkReferences] = useState({});
   const [parentHoldingList, setParentHoldingList] = useState([]);
   const [selectedParentHolding, setSelectedParentHolding] = useState('');
+  const [selectedOpco, setSelectedOpco] = useState('');
   const [companiesRefreshKey, setCompaniesRefreshKey] = useState(0);
   const [applicableFrameworksForGovernance, setApplicableFrameworksForGovernance] = useState(loadApplicableFrameworksFromStorage);
   const [frameworksForParent, setFrameworksForParent] = useState([]);
+  const [frameworksForOpco, setFrameworksForOpco] = useState([]);
 
   const setApplicableFrameworksLoaded = (list) => {
     const arr = Array.isArray(list) ? list : null;
@@ -147,6 +148,20 @@ export default function App() {
       .catch(() => {});
     setCompaniesRefreshKey((k) => k + 1);
   };
+
+  // When an OpCo is selected (e.g. from Management Dashboard), resolve its parent and
+  // applicable frameworks so other views can use them without requiring a separate parent pick.
+  useEffect(() => {
+    if (!selectedOpco) { setFrameworksForOpco([]); return; }
+    fetch(`/api/companies/by-opco?opco=${encodeURIComponent(selectedOpco)}`)
+      .then((r) => r.json())
+      .then((d) => {
+        setFrameworksForOpco(d.frameworks || []);
+        // Auto-set parent only when none is currently selected
+        if (d.parent && !selectedParentHolding) setSelectedParentHolding(d.parent);
+      })
+      .catch(() => setFrameworksForOpco([]));
+  }, [selectedOpco]);
 
   const isGovernanceFramework = currentView === 'governance-framework';
 
@@ -190,7 +205,11 @@ export default function App() {
       });
   }, [selectedParentHolding, companiesRefreshKey, applicableFrameworksForGovernance]);
 
-  const gatedFrameworks = selectedParentHolding ? frameworksForParent : [];
+  // When an OpCo is selected, gate the Governance Framework view to only that OpCo's frameworks.
+  // Otherwise fall back to the full parent-level framework list.
+  const gatedFrameworks = selectedOpco && frameworksForOpco.length > 0
+    ? frameworksForOpco
+    : selectedParentHolding ? frameworksForParent : [];
 
   const allowedModuleIds = ROLE_MODULE_IDS[selectedRole] || null;
 
@@ -207,6 +226,7 @@ export default function App() {
   const isRtl = language === 'ar';
 
   return (
+    <>
     <div className="app" dir={isRtl ? 'rtl' : 'ltr'} lang={isRtl ? 'ar' : 'en'}>
       <header className="header">
         <h1>{t(language, 'appTitle')}</h1>
@@ -275,6 +295,14 @@ export default function App() {
               onParentHoldingChange={setSelectedParentHolding}
               onNavigateToView={setCurrentView}
               companiesRefreshKey={companiesRefreshKey}
+              selectedOpco={selectedOpco}
+              onOpcoChange={setSelectedOpco}
+            />
+          )}
+          {currentView === 'legal-onboarding' && (
+            <LegalOnboarding
+              language={language}
+              parents={parentHoldingList}
             />
           )}
           {currentView === 'poa-management' && (
@@ -309,13 +337,21 @@ export default function App() {
               onParentHoldingChange={setSelectedParentHolding}
             />
           )}
-          {(currentView === 'contracts-management' || currentView === 'contracts-upload') && (
+          {currentView === 'contracts-management' && (
             <ContractsManagement
               language={language}
               parents={parentHoldingList}
               selectedParentHolding={selectedParentHolding}
               onParentHoldingChange={setSelectedParentHolding}
               currentView={currentView}
+            />
+          )}
+          {currentView === 'contracts-upload' && (
+            <LegalOnboarding
+              language={language}
+              parents={parentHoldingList}
+              initialModule="contracts"
+              singleModule
             />
           )}
           {currentView === 'esg' && (
@@ -355,10 +391,8 @@ export default function App() {
                 onParentHoldingChange={setSelectedParentHolding}
               />
             </main>
-            <aside className="chat-area">
-              <ChatPanel />
-            </aside>
           </div>
+          {currentView === 'task-tracker' && <TaskTracker />}
           {PLACEHOLDER_VIEWS[currentView] && (
             <PlaceholderView
               language={language}
@@ -369,5 +403,12 @@ export default function App() {
         </div>
       </div>
     </div>
+    <GlobalAssistant
+      currentView={currentView}
+      selectedRole={selectedRole}
+      selectedParentHolding={selectedParentHolding}
+      selectedOpco={selectedOpco}
+    />
+    </>
   );
 }

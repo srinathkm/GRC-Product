@@ -5,6 +5,7 @@ import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import { createChatCompletion, isLlmConfigured } from '../services/llm.js';
 import { extractTextFromBuffer } from '../services/text-extract.js';
+import { recordExtraction } from '../services/fieldLearningService.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const DATA_PATH = join(__dirname, '../data/poa.json');
@@ -294,6 +295,14 @@ poaRouter.post('/extract', poaUpload.single('file'), async (req, res) => {
     }
     const { buffer, mimetype, originalname } = req.file;
     const extracted = await runPoaExtract(buffer, mimetype);
+    // Feed successful extraction into learning store (fire-and-forget)
+    if (extracted) {
+      const learningFields = Object.fromEntries(
+        Object.entries(extracted).filter(([, v]) => v !== '' && v !== false && v != null)
+          .map(([k, v]) => [k, { value: v, confidence: 0.8, label: '' }])
+      );
+      recordExtraction('poa', learningFields).catch(() => {});
+    }
     res.json({
       ok: true,
       filename: originalname || 'document',
@@ -315,6 +324,13 @@ poaRouter.post('/extract-batch', poaUpload.array('files', 20), async (req, res) 
     const results = [];
     for (const file of files) {
       const extracted = await runPoaExtract(file.buffer, file.mimetype);
+      if (extracted) {
+        const learningFields = Object.fromEntries(
+          Object.entries(extracted).filter(([, v]) => v !== '' && v !== false && v != null)
+            .map(([k, v]) => [k, { value: v, confidence: 0.8, label: '' }])
+        );
+        recordExtraction('poa', learningFields).catch(() => {});
+      }
       results.push({
         filename: file.originalname || 'document',
         extracted,

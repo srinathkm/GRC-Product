@@ -4,6 +4,7 @@ import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { FRAMEWORKS } from '../constants.js';
 import { getFrameworksBySectorAndLocation } from './governance.js';
+import { logAudit } from '../services/auditService.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const dataPath = join(__dirname, '../data/companies.json');
@@ -52,6 +53,43 @@ companiesRouter.get('/by-parent', async (req, res) => {
       }
     }
     res.json({ parent, opcos });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+/** GET /api/companies/by-opco?opco=... – resolve the parent and applicable frameworks for a single OpCo (case-insensitive). */
+companiesRouter.get('/by-opco', async (req, res) => {
+  try {
+    const opco = typeof req.query.opco === 'string' ? req.query.opco.trim() : '';
+    if (!opco) return res.json({ opco: '', parent: null, frameworks: [] });
+    const opcoLower = opco.toLowerCase();
+    const raw = await readFile(dataPath, 'utf-8');
+    const data = JSON.parse(raw);
+    const frameworkSet = new Set();
+    let parent = null;
+    // Search companies.json (framework-keyed)
+    for (const [fw, entries] of Object.entries(data)) {
+      if (!Array.isArray(entries)) continue;
+      for (const entry of entries) {
+        if ((entry.companies || []).some((c) => c && c.toLowerCase() === opcoLower)) {
+          frameworkSet.add(fw);
+          if (!parent && entry.parent) parent = entry.parent;
+        }
+      }
+    }
+    // Search onboarding data
+    const onboarding = await readOnboardingOpcos();
+    for (const row of onboarding) {
+      if (!row.opco || row.opco.toLowerCase() !== opcoLower) continue;
+      if (!parent && row.parent) parent = row.parent;
+      for (const fw of row.applicableFrameworks || []) frameworkSet.add(fw);
+      for (const pair of row.applicableFrameworksByLocation || []) {
+        if (pair.framework) frameworkSet.add(pair.framework);
+      }
+    }
+    frameworkSet.delete('Onboarded');
+    res.json({ opco, parent, frameworks: [...frameworkSet].sort() });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -241,7 +279,131 @@ companiesRouter.post('/add-opco', async (req, res) => {
       list.push(entry);
     }
     await writeFile(onboardingPath, JSON.stringify(list, null, 2), 'utf-8');
+    await logAudit({ action: existingIndex >= 0 ? 'update' : 'create', module: 'onboarding', entityName: opco, detail: `OpCo ${opco} linked to parent ${parent}` });
     res.json({ success: true, parent, opco, locations, applicableFrameworksByLocation });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+/**
+ * GET /api/companies/compliance-scores?parent=X
+ *
+ * Returns data-driven compliance scores for every OpCo under a parent.
+ *
+ * Scoring methodology (100-point scale, starts at base 100):
+ *  Governance Score  – penalise for regulatory changes with no acknowledged OpCo action
+ *  Policy Score      – based on framework coverage completeness from onboarding data
+ *  Data Sovereignty  – based on number of locations vs jurisdictions with restrictions
+ *
+ * Falls back to neutral score (75) when data is insufficient.
+ */
+companiesRouter.get('/compliance-scores', async (req, res) => {
+  try {
+    const parentFilter = req.query.parent ? String(req.query.parent).trim() : null;
+
+    // 1. Load all companies
+    let companies = {};
+    try {
+      const raw = await readFile(dataPath, 'utf-8');
+      companies = JSON.parse(raw);
+    } catch { companies = {}; }
+
+    // 2. Load onboarding opcos
+    const onboarding = await readOnboardingOpcos();
+
+    // 3. Load regulatory changes (last 90 days)
+    let changes = [];
+    try {
+      const changesPath = join(__dirname, '../data/changes.json');
+      const raw = await readFile(changesPath, 'utf-8');
+      const all = JSON.parse(raw);
+      const cutoff = Date.now() - 90 * 24 * 60 * 60 * 1000;
+      changes = Array.isArray(all) ? all.filter((c) => new Date(c.date).getTime() >= cutoff) : [];
+    } catch { changes = []; }
+
+    // Build opco universe from companies.json (keyed by framework)
+    const opcoByName = {};
+    for (const [framework, opcos] of Object.entries(companies)) {
+      if (!Array.isArray(opcos)) continue;
+      for (const opco of opcos) {
+        const name = opco.name || opco;
+        if (!opcoByName[name]) opcoByName[name] = { frameworks: [], parent: opco.parent || null, locations: [] };
+        opcoByName[name].frameworks.push(framework);
+        if (opco.parent) opcoByName[name].parent = opco.parent;
+      }
+    }
+    // Enrich with onboarding data
+    for (const row of onboarding) {
+      if (!opcoByName[row.opco]) opcoByName[row.opco] = { frameworks: [], parent: row.parent, locations: [] };
+      if (row.parent) opcoByName[row.opco].parent = row.parent;
+      if (Array.isArray(row.locations)) opcoByName[row.opco].locations = row.locations;
+      if (Array.isArray(row.applicableFrameworksByLocation)) {
+        row.applicableFrameworksByLocation.forEach((p) => {
+          if (p.framework && !opcoByName[row.opco].frameworks.includes(p.framework)) {
+            opcoByName[row.opco].frameworks.push(p.framework);
+          }
+        });
+      }
+    }
+
+    // Filter by parent if requested
+    const opcoNames = Object.keys(opcoByName).filter((name) => {
+      if (!parentFilter) return true;
+      return opcoByName[name].parent === parentFilter;
+    });
+
+    // Build scores per opco
+    const TOTAL_GCC_FRAMEWORKS = 22; // number of frameworks in the system
+    const HIGH_RISK_JURISDICTIONS = ['Dubai International Financial Centre', 'Abu Dhabi Global Market', 'Qatar Financial Centre (QFC) & Mainland'];
+
+    const scores = opcoNames.map((name) => {
+      const meta = opcoByName[name];
+
+      // --- Governance Score ---
+      // Start at 100; each recent change that affects this opco's frameworks costs -2 points
+      const opcoFrameworks = new Set(meta.frameworks);
+      const relevantChanges = changes.filter((c) => c.framework && opcoFrameworks.has(c.framework));
+      const criticalChanges = relevantChanges.filter((c) => c.category === 'critical' || c.severity === 'critical' || c.impact === 'High');
+      const normalChanges = relevantChanges.filter((c) => !criticalChanges.includes(c));
+      let governanceScore = 100 - (criticalChanges.length * 4) - (normalChanges.length * 1.5);
+      governanceScore = Math.max(50, Math.min(100, Math.round(governanceScore)));
+
+      // --- Policy Score ---
+      // Based on framework coverage: (opco frameworks covered / reasonable benchmark)
+      const frameworkCoverage = meta.frameworks.length;
+      // Penalise if no frameworks at all (not yet onboarded properly)
+      let policyScore;
+      if (frameworkCoverage === 0) {
+        policyScore = 65; // unverified
+      } else if (frameworkCoverage >= 3) {
+        policyScore = Math.min(100, 75 + frameworkCoverage * 2);
+      } else {
+        policyScore = 70 + frameworkCoverage * 3;
+      }
+      policyScore = Math.max(55, Math.min(100, policyScore));
+
+      // --- Data Sovereignty Score ---
+      // Penalise for high-risk jurisdictions without adequate framework coverage
+      const locations = meta.locations || [];
+      const highRiskCount = locations.filter((l) => HIGH_RISK_JURISDICTIONS.includes(l)).length;
+      let dataSovereigntyScore = 85;
+      if (locations.length === 0) {
+        dataSovereigntyScore = 70; // unknown locations
+      } else {
+        dataSovereigntyScore = Math.max(55, Math.min(100, 90 - (highRiskCount * 3) + (frameworkCoverage)));
+      }
+      dataSovereigntyScore = Math.round(dataSovereigntyScore);
+
+      const THRESHOLD = 75;
+      const status = governanceScore >= THRESHOLD && policyScore >= THRESHOLD && dataSovereigntyScore >= THRESHOLD
+        ? 'Compliant'
+        : (governanceScore < 65 || policyScore < 65 || dataSovereigntyScore < 65 ? 'Non-Compliant' : 'At Risk');
+
+      return { name, governanceScore, policyScore, dataSovereigntyScore, status, frameworkCount: meta.frameworks.length, locationCount: locations.length, recentChanges: relevantChanges.length };
+    });
+
+    res.json({ scores });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

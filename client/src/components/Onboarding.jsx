@@ -184,6 +184,17 @@ export function Onboarding({ language = 'en', onOpcoAdded, onApplicableFramework
   const fileRefs = useRef({});
   const hadRegionalBranchLicenceAtConfirm = useRef(false);
 
+  // ── Wizard state ──────────────────────────────────────────────────────────
+  const [wizardStep, setWizardStep] = useState(1); // 1=upload 2=details 3=review
+  const [aiProgress, setAiProgress] = useState([]); // [{label, status:'pending'|'running'|'done'}]
+  const [previewDocId, setPreviewDocId] = useState(null);
+  const [justConfirmed, setJustConfirmed] = useState(null); // {opco, parent}
+
+  const handleWizardBack = () => {
+    if (wizardStep === 2) { setWizardStep(1); }
+    if (wizardStep === 3) { setWizardStep(2); setShowReviewPanel(false); setAiProgress([]); }
+  };
+
   useEffect(() => {
     // When the global document upload mode changes, force all document types to that mode.
     setUploadMode((prev) => {
@@ -233,6 +244,27 @@ export function Onboarding({ language = 'en', onOpcoAdded, onApplicableFramework
       .then((data) => setConfirmedList(data.list || []))
       .catch(() => setConfirmedList([]));
   }, [showReviewPanel]);
+
+  // Autosave form state to sessionStorage
+  useEffect(() => {
+    try {
+      sessionStorage.setItem('raqib_onboarding_locs', JSON.stringify(locations));
+      sessionStorage.setItem('raqib_onboarding_sectors', JSON.stringify(sectorOfOperations));
+      sessionStorage.setItem('raqib_onboarding_licencing', JSON.stringify(licencingAuthorities));
+    } catch { /* ignore */ }
+  }, [locations, sectorOfOperations, licencingAuthorities]);
+
+  // Mark AI progress done once extraction populates reviewData
+  useEffect(() => {
+    if (wizardStep === 3 && reviewData.organizationName && aiProgress.length > 0 && aiProgress.some((s) => s.status !== 'done')) {
+      setAiProgress([
+        { label: 'Reading document…', status: 'done' },
+        { label: 'Extracting entity name…', status: 'done' },
+        { label: 'Identifying ownership structure…', status: 'done' },
+        { label: 'Mapping compliance frameworks…', status: 'done' },
+      ]);
+    }
+  }, [reviewData.organizationName, wizardStep]);
 
   useEffect(() => {
     if (locations.length === 0 && sectorOfOperations.length === 0) {
@@ -317,6 +349,13 @@ export function Onboarding({ language = 'en', onOpcoAdded, onApplicableFramework
       newParentName: '',
       parentRelationshipType: '',
     });
+    setWizardStep(3);
+    setAiProgress([
+      { label: 'Reading document…', status: 'running' },
+      { label: 'Extracting entity name…', status: 'pending' },
+      { label: 'Identifying ownership structure…', status: 'pending' },
+      { label: 'Mapping compliance frameworks…', status: 'pending' },
+    ]);
     setShowReviewPanel(true);
 
     // Try to refine the Organization name from the actual document using the LLM backend.
@@ -461,6 +500,14 @@ export function Onboarding({ language = 'en', onOpcoAdded, onApplicableFramework
       const listJson = await listRes.json();
       setConfirmedList(listJson.list || []);
       setShowReviewPanel(false);
+      setWizardStep(1);
+      setJustConfirmed({ opco: orgName, parent: parentName });
+      setAiProgress([]);
+      setUploads({});
+      setLocations([]);
+      setSectorOfOperations([]);
+      setLicencingAuthorities([]);
+      setApplicableFrameworksSelected([]);
       onOpcoAdded?.();
 
       // Sync UBO register so that UBO lookup and holding structure reflect onboarding data.
@@ -858,6 +905,7 @@ export function Onboarding({ language = 'en', onOpcoAdded, onApplicableFramework
     } else {
       setUploads((prev) => ({ ...prev, [docId]: filesOrFile || null }));
     }
+    setPreviewDocId(docId);
   };
 
   const getUploadDisplay = (doc) => {
@@ -869,736 +917,380 @@ export function Onboarding({ language = 'en', onOpcoAdded, onApplicableFramework
     return value && value.name ? value.name : t(language, 'onboardingUploadChoose');
   };
 
+  const allPreviewFiles = DOCUMENT_TYPES.flatMap((doc) => {
+    const val = uploads[doc.id];
+    if (!val) return [];
+    const list = Array.isArray(val) ? val : [val];
+    return list.filter(Boolean).map((f) => ({ name: f.name, size: f.size, docId: doc.id, docLabel: t(language, doc.labelKey) }));
+  });
+
+  const WIZARD_STEPS = [
+    { num: 1, label: 'Upload Documents' },
+    { num: 2, label: 'Company Details' },
+    { num: 3, label: 'Review & Confirm' },
+  ];
+
   return (
-    <div className="onboarding">
-      <h2 className="onboarding-title">{t(language, 'onboardingTitle')}</h2>
-      <p className="onboarding-intro">{t(language, 'onboardingIntro')}</p>
-
-      <section className="onboarding-section onboarding-document-upload">
-        <div className="onboarding-document-upload-header">
-          <h3 className="onboarding-section-title">Document Upload</h3>
-          <div className="onboarding-doc-mode-toggle">
-            <label className="onboarding-doc-mode-option">
-              <input
-                type="radio"
-                name="onboarding-doc-mode"
-                value="manual"
-                checked={documentUploadMode === 'manual'}
-                onChange={() => setDocumentUploadMode('manual')}
-              />
-              <span>Manual</span>
-            </label>
-            <label className="onboarding-doc-mode-option">
-              <input
-                type="radio"
-                name="onboarding-doc-mode"
-                value="application"
-                checked={documentUploadMode === 'application'}
-                onChange={() => setDocumentUploadMode('application')}
-              />
-              <span>Application</span>
-            </label>
-          </div>
-        </div>
-        <div className="onboarding-upload-rows">
-          <div className="onboarding-upload-row">
-            <label className="onboarding-upload-label">{t(language, 'onboardingDocUboCertificate')}</label>
-            <div className="onboarding-upload-control">
-              {documentUploadMode === 'manual' && (
-                <>
-                  <input
-                    ref={(el) => {
-                      fileRefs.current['ubo-certificate'] = el;
-                    }}
-                    type="file"
-                    accept=".pdf,.doc,.docx,image/*,application/pdf"
-                    className="onboarding-file-input"
-                    onChange={(e) => handleFileChange('ubo-certificate', e.target.files?.[0])}
-                    aria-label={t(language, 'onboardingDocUboCertificate')}
-                  />
-                  <button
-                    type="button"
-                    className="onboarding-upload-btn"
-                    onClick={() => fileRefs.current['ubo-certificate']?.click()}
-                  >
-                    {uploads['ubo-certificate']?.name ?? t(language, 'onboardingUploadChoose')}
-                  </button>
-                </>
-              )}
-              {documentUploadMode === 'application' && (
-                <textarea
-                  className="onboarding-input onboarding-link-input onboarding-link-textarea"
-                  placeholder={t(language, 'onboardingLinkPlaceholder')}
-                  value={uploadLinks['ubo-certificate'] || ''}
-                  onChange={(e) => setUploadLinks((prev) => ({ ...prev, 'ubo-certificate': e.target.value }))}
-                  aria-label={t(language, 'onboardingDocUboCertificate')}
-                  rows={2}
-                />
-              )}
-            </div>
-          </div>
-          <div className="onboarding-upload-row">
-            <label className="onboarding-upload-label">{t(language, 'onboardingDocRegionalBranchLicence')}</label>
-            <div className="onboarding-upload-control">
-              {documentUploadMode === 'manual' && (
-                <>
-                  <input
-                    ref={(el) => {
-                      fileRefs.current['regional-branch-licence'] = el;
-                    }}
-                    type="file"
-                    accept=".pdf,.doc,.docx,image/*,application/pdf"
-                    className="onboarding-file-input"
-                    multiple
-                    onChange={(e) =>
-                      handleFileChange(
-                        'regional-branch-licence',
-                        e.target.files ? Array.from(e.target.files) : [],
-                      )
-                    }
-                    aria-label={t(language, 'onboardingDocRegionalBranchLicence')}
-                  />
-                  <button
-                    type="button"
-                    className="onboarding-upload-btn"
-                    onClick={() => fileRefs.current['regional-branch-licence']?.click()}
-                  >
-                    {Array.isArray(uploads['regional-branch-licence']) && uploads['regional-branch-licence'].length > 0
-                      ? `${uploads['regional-branch-licence'].length} ${t(language, 'onboardingUploadFilesChosen')}`
-                      : t(language, 'onboardingUploadChoose')}
-                  </button>
-                  {Array.isArray(uploads['regional-branch-licence']) && uploads['regional-branch-licence'].length > 0 && (
-                    <ul className="onboarding-upload-file-list" aria-label={t(language, 'onboardingDocRegionalBranchLicence')}>
-                      {uploads['regional-branch-licence'].map((file, i) => (
-                        <li key={`${file.name}-${i}`}>{file.name}</li>
-                      ))}
-                    </ul>
-                  )}
-                </>
-              )}
-              {documentUploadMode === 'application' && (
-                <textarea
-                  className="onboarding-input onboarding-link-input onboarding-link-textarea"
-                  placeholder={t(language, 'onboardingLinkPlaceholder')}
-                  value={uploadLinks['regional-branch-licence'] || ''}
-                  onChange={(e) =>
-                    setUploadLinks((prev) => ({ ...prev, 'regional-branch-licence': e.target.value }))
-                  }
-                  aria-label={t(language, 'onboardingDocRegionalBranchLicence')}
-                  rows={2}
-                />
-              )}
-            </div>
-          </div>
-          <div className="onboarding-upload-row">
-            <label className="onboarding-upload-label">{t(language, 'onboardingDocBranchOfficeLicences')}</label>
-            <div className="onboarding-upload-control">
-              {documentUploadMode === 'manual' && (
-                <>
-                  <input
-                    ref={(el) => {
-                      fileRefs.current['branch-office-licences'] = el;
-                    }}
-                    type="file"
-                    accept=".pdf,.doc,.docx,image/*,application/pdf"
-                    className="onboarding-file-input"
-                    multiple
-                    onChange={(e) =>
-                      handleFileChange(
-                        'branch-office-licences',
-                        e.target.files ? Array.from(e.target.files) : [],
-                      )
-                    }
-                    aria-label={t(language, 'onboardingDocBranchOfficeLicences')}
-                  />
-                  <button
-                    type="button"
-                    className="onboarding-upload-btn"
-                    onClick={() => fileRefs.current['branch-office-licences']?.click()}
-                  >
-                    {Array.isArray(uploads['branch-office-licences']) &&
-                    uploads['branch-office-licences'].length > 0
-                      ? `${uploads['branch-office-licences'].length} ${t(language, 'onboardingUploadFilesChosen')}`
-                      : t(language, 'onboardingUploadChoose')}
-                  </button>
-                  {Array.isArray(uploads['branch-office-licences']) &&
-                    uploads['branch-office-licences'].length > 0 && (
-                      <ul
-                        className="onboarding-upload-file-list"
-                        aria-label={t(language, 'onboardingDocBranchOfficeLicences')}
-                      >
-                        {uploads['branch-office-licences'].map((file, i) => (
-                          <li key={`${file.name}-${i}`}>{file.name}</li>
-                        ))}
-                      </ul>
-                    )}
-                </>
-              )}
-              {documentUploadMode === 'application' && (
-                <textarea
-                  className="onboarding-input onboarding-link-input onboarding-link-textarea"
-                  placeholder={t(language, 'onboardingLinkPlaceholder')}
-                  value={uploadLinks['branch-office-licences'] || ''}
-                  onChange={(e) =>
-                    setUploadLinks((prev) => ({ ...prev, 'branch-office-licences': e.target.value }))
-                  }
-                  aria-label={t(language, 'onboardingDocBranchOfficeLicences')}
-                  rows={2}
-                />
-              )}
-            </div>
-          </div>
-          <div className="onboarding-upload-row">
-            <label className="onboarding-upload-label">{t(language, 'onboardingDocPassport')}</label>
-            <div className="onboarding-upload-control">
-              {documentUploadMode === 'manual' && (
-                <>
-                  <input
-                    ref={(el) => {
-                      fileRefs.current['passport'] = el;
-                    }}
-                    type="file"
-                    accept=".pdf,.doc,.docx,image/*,application/pdf"
-                    className="onboarding-file-input"
-                    multiple
-                    onChange={(e) =>
-                      handleFileChange('passport', e.target.files ? Array.from(e.target.files) : [])
-                    }
-                    aria-label={t(language, 'onboardingDocPassport')}
-                  />
-                  <button
-                    type="button"
-                    className="onboarding-upload-btn"
-                    onClick={() => fileRefs.current['passport']?.click()}
-                  >
-                    {Array.isArray(uploads['passport']) && uploads['passport'].length > 0
-                      ? `${uploads['passport'].length} ${t(language, 'onboardingUploadFilesChosen')}`
-                      : t(language, 'onboardingUploadChoose')}
-                  </button>
-                  {Array.isArray(uploads['passport']) && uploads['passport'].length > 0 && (
-                    <ul className="onboarding-upload-file-list" aria-label={t(language, 'onboardingDocPassport')}>
-                      {uploads['passport'].map((file, i) => (
-                        <li key={`${file.name}-${i}`}>{file.name}</li>
-                      ))}
-                    </ul>
-                  )}
-                </>
-              )}
-              {documentUploadMode === 'application' && (
-                <textarea
-                  className="onboarding-input onboarding-link-input onboarding-link-textarea"
-                  placeholder={t(language, 'onboardingLinkPlaceholder')}
-                  value={uploadLinks['passport'] || ''}
-                  onChange={(e) => setUploadLinks((prev) => ({ ...prev, passport: e.target.value }))}
-                  aria-label={t(language, 'onboardingDocPassport')}
-                  rows={2}
-                />
-              )}
-            </div>
-          </div>
-          <div className="onboarding-upload-row">
-            <label className="onboarding-upload-label">{t(language, 'onboardingDocMoa')}</label>
-            <div className="onboarding-upload-control">
-              {documentUploadMode === 'manual' && (
-                <>
-                  <input
-                    ref={(el) => {
-                      fileRefs.current['moa'] = el;
-                    }}
-                    type="file"
-                    accept=".pdf,.doc,.docx,image/*,application/pdf"
-                    className="onboarding-file-input"
-                    multiple
-                    onChange={(e) => handleFileChange('moa', e.target.files ? Array.from(e.target.files) : [])}
-                    aria-label={t(language, 'onboardingDocMoa')}
-                  />
-                  <button
-                    type="button"
-                    className="onboarding-upload-btn"
-                    onClick={() => fileRefs.current['moa']?.click()}
-                  >
-                    {Array.isArray(uploads['moa']) && uploads['moa'].length > 0
-                      ? `${uploads['moa'].length} ${t(language, 'onboardingUploadFilesChosen')}`
-                      : t(language, 'onboardingUploadChoose')}
-                  </button>
-                  {Array.isArray(uploads['moa']) && uploads['moa'].length > 0 && (
-                    <ul className="onboarding-upload-file-list" aria-label={t(language, 'onboardingDocMoa')}>
-                      {uploads['moa'].map((file, i) => (
-                        <li key={`${file.name}-${i}`}>{file.name}</li>
-                      ))}
-                    </ul>
-                  )}
-                </>
-              )}
-              {documentUploadMode === 'application' && (
-                <textarea
-                  className="onboarding-input onboarding-link-input onboarding-link-textarea"
-                  placeholder={t(language, 'onboardingLinkPlaceholder')}
-                  value={uploadLinks['moa'] || ''}
-                  onChange={(e) => setUploadLinks((prev) => ({ ...prev, moa: e.target.value }))}
-                  aria-label={t(language, 'onboardingDocMoa')}
-                  rows={2}
-                />
-              )}
-            </div>
-          </div>
-        </div>
-        {documentUploadMode === 'application' && (
-          <div className="onboarding-sharepoint-connect">
-            {sharepointConnected ? (
-              <>
-                <span className="onboarding-sharepoint-status">Connected to Corporate SharePoint</span>
-                <button
-                  type="button"
-                  className="onboarding-btn onboarding-btn-secondary"
-                  onClick={handleSharepointDisconnect}
-                >
-                  Disconnect
-                </button>
-              </>
-            ) : (
-              <>
-                <a
-                  href="#"
-                  className="onboarding-sharepoint-link"
-                  onClick={(e) => { e.preventDefault(); setSharepointAccount('corp'); handleSharepointConnect(); }}
-                >
-                  Add Corporate SharePoint
-                </a>
-                <p className="onboarding-sharepoint-hint">
-                  Sign in with Corp SSO so Raqib can read the files from the links above for Analyze and Add.
-                </p>
-              </>
-            )}
-          </div>
-        )}
-
-        <div className="onboarding-documents-actions">
-          <button
-            type="button"
-            className="onboarding-btn onboarding-btn-analyze"
-            onClick={handleAnalyzeDocuments}
-            disabled={
-              analyzing ||
-              (documentUploadMode === 'manual'
-                ? !(
-                    Array.isArray(uploads['regional-branch-licence'])
-                      ? uploads['regional-branch-licence'].length
-                      : uploads['regional-branch-licence']
-                      ? 1
-                      : 0
-                  )
-                : !(uploadLinks['regional-branch-licence'] || '').trim())
-            }
-          >
-            {analyzing ? 'Analyzing…' : 'Analyze'}
-          </button>
-          <span className="onboarding-analyze-hint">
-            Extract locations and sectors from Regional Branch Commercial Licence documents to populate Location and Sector of Operations below.
-          </span>
-        </div>
-      </section>
-
-      <section className="onboarding-section onboarding-details">
-        <h3 className="onboarding-section-title">{t(language, 'onboardingDetailsTitle')}</h3>
-        <div className="onboarding-details-grid">
-          <div className="onboarding-field">
-            <MultiSelectDropdown
-              id="onboarding-location"
-              label="Location"
-              options={[...new Set([...LOCATION_OPTIONS, ...locations])]}
-              selected={locations}
-              onChange={setLocations}
-              placeholder="Select mainland and free zones (GCC & Middle East)"
-            />
-          </div>
-          <div className="onboarding-field">
-            <MultiSelectDropdown
-              id="onboarding-sector"
-              label={t(language, 'onboardingSectorOfOperations')}
-              options={SECTOR_OPTIONS}
-              selected={sectorOfOperations}
-              onChange={setSectorOfOperations}
-              placeholder={t(language, 'onboardingSectorPlaceholder')}
-            />
-          </div>
-          <div className="onboarding-field">
-            <MultiSelectDropdown
-              id="onboarding-licencing-authorities"
-              label={t(language, 'onboardingLicencingAuthorities')}
-              options={LICENCING_AUTHORITY_OPTIONS}
-              selected={licencingAuthorities}
-              onChange={setLicencingAuthorities}
-              placeholder={t(language, 'onboardingLicencingAuthoritiesPlaceholder')}
-            />
-          </div>
-          <div className="onboarding-field">
-            <MultiSelectDropdown
-              id="onboarding-applicable-frameworks"
-              label="Applicable Compliance Frameworks"
-              options={applicableFrameworksOptions}
-              selected={applicableFrameworksSelected}
-              onChange={setApplicableFrameworksSelected}
-              placeholder="Based on Location and Sector of Operations"
-            />
-          </div>
-        </div>
-        <div className="onboarding-actions">
-          <button type="button" className="onboarding-btn onboarding-btn-add" onClick={handleAddClick}>
-            {t(language, 'onboardingAdd')}
-          </button>
-        </div>
-      </section>
-
-      {showReviewPanel && (
-        <section className="onboarding-section onboarding-review">
-          <h3 className="onboarding-section-title">{t(language, 'onboardingReviewTitle')}</h3>
-          <p className="onboarding-section-desc">{t(language, 'onboardingReviewDesc')}</p>
-          <div className="onboarding-review-fields">
-            <div className="onboarding-review-grid">
-              <div className="onboarding-field">
-                <label htmlFor="review-org-name">{t(language, 'onboardingOrganizationName')}</label>
-                <input
-                  id="review-org-name"
-                  type="text"
-                  className="onboarding-input"
-                  value={reviewData.organizationName}
-                  onChange={(e) => setReviewData((p) => ({ ...p, organizationName: e.target.value }))}
-                />
-              </div>
-              <div className="onboarding-field">
-                <label htmlFor="review-ubo-cert-number">
-                  UBO Certificate Number <span className="onboarding-required">(Mandatory)</span>
-                </label>
-                <input
-                  id="review-ubo-cert-number"
-                  type="text"
-                  className="onboarding-input"
-                  placeholder="e.g. DF-UBO-2026-003"
-                  value={reviewData.uboCertificateNumber}
-                  onChange={(e) => setReviewData((p) => ({ ...p, uboCertificateNumber: e.target.value }))}
-                />
-              </div>
-              <div className="onboarding-field">
-                <label htmlFor="review-date-of-issue">Date of Issue</label>
-                <input
-                  id="review-date-of-issue"
-                  type="text"
-                  className="onboarding-input"
-                  value={reviewData.dateOfIssue}
-                  onChange={(e) => setReviewData((p) => ({ ...p, dateOfIssue: e.target.value }))}
-                />
-              </div>
-              <div className="onboarding-field">
-                <label htmlFor="review-registered-address">Registered Address</label>
-                <textarea
-                  id="review-registered-address"
-                  className="onboarding-textarea"
-                  rows={2}
-                  value={reviewData.registeredAddress}
-                  onChange={(e) => setReviewData((p) => ({ ...p, registeredAddress: e.target.value }))}
-                />
-              </div>
-              <div className="onboarding-field">
-                <label htmlFor="review-trade-licence">Trade Licence Number</label>
-                <input
-                  id="review-trade-licence"
-                  type="text"
-                  className="onboarding-input"
-                  value={reviewData.tradeLicenceNumber}
-                  onChange={(e) => setReviewData((p) => ({ ...p, tradeLicenceNumber: e.target.value }))}
-                />
-              </div>
-              <div className="onboarding-field">
-                <label htmlFor="review-jurisdiction">Jurisdiction</label>
-                <input
-                  id="review-jurisdiction"
-                  type="text"
-                  className="onboarding-input"
-                  value={reviewData.certificateJurisdiction}
-                  onChange={(e) => setReviewData((p) => ({ ...p, certificateJurisdiction: e.target.value }))}
-                />
-              </div>
-              <div className="onboarding-field onboarding-parent-holdings-field">
-                <span className="onboarding-field-label">
-                  {reviewData.parentRelationshipType === 'member'
-                    ? 'Full Name | Ownership % | Passport Number'
-                    : 'Parent Holding Name | Ownership % | Registration Number'}
-                  <span className="onboarding-parent-type-header">
-                    <label>
-                      <input
-                        type="checkbox"
-                        checked={reviewData.parentRelationshipType === 'corporate'}
-                        onChange={() => {
-                          setReviewData((p) => {
-                            const type = 'corporate';
-                            const rows = Array.isArray(p.certificateParentHoldings) ? p.certificateParentHoldings : [];
-                            const updatedRows = rows.map((ph) => ({ ...ph, relationshipType: type }));
-                            return {
-                              ...p,
-                              parentRelationshipType: type,
-                              certificateParentHoldings: updatedRows,
-                            };
-                          });
-                        }}
-                      />
-                      Corporate
-                    </label>
-                    <label>
-                      <input
-                        type="checkbox"
-                        checked={reviewData.parentRelationshipType === 'member'}
-                        onChange={() => {
-                          setReviewData((p) => {
-                            const type = 'member';
-                            const rows = Array.isArray(p.certificateParentHoldings) ? p.certificateParentHoldings : [];
-                            const updatedRows = rows.map((ph) => ({ ...ph, relationshipType: type }));
-                            return {
-                              ...p,
-                              parentRelationshipType: type,
-                              certificateParentHoldings: updatedRows,
-                            };
-                          });
-                        }}
-                      />
-                      Member
-                    </label>
-                  </span>
-                </span>
-                <div className="onboarding-parent-holdings-list">
-                  {(Array.isArray(reviewData.certificateParentHoldings) && reviewData.certificateParentHoldings.length > 0
-                    ? reviewData.certificateParentHoldings
-                    : [{}]
-                  ).map((ph, idx) => (
-                    <div key={`${ph.name || 'ph'}-${idx}`} className="onboarding-parent-holding-row">
-                      <input
-                        type="text"
-                        className="onboarding-input"
-                        placeholder={reviewData.parentRelationshipType === 'member' ? 'Full Name' : 'Parent Holding Name'}
-                        value={ph.name || ''}
-                        onChange={(e) => {
-                          const base = Array.isArray(reviewData.certificateParentHoldings)
-                            ? [...reviewData.certificateParentHoldings]
-                            : [{}];
-                          if (!base[idx]) base[idx] = {};
-                          base[idx] = { ...base[idx], name: e.target.value };
-                          setReviewData((p) => ({ ...p, certificateParentHoldings: base }));
-                        }}
-                      />
-                      <input
-                        type="text"
-                        className="onboarding-input"
-                        placeholder="Ownership %"
-                        value={ph.ownershipPercent || ''}
-                        onChange={(e) => {
-                          const base = Array.isArray(reviewData.certificateParentHoldings)
-                            ? [...reviewData.certificateParentHoldings]
-                            : [{}];
-                          if (!base[idx]) base[idx] = {};
-                          base[idx] = { ...base[idx], ownershipPercent: e.target.value };
-                          setReviewData((p) => ({ ...p, certificateParentHoldings: base }));
-                        }}
-                      />
-                      <input
-                        type="text"
-                        className="onboarding-input"
-                        placeholder={reviewData.parentRelationshipType === 'member' ? 'Passport Number' : 'Registration Number'}
-                        value={ph.registrationNumber || ''}
-                        onChange={(e) => {
-                          const base = Array.isArray(reviewData.certificateParentHoldings)
-                            ? [...reviewData.certificateParentHoldings]
-                            : [{}];
-                          if (!base[idx]) base[idx] = {};
-                          base[idx] = { ...base[idx], registrationNumber: e.target.value };
-                          setReviewData((p) => ({ ...p, certificateParentHoldings: base }));
-                        }}
-                      />
-                    </div>
-                  ))}
-                </div>
-                {/* Mandatory details: all entities from the document with Corporate or Member fields per entity */}
-                {Array.isArray(reviewData.certificateParentHoldings) && reviewData.certificateParentHoldings.length > 0 && (
-                  <div className="onboarding-mandatory-details-section">
-                    <h4 className="onboarding-mandatory-details-title">Mandatory details (all entities from document)</h4>
-                    <p className="onboarding-mandatory-details-intro">The following entities were found in the document. Each shows the respective details for Corporate or Member as extracted.</p>
-                    <div className="onboarding-mandatory-details-entities">
-                      {reviewData.certificateParentHoldings.map((ph, idx) => {
-                        const relType = ph.relationshipType || ph.type || reviewData.parentRelationshipType || '';
-                        const isCorporate = relType === 'corporate';
-                        const isExpanded = expandedMandatoryEntityIndices.has(idx);
-                        const toggleExpanded = () => {
-                          setExpandedMandatoryEntityIndices((prev) => {
-                            const next = new Set(prev);
-                            if (next.has(idx)) next.delete(idx);
-                            else next.add(idx);
-                            return next;
-                          });
-                        };
-                        return (
-                          <div key={`mandatory-${ph.name || ph.corporateName || idx}-${idx}`} className={`onboarding-entity-details-card ${!isExpanded ? 'onboarding-entity-details-card-collapsed' : ''}`}>
-                            <button
-                              type="button"
-                              className="onboarding-entity-details-header"
-                              onClick={toggleExpanded}
-                              aria-expanded={isExpanded}
-                            >
-                              <span className="onboarding-entity-details-chevron" aria-hidden>{isExpanded ? '▼' : '▶'}</span>
-                              <strong>{isCorporate ? (ph.corporateName || ph.name || `Entity ${idx + 1}`) : (ph.individualFullName || ph.name || `Entity ${idx + 1}`)}</strong>
-                              <span className="onboarding-entity-type-badge">{isCorporate ? 'Corporate' : 'Member'}</span>
-                            </button>
-                            {isExpanded && (
-                              <div className="onboarding-entity-details-grid">
-                                {isCorporate ? (
-                                  <>
-                                    <div><strong>Entity Name</strong><div>{ph.corporateName || ph.name || '—'}</div></div>
-                                    <div><strong>Jurisdiction of Incorporation</strong><div>{ph.corporateJurisdictionOfIncorporation || '—'}</div></div>
-                                    <div><strong>Registered Address</strong><div>{ph.corporateRegisteredAddress || '—'}</div></div>
-                                    <div><strong>Registration Number</strong><div>{ph.corporateRegistrationNumber || ph.registrationNumber || '—'}</div></div>
-                                  </>
-                                ) : (
-                                  <>
-                                    <div><strong>Full name (as per ID)</strong><div>{ph.individualFullName || ph.fullName || ph.name || '—'}</div></div>
-                                    <div><strong>Nationality</strong><div>{ph.individualNationality || ph.nationality || '—'}</div></div>
-                                    <div><strong>Date of birth</strong><div>{ph.individualDateOfBirth || ph.dateOfBirth || '—'}</div></div>
-                                    <div><strong>Place of birth</strong><div>{ph.individualPlaceOfBirth || ph.placeOfBirth || '—'}</div></div>
-                                    <div><strong>ID type (Passport / National ID)</strong><div>{ph.individualIdType || ph.idType || '—'}</div></div>
-                                    <div><strong>ID number</strong><div>{ph.individualIdNumber || ph.idNumber || '—'}</div></div>
-                                  </>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-            <div className="onboarding-field">
-              <MultiSelectDropdown
-                id="review-location"
-                label="Location"
-                options={[...new Set([...LOCATION_OPTIONS, ...(reviewData.locations || [])])]}
-                selected={reviewData.locations || []}
-                onChange={(v) => setReviewData((p) => ({ ...p, locations: v }))}
-                placeholder="Select mainland and free zones (GCC & Middle East)"
-              />
-            </div>
-            <div className="onboarding-field">
-              <MultiSelectDropdown
-                id="review-sector"
-                label={t(language, 'onboardingSectorOfOperations')}
-                options={SECTOR_OPTIONS}
-                selected={reviewData.sectorOfOperations}
-                onChange={(v) => setReviewData((p) => ({ ...p, sectorOfOperations: v }))}
-                placeholder={t(language, 'onboardingSectorPlaceholder')}
-              />
-            </div>
-            <div className="onboarding-field">
-              <MultiSelectDropdown
-                id="review-licencing"
-                label={t(language, 'onboardingLicencingAuthorities')}
-                options={LICENCING_AUTHORITY_OPTIONS}
-                selected={reviewData.licencingAuthorities}
-                onChange={(v) => setReviewData((p) => ({ ...p, licencingAuthorities: v }))}
-                placeholder={t(language, 'onboardingLicencingAuthoritiesPlaceholder')}
-              />
-            </div>
-            <div className="onboarding-field">
-              <MultiSelectDropdown
-                id="review-applicable-frameworks"
-                label="Applicable Compliance Frameworks"
-                options={applicableFrameworksOptions}
-                selected={reviewData.applicableFrameworksSelected || []}
-                onChange={(v) => setReviewData((p) => ({ ...p, applicableFrameworksSelected: v }))}
-                placeholder="Based on Location and Sector of Operations"
-              />
-              <p className="onboarding-frameworks-hint">Strictly based on Location and Sector of Operations (multi-combinations). These will be shown in Governance Framework Summary.</p>
-            </div>
-            <div className="onboarding-field onboarding-parent-choice">
-              <span className="onboarding-field-label">{t(language, 'onboardingLinkToParent')}</span>
-              <div className="onboarding-parent-options">
-                <label className="onboarding-radio">
-                  <input
-                    type="radio"
-                    name="parentChoice"
-                    checked={reviewData.parentChoice === 'existing'}
-                    onChange={() => setReviewData((p) => ({ ...p, parentChoice: 'existing' }))}
-                  />
-                  {t(language, 'onboardingExistingParent')}
-                </label>
-                <select
-                  className="onboarding-select"
-                  value={reviewData.existingParent}
-                  onChange={(e) => setReviewData((p) => ({ ...p, existingParent: e.target.value }))}
-                  disabled={reviewData.parentChoice !== 'existing'}
-                >
-                  <option value="">{t(language, 'onboardingSelectParent')}</option>
-                  {parentsList.map((p) => (
-                    <option key={p} value={p}>{p}</option>
-                  ))}
-                </select>
-                <label className="onboarding-radio">
-                  <input
-                    type="radio"
-                    name="parentChoice"
-                    checked={reviewData.parentChoice === 'new'}
-                    onChange={() => setReviewData((p) => ({ ...p, parentChoice: 'new' }))}
-                  />
-                  {t(language, 'onboardingNewParent')}
-                </label>
-                <input
-                  type="text"
-                  className="onboarding-input"
-                  placeholder={t(language, 'onboardingNewParentPlaceholder')}
-                  value={reviewData.newParentName}
-                  onChange={(e) => setReviewData((p) => ({ ...p, newParentName: e.target.value }))}
-                  disabled={reviewData.parentChoice !== 'new'}
-                />
-              </div>
-            </div>
-          </div>
-          <div className="onboarding-actions">
-            <button type="button" className="onboarding-btn onboarding-btn-secondary" onClick={() => setShowReviewPanel(false)}>
-              {t(language, 'onboardingCancel')}
-            </button>
+    <div className="onboarding onboarding-wizard">
+      {/* ── Breadcrumb ── */}
+      <div className="onboarding-breadcrumb">
+        {WIZARD_STEPS.map((step, i) => (
+          <span key={step.num} className="onboarding-breadcrumb-item">
             <button
               type="button"
-              className="onboarding-btn onboarding-btn-confirm"
-              onClick={handleConfirm}
-              disabled={confirming || !reviewData.organizationName.trim() || (reviewData.parentChoice === 'existing' ? !reviewData.existingParent : !reviewData.newParentName.trim())}
+              className={`onboarding-breadcrumb-step${wizardStep === step.num ? ' active' : ''}${wizardStep > step.num ? ' done' : ''}`}
+              onClick={() => { if (wizardStep > step.num && !justConfirmed) { setWizardStep(step.num); if (step.num < 3) { setShowReviewPanel(false); setAiProgress([]); } } }}
+              disabled={wizardStep <= step.num || !!justConfirmed}
             >
-              {confirming ? t(language, 'onboardingConfirming') : t(language, 'onboardingConfirm')}
+              <span className="onboarding-breadcrumb-num">{wizardStep > step.num ? '✓' : step.num}</span>
+              <span className="onboarding-breadcrumb-label">{step.label}</span>
             </button>
-          </div>
-        </section>
-      )}
+            {i < WIZARD_STEPS.length - 1 && <span className="onboarding-breadcrumb-arrow">›</span>}
+          </span>
+        ))}
+      </div>
 
-      {confirmedList.length > 0 && (
-        <section className="onboarding-section onboarding-confirmed">
-          <h3 className="onboarding-section-title">{t(language, 'onboardingConfirmedTitle')}</h3>
-          <p className="onboarding-section-desc">{t(language, 'onboardingConfirmedDesc')}</p>
-          <div className="onboarding-confirmed-table-wrap">
-            <table className="onboarding-confirmed-table">
-              <thead>
-                <tr>
-                  <th>{t(language, 'onboardingOrganizationName')}</th>
-                  <th>{t(language, 'onboardingParentHolding')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {confirmedList.map((row, i) => (
-                  <tr key={`${row.opco}-${row.parent}-${i}`}>
-                    <td>{row.opco}</td>
-                    <td>{row.parent}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+      <div className="onboarding-wizard-layout">
+        {/* ── Left: step content ── */}
+        <div className="onboarding-wizard-main">
+
+          {/* Success banner */}
+          {justConfirmed && (
+            <div className="onboarding-success-banner">
+              <div className="onboarding-success-check">✓</div>
+              <div className="onboarding-success-text">
+                <div className="onboarding-success-title">{justConfirmed.opco} successfully added</div>
+                <div className="onboarding-success-sub">Linked to parent holding: {justConfirmed.parent}</div>
+              </div>
+              <button type="button" className="onboarding-btn onboarding-btn-add" onClick={() => setJustConfirmed(null)}>
+                + Add Another Entity
+              </button>
+            </div>
+          )}
+
+          {/* ── Step 1: Upload Documents ── */}
+          {wizardStep === 1 && !justConfirmed && (
+            <section className="onboarding-section onboarding-document-upload">
+              <div className="onboarding-document-upload-header">
+                <h3 className="onboarding-section-title">Document Upload</h3>
+                <div className="onboarding-doc-mode-toggle">
+                  <label className="onboarding-doc-mode-option">
+                    <input type="radio" name="onboarding-doc-mode" value="manual" checked={documentUploadMode === 'manual'} onChange={() => setDocumentUploadMode('manual')} />
+                    <span>Manual</span>
+                  </label>
+                  <label className="onboarding-doc-mode-option">
+                    <input type="radio" name="onboarding-doc-mode" value="application" checked={documentUploadMode === 'application'} onChange={() => setDocumentUploadMode('application')} />
+                    <span>Application</span>
+                  </label>
+                </div>
+              </div>
+              <div className="onboarding-upload-rows">
+                {/* UBO Certificate */}
+                <div className="onboarding-upload-row">
+                  <label className="onboarding-upload-label">{t(language, 'onboardingDocUboCertificate')}</label>
+                  <div className="onboarding-upload-control">
+                    {documentUploadMode === 'manual' && (<>
+                      <input ref={(el) => { fileRefs.current['ubo-certificate'] = el; }} type="file" accept=".pdf,.doc,.docx,image/*,application/pdf" className="onboarding-file-input" onChange={(e) => handleFileChange('ubo-certificate', e.target.files?.[0])} aria-label={t(language, 'onboardingDocUboCertificate')} />
+                      <button type="button" className="onboarding-upload-btn" onClick={() => fileRefs.current['ubo-certificate']?.click()}>{uploads['ubo-certificate']?.name ?? t(language, 'onboardingUploadChoose')}</button>
+                    </>)}
+                    {documentUploadMode === 'application' && (<textarea className="onboarding-input onboarding-link-input onboarding-link-textarea" placeholder={t(language, 'onboardingLinkPlaceholder')} value={uploadLinks['ubo-certificate'] || ''} onChange={(e) => setUploadLinks((prev) => ({ ...prev, 'ubo-certificate': e.target.value }))} aria-label={t(language, 'onboardingDocUboCertificate')} rows={2} />)}
+                  </div>
+                </div>
+                {/* Regional Branch Licence */}
+                <div className="onboarding-upload-row">
+                  <label className="onboarding-upload-label">{t(language, 'onboardingDocRegionalBranchLicence')}</label>
+                  <div className="onboarding-upload-control">
+                    {documentUploadMode === 'manual' && (<>
+                      <input ref={(el) => { fileRefs.current['regional-branch-licence'] = el; }} type="file" accept=".pdf,.doc,.docx,image/*,application/pdf" className="onboarding-file-input" multiple onChange={(e) => handleFileChange('regional-branch-licence', e.target.files ? Array.from(e.target.files) : [])} aria-label={t(language, 'onboardingDocRegionalBranchLicence')} />
+                      <button type="button" className="onboarding-upload-btn" onClick={() => fileRefs.current['regional-branch-licence']?.click()}>{Array.isArray(uploads['regional-branch-licence']) && uploads['regional-branch-licence'].length > 0 ? `${uploads['regional-branch-licence'].length} ${t(language, 'onboardingUploadFilesChosen')}` : t(language, 'onboardingUploadChoose')}</button>
+                      {Array.isArray(uploads['regional-branch-licence']) && uploads['regional-branch-licence'].length > 0 && (<ul className="onboarding-upload-file-list">{uploads['regional-branch-licence'].map((file, i) => <li key={`${file.name}-${i}`}>{file.name}</li>)}</ul>)}
+                    </>)}
+                    {documentUploadMode === 'application' && (<textarea className="onboarding-input onboarding-link-input onboarding-link-textarea" placeholder={t(language, 'onboardingLinkPlaceholder')} value={uploadLinks['regional-branch-licence'] || ''} onChange={(e) => setUploadLinks((prev) => ({ ...prev, 'regional-branch-licence': e.target.value }))} aria-label={t(language, 'onboardingDocRegionalBranchLicence')} rows={2} />)}
+                  </div>
+                </div>
+                {/* Branch Office Licences */}
+                <div className="onboarding-upload-row">
+                  <label className="onboarding-upload-label">{t(language, 'onboardingDocBranchOfficeLicences')}</label>
+                  <div className="onboarding-upload-control">
+                    {documentUploadMode === 'manual' && (<>
+                      <input ref={(el) => { fileRefs.current['branch-office-licences'] = el; }} type="file" accept=".pdf,.doc,.docx,image/*,application/pdf" className="onboarding-file-input" multiple onChange={(e) => handleFileChange('branch-office-licences', e.target.files ? Array.from(e.target.files) : [])} aria-label={t(language, 'onboardingDocBranchOfficeLicences')} />
+                      <button type="button" className="onboarding-upload-btn" onClick={() => fileRefs.current['branch-office-licences']?.click()}>{Array.isArray(uploads['branch-office-licences']) && uploads['branch-office-licences'].length > 0 ? `${uploads['branch-office-licences'].length} ${t(language, 'onboardingUploadFilesChosen')}` : t(language, 'onboardingUploadChoose')}</button>
+                      {Array.isArray(uploads['branch-office-licences']) && uploads['branch-office-licences'].length > 0 && (<ul className="onboarding-upload-file-list">{uploads['branch-office-licences'].map((file, i) => <li key={`${file.name}-${i}`}>{file.name}</li>)}</ul>)}
+                    </>)}
+                    {documentUploadMode === 'application' && (<textarea className="onboarding-input onboarding-link-input onboarding-link-textarea" placeholder={t(language, 'onboardingLinkPlaceholder')} value={uploadLinks['branch-office-licences'] || ''} onChange={(e) => setUploadLinks((prev) => ({ ...prev, 'branch-office-licences': e.target.value }))} aria-label={t(language, 'onboardingDocBranchOfficeLicences')} rows={2} />)}
+                  </div>
+                </div>
+                {/* Passport */}
+                <div className="onboarding-upload-row">
+                  <label className="onboarding-upload-label">{t(language, 'onboardingDocPassport')}</label>
+                  <div className="onboarding-upload-control">
+                    {documentUploadMode === 'manual' && (<>
+                      <input ref={(el) => { fileRefs.current['passport'] = el; }} type="file" accept=".pdf,.doc,.docx,image/*,application/pdf" className="onboarding-file-input" multiple onChange={(e) => handleFileChange('passport', e.target.files ? Array.from(e.target.files) : [])} aria-label={t(language, 'onboardingDocPassport')} />
+                      <button type="button" className="onboarding-upload-btn" onClick={() => fileRefs.current['passport']?.click()}>{Array.isArray(uploads['passport']) && uploads['passport'].length > 0 ? `${uploads['passport'].length} ${t(language, 'onboardingUploadFilesChosen')}` : t(language, 'onboardingUploadChoose')}</button>
+                      {Array.isArray(uploads['passport']) && uploads['passport'].length > 0 && (<ul className="onboarding-upload-file-list">{uploads['passport'].map((file, i) => <li key={`${file.name}-${i}`}>{file.name}</li>)}</ul>)}
+                    </>)}
+                    {documentUploadMode === 'application' && (<textarea className="onboarding-input onboarding-link-input onboarding-link-textarea" placeholder={t(language, 'onboardingLinkPlaceholder')} value={uploadLinks['passport'] || ''} onChange={(e) => setUploadLinks((prev) => ({ ...prev, passport: e.target.value }))} aria-label={t(language, 'onboardingDocPassport')} rows={2} />)}
+                  </div>
+                </div>
+                {/* MoA */}
+                <div className="onboarding-upload-row">
+                  <label className="onboarding-upload-label">{t(language, 'onboardingDocMoa')}</label>
+                  <div className="onboarding-upload-control">
+                    {documentUploadMode === 'manual' && (<>
+                      <input ref={(el) => { fileRefs.current['moa'] = el; }} type="file" accept=".pdf,.doc,.docx,image/*,application/pdf" className="onboarding-file-input" multiple onChange={(e) => handleFileChange('moa', e.target.files ? Array.from(e.target.files) : [])} aria-label={t(language, 'onboardingDocMoa')} />
+                      <button type="button" className="onboarding-upload-btn" onClick={() => fileRefs.current['moa']?.click()}>{Array.isArray(uploads['moa']) && uploads['moa'].length > 0 ? `${uploads['moa'].length} ${t(language, 'onboardingUploadFilesChosen')}` : t(language, 'onboardingUploadChoose')}</button>
+                      {Array.isArray(uploads['moa']) && uploads['moa'].length > 0 && (<ul className="onboarding-upload-file-list">{uploads['moa'].map((file, i) => <li key={`${file.name}-${i}`}>{file.name}</li>)}</ul>)}
+                    </>)}
+                    {documentUploadMode === 'application' && (<textarea className="onboarding-input onboarding-link-input onboarding-link-textarea" placeholder={t(language, 'onboardingLinkPlaceholder')} value={uploadLinks['moa'] || ''} onChange={(e) => setUploadLinks((prev) => ({ ...prev, moa: e.target.value }))} aria-label={t(language, 'onboardingDocMoa')} rows={2} />)}
+                  </div>
+                </div>
+              </div>
+              {documentUploadMode === 'application' && (
+                <div className="onboarding-sharepoint-connect">
+                  {sharepointConnected ? (<>
+                    <span className="onboarding-sharepoint-status">Connected to Corporate SharePoint</span>
+                    <button type="button" className="onboarding-btn onboarding-btn-secondary" onClick={handleSharepointDisconnect}>Disconnect</button>
+                  </>) : (<>
+                    <a href="#" className="onboarding-sharepoint-link" onClick={(e) => { e.preventDefault(); setSharepointAccount('corp'); handleSharepointConnect(); }}>Add Corporate SharePoint</a>
+                    <p className="onboarding-sharepoint-hint">Sign in with Corp SSO so Raqib can read the files from the links above for Analyze and Add.</p>
+                  </>)}
+                </div>
+              )}
+              <div className="onboarding-wizard-nav">
+                <button type="button" className="onboarding-btn onboarding-btn-add" onClick={() => setWizardStep(2)}>
+                  Next: Company Details →
+                </button>
+              </div>
+            </section>
+          )}
+
+          {/* ── Step 2: Company Details ── */}
+          {wizardStep === 2 && !justConfirmed && (
+            <section className="onboarding-section onboarding-details">
+              <h3 className="onboarding-section-title">{t(language, 'onboardingDetailsTitle')}</h3>
+              <div className="onboarding-details-grid">
+                <div className="onboarding-field">
+                  <MultiSelectDropdown id="onboarding-location" label="Location" options={[...new Set([...LOCATION_OPTIONS, ...locations])]} selected={locations} onChange={setLocations} placeholder="Select mainland and free zones (GCC & Middle East)" />
+                </div>
+                <div className="onboarding-field">
+                  <MultiSelectDropdown id="onboarding-sector" label={t(language, 'onboardingSectorOfOperations')} options={SECTOR_OPTIONS} selected={sectorOfOperations} onChange={setSectorOfOperations} placeholder={t(language, 'onboardingSectorPlaceholder')} />
+                </div>
+                <div className="onboarding-field">
+                  <MultiSelectDropdown id="onboarding-licencing-authorities" label={t(language, 'onboardingLicencingAuthorities')} options={LICENCING_AUTHORITY_OPTIONS} selected={licencingAuthorities} onChange={setLicencingAuthorities} placeholder={t(language, 'onboardingLicencingAuthoritiesPlaceholder')} />
+                </div>
+                <div className="onboarding-field">
+                  <MultiSelectDropdown id="onboarding-applicable-frameworks" label="Applicable Compliance Frameworks" options={applicableFrameworksOptions} selected={applicableFrameworksSelected} onChange={setApplicableFrameworksSelected} placeholder="Based on Location and Sector of Operations" />
+                </div>
+              </div>
+              <div className="onboarding-documents-actions">
+                <button type="button" className="onboarding-btn onboarding-btn-analyze" onClick={handleAnalyzeDocuments} disabled={analyzing || (documentUploadMode === 'manual' ? !(Array.isArray(uploads['regional-branch-licence']) ? uploads['regional-branch-licence'].length : uploads['regional-branch-licence'] ? 1 : 0) : !(uploadLinks['regional-branch-licence'] || '').trim())}>
+                  {analyzing ? 'Analyzing…' : 'Analyze'}
+                </button>
+                <span className="onboarding-analyze-hint">Extract locations and sectors from Regional Branch Commercial Licence documents.</span>
+              </div>
+              <div className="onboarding-wizard-nav">
+                <button type="button" className="onboarding-btn onboarding-btn-secondary" onClick={handleWizardBack}>← Back</button>
+                <button type="button" className="onboarding-btn onboarding-btn-add" onClick={handleAddClick}>Review Entity →</button>
+              </div>
+            </section>
+          )}
+
+          {/* ── Step 3: Review & Confirm ── */}
+          {wizardStep === 3 && showReviewPanel && !justConfirmed && (
+            <section className="onboarding-section onboarding-review">
+              <h3 className="onboarding-section-title">{t(language, 'onboardingReviewTitle')}</h3>
+              <p className="onboarding-section-desc">{t(language, 'onboardingReviewDesc')}</p>
+              <div className="onboarding-review-fields">
+                <div className="onboarding-review-grid">
+                  <div className="onboarding-field">
+                    <label htmlFor="review-org-name">{t(language, 'onboardingOrganizationName')}</label>
+                    <input id="review-org-name" type="text" className="onboarding-input" value={reviewData.organizationName} onChange={(e) => setReviewData((p) => ({ ...p, organizationName: e.target.value }))} />
+                  </div>
+                  <div className="onboarding-field">
+                    <label htmlFor="review-ubo-cert-number">UBO Certificate Number <span className="onboarding-required">(Mandatory)</span></label>
+                    <input id="review-ubo-cert-number" type="text" className="onboarding-input" placeholder="e.g. DF-UBO-2026-003" value={reviewData.uboCertificateNumber} onChange={(e) => setReviewData((p) => ({ ...p, uboCertificateNumber: e.target.value }))} />
+                  </div>
+                  <div className="onboarding-field">
+                    <label htmlFor="review-date-of-issue">Date of Issue</label>
+                    <input id="review-date-of-issue" type="text" className="onboarding-input" value={reviewData.dateOfIssue} onChange={(e) => setReviewData((p) => ({ ...p, dateOfIssue: e.target.value }))} />
+                  </div>
+                  <div className="onboarding-field">
+                    <label htmlFor="review-registered-address">Registered Address</label>
+                    <textarea id="review-registered-address" className="onboarding-textarea" rows={2} value={reviewData.registeredAddress} onChange={(e) => setReviewData((p) => ({ ...p, registeredAddress: e.target.value }))} />
+                  </div>
+                  <div className="onboarding-field">
+                    <label htmlFor="review-trade-licence">Trade Licence Number</label>
+                    <input id="review-trade-licence" type="text" className="onboarding-input" value={reviewData.tradeLicenceNumber} onChange={(e) => setReviewData((p) => ({ ...p, tradeLicenceNumber: e.target.value }))} />
+                  </div>
+                  <div className="onboarding-field">
+                    <label htmlFor="review-jurisdiction">Jurisdiction</label>
+                    <input id="review-jurisdiction" type="text" className="onboarding-input" value={reviewData.certificateJurisdiction} onChange={(e) => setReviewData((p) => ({ ...p, certificateJurisdiction: e.target.value }))} />
+                  </div>
+                  <div className="onboarding-field onboarding-parent-holdings-field">
+                    <span className="onboarding-field-label">
+                      {reviewData.parentRelationshipType === 'member' ? 'Full Name | Ownership % | Passport Number' : 'Parent Holding Name | Ownership % | Registration Number'}
+                      <span className="onboarding-parent-type-header">
+                        <label><input type="checkbox" checked={reviewData.parentRelationshipType === 'corporate'} onChange={() => { setReviewData((p) => { const type = 'corporate'; const rows = Array.isArray(p.certificateParentHoldings) ? p.certificateParentHoldings : []; return { ...p, parentRelationshipType: type, certificateParentHoldings: rows.map((ph) => ({ ...ph, relationshipType: type })) }; }); }} /> Corporate</label>
+                        <label><input type="checkbox" checked={reviewData.parentRelationshipType === 'member'} onChange={() => { setReviewData((p) => { const type = 'member'; const rows = Array.isArray(p.certificateParentHoldings) ? p.certificateParentHoldings : []; return { ...p, parentRelationshipType: type, certificateParentHoldings: rows.map((ph) => ({ ...ph, relationshipType: type })) }; }); }} /> Member</label>
+                      </span>
+                    </span>
+                    <div className="onboarding-parent-holdings-list">
+                      {(Array.isArray(reviewData.certificateParentHoldings) && reviewData.certificateParentHoldings.length > 0 ? reviewData.certificateParentHoldings : [{}]).map((ph, idx) => (
+                        <div key={`${ph.name || 'ph'}-${idx}`} className="onboarding-parent-holding-row">
+                          <input type="text" className="onboarding-input" placeholder={reviewData.parentRelationshipType === 'member' ? 'Full Name' : 'Parent Holding Name'} value={ph.name || ''} onChange={(e) => { const base = Array.isArray(reviewData.certificateParentHoldings) ? [...reviewData.certificateParentHoldings] : [{}]; if (!base[idx]) base[idx] = {}; base[idx] = { ...base[idx], name: e.target.value }; setReviewData((p) => ({ ...p, certificateParentHoldings: base })); }} />
+                          <input type="text" className="onboarding-input" placeholder="Ownership %" value={ph.ownershipPercent || ''} onChange={(e) => { const base = Array.isArray(reviewData.certificateParentHoldings) ? [...reviewData.certificateParentHoldings] : [{}]; if (!base[idx]) base[idx] = {}; base[idx] = { ...base[idx], ownershipPercent: e.target.value }; setReviewData((p) => ({ ...p, certificateParentHoldings: base })); }} />
+                          <input type="text" className="onboarding-input" placeholder={reviewData.parentRelationshipType === 'member' ? 'Passport Number' : 'Registration Number'} value={ph.registrationNumber || ''} onChange={(e) => { const base = Array.isArray(reviewData.certificateParentHoldings) ? [...reviewData.certificateParentHoldings] : [{}]; if (!base[idx]) base[idx] = {}; base[idx] = { ...base[idx], registrationNumber: e.target.value }; setReviewData((p) => ({ ...p, certificateParentHoldings: base })); }} />
+                        </div>
+                      ))}
+                    </div>
+                    {Array.isArray(reviewData.certificateParentHoldings) && reviewData.certificateParentHoldings.length > 0 && (
+                      <div className="onboarding-mandatory-details-section">
+                        <h4 className="onboarding-mandatory-details-title">Mandatory details (all entities from document)</h4>
+                        <p className="onboarding-mandatory-details-intro">The following entities were found in the document. Each shows the respective details for Corporate or Member as extracted.</p>
+                        <div className="onboarding-mandatory-details-entities">
+                          {reviewData.certificateParentHoldings.map((ph, idx) => {
+                            const relType = ph.relationshipType || ph.type || reviewData.parentRelationshipType || '';
+                            const isCorporate = relType === 'corporate';
+                            const isExpanded = expandedMandatoryEntityIndices.has(idx);
+                            return (
+                              <div key={`mandatory-${ph.name || ph.corporateName || idx}-${idx}`} className={`onboarding-entity-details-card ${!isExpanded ? 'onboarding-entity-details-card-collapsed' : ''}`}>
+                                <button type="button" className="onboarding-entity-details-header" onClick={() => setExpandedMandatoryEntityIndices((prev) => { const next = new Set(prev); if (next.has(idx)) next.delete(idx); else next.add(idx); return next; })} aria-expanded={isExpanded}>
+                                  <span className="onboarding-entity-details-chevron" aria-hidden>{isExpanded ? '▼' : '▶'}</span>
+                                  <strong>{isCorporate ? (ph.corporateName || ph.name || `Entity ${idx + 1}`) : (ph.individualFullName || ph.name || `Entity ${idx + 1}`)}</strong>
+                                  <span className="onboarding-entity-type-badge">{isCorporate ? 'Corporate' : 'Member'}</span>
+                                </button>
+                                {isExpanded && (
+                                  <div className="onboarding-entity-details-grid">
+                                    {isCorporate ? (<>
+                                      <div><strong>Entity Name</strong><div>{ph.corporateName || ph.name || '—'}</div></div>
+                                      <div><strong>Jurisdiction of Incorporation</strong><div>{ph.corporateJurisdictionOfIncorporation || '—'}</div></div>
+                                      <div><strong>Registered Address</strong><div>{ph.corporateRegisteredAddress || '—'}</div></div>
+                                      <div><strong>Registration Number</strong><div>{ph.corporateRegistrationNumber || ph.registrationNumber || '—'}</div></div>
+                                    </>) : (<>
+                                      <div><strong>Full name (as per ID)</strong><div>{ph.individualFullName || ph.fullName || ph.name || '—'}</div></div>
+                                      <div><strong>Nationality</strong><div>{ph.individualNationality || ph.nationality || '—'}</div></div>
+                                      <div><strong>Date of birth</strong><div>{ph.individualDateOfBirth || ph.dateOfBirth || '—'}</div></div>
+                                      <div><strong>Place of birth</strong><div>{ph.individualPlaceOfBirth || ph.placeOfBirth || '—'}</div></div>
+                                      <div><strong>ID type (Passport / National ID)</strong><div>{ph.individualIdType || ph.idType || '—'}</div></div>
+                                      <div><strong>ID number</strong><div>{ph.individualIdNumber || ph.idNumber || '—'}</div></div>
+                                    </>)}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div className="onboarding-field">
+                  <MultiSelectDropdown id="review-location" label="Location" options={[...new Set([...LOCATION_OPTIONS, ...(reviewData.locations || [])])]} selected={reviewData.locations || []} onChange={(v) => setReviewData((p) => ({ ...p, locations: v }))} placeholder="Select mainland and free zones (GCC & Middle East)" />
+                </div>
+                <div className="onboarding-field">
+                  <MultiSelectDropdown id="review-sector" label={t(language, 'onboardingSectorOfOperations')} options={SECTOR_OPTIONS} selected={reviewData.sectorOfOperations} onChange={(v) => setReviewData((p) => ({ ...p, sectorOfOperations: v }))} placeholder={t(language, 'onboardingSectorPlaceholder')} />
+                </div>
+                <div className="onboarding-field">
+                  <MultiSelectDropdown id="review-licencing" label={t(language, 'onboardingLicencingAuthorities')} options={LICENCING_AUTHORITY_OPTIONS} selected={reviewData.licencingAuthorities} onChange={(v) => setReviewData((p) => ({ ...p, licencingAuthorities: v }))} placeholder={t(language, 'onboardingLicencingAuthoritiesPlaceholder')} />
+                </div>
+                <div className="onboarding-field">
+                  <MultiSelectDropdown id="review-applicable-frameworks" label="Applicable Compliance Frameworks" options={applicableFrameworksOptions} selected={reviewData.applicableFrameworksSelected || []} onChange={(v) => setReviewData((p) => ({ ...p, applicableFrameworksSelected: v }))} placeholder="Based on Location and Sector of Operations" />
+                  <p className="onboarding-frameworks-hint">Strictly based on Location and Sector of Operations. These will be shown in Governance Framework Summary.</p>
+                </div>
+                <div className="onboarding-field onboarding-parent-choice">
+                  <span className="onboarding-field-label">{t(language, 'onboardingLinkToParent')}</span>
+                  <div className="onboarding-parent-options">
+                    <label className="onboarding-radio"><input type="radio" name="parentChoice" checked={reviewData.parentChoice === 'existing'} onChange={() => setReviewData((p) => ({ ...p, parentChoice: 'existing' }))} /> {t(language, 'onboardingExistingParent')}</label>
+                    <select className="onboarding-select" value={reviewData.existingParent} onChange={(e) => setReviewData((p) => ({ ...p, existingParent: e.target.value }))} disabled={reviewData.parentChoice !== 'existing'}>
+                      <option value="">{t(language, 'onboardingSelectParent')}</option>
+                      {parentsList.map((p) => <option key={p} value={p}>{p}</option>)}
+                    </select>
+                    <label className="onboarding-radio"><input type="radio" name="parentChoice" checked={reviewData.parentChoice === 'new'} onChange={() => setReviewData((p) => ({ ...p, parentChoice: 'new' }))} /> {t(language, 'onboardingNewParent')}</label>
+                    <input type="text" className="onboarding-input" placeholder={t(language, 'onboardingNewParentPlaceholder')} value={reviewData.newParentName} onChange={(e) => setReviewData((p) => ({ ...p, newParentName: e.target.value }))} disabled={reviewData.parentChoice !== 'new'} />
+                  </div>
+                </div>
+              </div>
+              <div className="onboarding-actions">
+                <button type="button" className="onboarding-btn onboarding-btn-secondary" onClick={handleWizardBack}>← Back</button>
+                <button type="button" className="onboarding-btn onboarding-btn-confirm" onClick={handleConfirm} disabled={confirming || !reviewData.organizationName.trim() || (reviewData.parentChoice === 'existing' ? !reviewData.existingParent : !reviewData.newParentName.trim())}>
+                  {confirming ? t(language, 'onboardingConfirming') : t(language, 'onboardingConfirm')}
+                </button>
+              </div>
+            </section>
+          )}
+
+          {/* ── Confirmed list ── */}
+          {confirmedList.length > 0 && (
+            <section className="onboarding-section onboarding-confirmed">
+              <h3 className="onboarding-section-title">{t(language, 'onboardingConfirmedTitle')}</h3>
+              <p className="onboarding-section-desc">{t(language, 'onboardingConfirmedDesc')}</p>
+              <div className="onboarding-confirmed-table-wrap">
+                <table className="onboarding-confirmed-table">
+                  <thead><tr><th>{t(language, 'onboardingOrganizationName')}</th><th>{t(language, 'onboardingParentHolding')}</th></tr></thead>
+                  <tbody>{confirmedList.map((row, i) => (<tr key={`${row.opco}-${row.parent}-${i}`}><td>{row.opco}</td><td>{row.parent}</td></tr>))}</tbody>
+                </table>
+              </div>
+            </section>
+          )}
+        </div>
+
+        {/* ── Right: Document Preview Panel ── */}
+        <div className="onboarding-wizard-panel">
+          <div className="onboarding-panel-header">
+            <h4 className="onboarding-panel-title">Document Preview</h4>
           </div>
-        </section>
-      )}
+
+          {/* AI Extraction Progress */}
+          {aiProgress.length > 0 && (
+            <div className="onboarding-ai-progress">
+              <div className="onboarding-ai-progress-title">AI Extraction</div>
+              {aiProgress.map((step, i) => (
+                <div key={i} className={`onboarding-ai-step onboarding-ai-step-${step.status}`}>
+                  <span className="onboarding-ai-step-icon">{step.status === 'done' ? '✓' : step.status === 'running' ? '…' : '○'}</span>
+                  <span className="onboarding-ai-step-label">{step.label}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Uploaded documents */}
+          {allPreviewFiles.length === 0 ? (
+            <div className="onboarding-panel-empty">
+              <div className="onboarding-panel-empty-icon">📄</div>
+              <p>Upload documents to preview them here</p>
+              <p className="onboarding-panel-hint">Supported: PDF, Word, images</p>
+            </div>
+          ) : (
+            <div className="onboarding-panel-docs">
+              <div className="onboarding-panel-section-title">Uploaded Documents</div>
+              {allPreviewFiles.map((file, i) => (
+                <div key={i} className={`onboarding-panel-doc${previewDocId === file.docId ? ' active' : ''}`} onClick={() => setPreviewDocId(file.docId)}>
+                  <div className="onboarding-panel-doc-icon">{file.name.endsWith('.pdf') ? '📋' : file.name.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? '🖼️' : '📄'}</div>
+                  <div className="onboarding-panel-doc-info">
+                    <div className="onboarding-panel-doc-name">{file.name}</div>
+                    <div className="onboarding-panel-doc-meta">{file.docLabel}{file.size ? ` · ${file.size < 1048576 ? `${Math.round(file.size / 1024)} KB` : `${(file.size / 1048576).toFixed(1)} MB`}` : ''}</div>
+                  </div>
+                  {previewDocId === file.docId && <span className="onboarding-panel-doc-check">✓</span>}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Extracted data summary (step 3+) */}
+          {wizardStep >= 3 && reviewData.organizationName && (
+            <div className="onboarding-panel-extracted">
+              <div className="onboarding-panel-section-title">Extracted Data</div>
+              <div className="onboarding-panel-field"><span className="onboarding-panel-field-label">Entity</span><span className="onboarding-panel-field-value">{reviewData.organizationName}</span></div>
+              {reviewData.certificateJurisdiction && <div className="onboarding-panel-field"><span className="onboarding-panel-field-label">Jurisdiction</span><span className="onboarding-panel-field-value">{reviewData.certificateJurisdiction}</span></div>}
+              {reviewData.uboCertificateNumber && <div className="onboarding-panel-field"><span className="onboarding-panel-field-label">UBO Cert#</span><span className="onboarding-panel-field-value">{reviewData.uboCertificateNumber}</span></div>}
+              {(reviewData.locations || []).length > 0 && <div className="onboarding-panel-field"><span className="onboarding-panel-field-label">Locations</span><span className="onboarding-panel-field-value">{(reviewData.locations || []).join(', ')}</span></div>}
+              {(reviewData.sectorOfOperations || []).length > 0 && <div className="onboarding-panel-field"><span className="onboarding-panel-field-label">Sectors</span><span className="onboarding-panel-field-value">{(reviewData.sectorOfOperations || []).join(', ')}</span></div>}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── Modals ── */}
 
       {uboCertRequiredModal && (
         <div className="onboarding-modal-backdrop" role="dialog" aria-modal="true">

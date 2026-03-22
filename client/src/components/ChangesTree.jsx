@@ -73,7 +73,7 @@ function ParentCard({ parent, opcosCount, deadline, changeId, changeTitle, compa
             {showOpcos ? 'Hide Details' : 'View Details'}
           </button>
         )}
-        <button type="button" className="impact-btn impact-btn-assign" onClick={() => onAssignTasks(changeId, parent)}>
+        <button type="button" className="impact-btn impact-btn-assign" onClick={() => onAssignTasks(changeId, parent, { deadline, companies, changeTitle })}>
           Assign Tasks
         </button>
       </div>

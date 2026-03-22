@@ -10,6 +10,7 @@ const MODULES = [
       { id: 'mgmt-dashboard', labelKey: 'navMgmtDashboard' },
       { id: 'org-overview', labelKey: 'navOrgOverview' },
       { id: 'org-dashboard', labelKey: 'navOrgDashboard' },
+      { id: 'task-tracker', labelKey: 'navTaskTracker' },
     ],
   },
   {
@@ -38,6 +39,7 @@ const MODULES = [
     id: 'legal-module',
     labelKey: 'navModuleLegal',
     sections: [
+      { id: 'legal-onboarding', labelKey: 'navLegalOnboarding' },
       { id: 'poa-management', labelKey: 'navPoaManagement' },
       { id: 'ip-management', labelKey: 'navIpManagement' },
       { id: 'licence-management', labelKey: 'navLicenceManagement' },

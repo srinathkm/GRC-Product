@@ -1,11 +1,15 @@
 import { Router } from 'express';
+import multer from 'multer';
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import { readFile } from 'fs/promises';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import mammoth from 'mammoth';
 import { FRAMEWORK_REFERENCES, FRAMEWORKS } from '../constants.js';
 import { lookupChangesForFramework } from '../services/ai.js';
 import { isLlmConfigured } from '../services/llm.js';
+
+const templateUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const dataPath = join(__dirname, '../data/changes.json');

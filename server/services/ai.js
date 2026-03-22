@@ -12,6 +12,9 @@ const poaPath = join(__dirname, '../data/poa.json');
 const ipPath = join(__dirname, '../data/ip.json');
 const licencesPath = join(__dirname, '../data/licences.json');
 const litigationsPath = join(__dirname, '../data/litigations.json');
+const tasksPath = join(__dirname, '../data/tasks.json');
+const contractsPath = join(__dirname, '../data/contracts.json');
+const esgMetricsPath = join(__dirname, '../data/esg-metrics.json');
 
 function buildContext(changes) {
   return changes
@@ -323,5 +326,375 @@ Use between 2 and 6 items. If you have no specific knowledge of changes in this 
   } catch (err) {
     console.error('Lookup error:', err.message);
     return [];
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GLOBAL INTELLIGENCE ASSISTANT
+// ─────────────────────────────────────────────────────────────────────────────
+
+function daysFromNow(dateStr, days) {
+  if (!dateStr) return false;
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return false;
+  const threshold = new Date();
+  threshold.setDate(threshold.getDate() + days);
+  return d >= new Date() && d <= threshold;
+}
+
+function isPast(dateStr) {
+  if (!dateStr) return false;
+  const d = new Date(dateStr);
+  return !isNaN(d.getTime()) && d < new Date();
+}
+
+async function buildGlobalContext(parentHolding, selectedOpco) {
+  const now = new Date();
+  const thirtyAgo = new Date(now); thirtyAgo.setDate(thirtyAgo.getDate() - 30);
+  const ninetyAhead = new Date(now); ninetyAhead.setDate(ninetyAhead.getDate() + 90);
+
+  const [changes, companies, onboardingOpcos, poaAll, ipAll, licencesAll, litigationsAll, tasks, contractsAll, esgRaw] =
+    await Promise.all([
+      safeReadJson(changesPath, []),
+      safeReadJson(companiesPath, {}),
+      safeReadJson(onboardingOpcosPath, []),
+      safeReadJson(poaPath, []),
+      safeReadJson(ipPath, []),
+      safeReadJson(licencesPath, []),
+      safeReadJson(litigationsPath, []),
+      safeReadJson(tasksPath, []),
+      safeReadJson(contractsPath, []),
+      safeReadJson(esgMetricsPath, { metrics: {} }),
+    ]);
+
+  // ── Resolve frameworks for the selected OpCo (mirrors dashboard.js logic) ──
+  const opcoLower = selectedOpco ? selectedOpco.toLowerCase() : null;
+  let opcoFrameworks = null;
+  if (opcoLower) {
+    opcoFrameworks = new Set();
+    for (const [fw, entries] of Object.entries(companies)) {
+      if (!Array.isArray(entries)) continue;
+      for (const entry of entries) {
+        if ((entry.companies || []).some(c => c && c.toLowerCase() === opcoLower)) {
+          opcoFrameworks.add(fw);
+        }
+      }
+    }
+    for (const row of (Array.isArray(onboardingOpcos) ? onboardingOpcos : [])) {
+      if (!row.opco || row.opco.toLowerCase() !== opcoLower) continue;
+      for (const fw of row.applicableFrameworks || []) opcoFrameworks.add(fw);
+      for (const pair of row.applicableFrameworksByLocation || []) {
+        if (pair.framework) opcoFrameworks.add(pair.framework);
+      }
+    }
+    opcoFrameworks.delete('Onboarded');
+  }
+
+  // ── Filter all data to the selected OpCo ───────────────────────────────────
+  const allChanges = Array.isArray(changes) ? changes : [];
+  const scopedChanges = opcoFrameworks
+    ? allChanges.filter(c => opcoFrameworks.has(c.framework))
+    : allChanges;
+  const poa         = opcoLower ? (Array.isArray(poaAll)         ? poaAll.filter(r => r.opco && r.opco.toLowerCase() === opcoLower)         : []) : poaAll;
+  const ip          = opcoLower ? (Array.isArray(ipAll)           ? ipAll.filter(r => r.opco && r.opco.toLowerCase() === opcoLower)           : []) : ipAll;
+  const licences    = opcoLower ? (Array.isArray(licencesAll)     ? licencesAll.filter(r => r.opco && r.opco.toLowerCase() === opcoLower)     : []) : licencesAll;
+  const litigations = opcoLower ? (Array.isArray(litigationsAll)  ? litigationsAll.filter(r => r.opco && r.opco.toLowerCase() === opcoLower)  : []) : litigationsAll;
+  const contracts   = opcoLower ? (Array.isArray(contractsAll)    ? contractsAll.filter(r => r.opco && r.opco.toLowerCase() === opcoLower)    : []) : contractsAll;
+
+  const recentChanges = scopedChanges.filter(c => { const d = new Date(c.date); return !isNaN(d) && d >= thirtyAgo; });
+  const upcomingDeadlines = scopedChanges.filter(c => daysFromNow(c.deadline, 60));
+  const overdueChanges = scopedChanges.filter(c => isPast(c.deadline));
+
+  // Framework change counts
+  const fwCounts = {};
+  recentChanges.forEach(c => { fwCounts[c.framework] = (fwCounts[c.framework] || 0) + 1; });
+  const topFws = Object.entries(fwCounts).sort((a,b) => b[1]-a[1]).slice(0,6)
+    .map(([fw, n]) => `${fw}: ${n}`).join(', ');
+
+  // Parent holdings
+  const parentMap = {};
+  Object.values(companies).flat().forEach(e => {
+    if (e?.parent) { parentMap[e.parent] = (parentMap[e.parent] || new Set()); if (e.companies) e.companies.forEach(c => parentMap[e.parent].add(c)); }
+  });
+  const parentSummary = Object.entries(parentMap).slice(0, 5)
+    .map(([p, cs]) => `${p} (${cs.size} OpCos)`).join(', ');
+
+  // POA analysis
+  const poaArr = Array.isArray(poa) ? poa : [];
+  const poaExpiring = poaArr.filter(r => daysFromNow(r.validUntil, 90));
+  const poaExpired = poaArr.filter(r => isPast(r.validUntil) && !r.revoked);
+
+  // Licences
+  const licArr = Array.isArray(licences) ? licences : [];
+  const licExpiring = licArr.filter(r => daysFromNow(r.expiryDate || r.validUntil, 90));
+
+  // IP
+  const ipArr = Array.isArray(ip) ? ip : [];
+  const ipExpiring = ipArr.filter(r => daysFromNow(r.expiryDate || r.renewalDate, 90));
+
+  // Litigations
+  const litArr = Array.isArray(litigations) ? litigations : [];
+  const activeLit = litArr.filter(r => r.status === 'active' || r.status === 'open' || !r.status);
+
+  // Tasks
+  const tasksArr = Array.isArray(tasks) ? tasks : [];
+  const openTasks = tasksArr.filter(t => t.status === 'open' || t.status === 'in-progress');
+  const overdueTasks = tasksArr.filter(t => isPast(t.dueDate) && (t.status === 'open' || t.status === 'in-progress'));
+  const staleTasks = tasksArr.filter(t => {
+    if (t.status !== 'open' && t.status !== 'in-progress') return false;
+    const upd = new Date(t.updatedAt || t.createdAt);
+    return !isNaN(upd) && (now - upd) > 10 * 24 * 3600 * 1000;
+  });
+  const criticalTasks = tasksArr.filter(t => t.priority === 'critical' && t.status !== 'done');
+  const taskByPriority = { critical: 0, high: 0, medium: 0, low: 0 };
+  openTasks.forEach(t => { if (taskByPriority[t.priority] !== undefined) taskByPriority[t.priority]++; });
+
+  // ESG — filter to selected OpCo when set
+  const esgMetrics = esgRaw?.metrics || {};
+  const allEsgKeys = Object.keys(esgMetrics);
+  const esgKeys = opcoLower
+    ? allEsgKeys.filter(key => { const [, o] = key.split('::'); return o && o.toLowerCase() === opcoLower; })
+    : allEsgKeys;
+  const latestEsgByOpco = {};
+  esgKeys.forEach(key => {
+    const [, opco, period] = key.split('::');
+    if (!latestEsgByOpco[opco] || period > latestEsgByOpco[opco].period) {
+      latestEsgByOpco[opco] = { period, data: esgMetrics[key] };
+    }
+  });
+  const esgSummary = Object.entries(latestEsgByOpco).slice(0, 6)
+    .map(([opco, { period }]) => `${opco} (${period})`).join(', ');
+
+  // Contracts
+  const contractArr = Array.isArray(contracts) ? contracts : [];
+  const contractsExpiring = contractArr.filter(r => daysFromNow(r.expiryDate || r.endDate || r.validUntil, 90));
+
+  // Onboarding
+  const onboardArr = Array.isArray(onboardingOpcos) ? onboardingOpcos : [];
+  const recentOnboard = onboardArr.filter(o => { const d = new Date(o.addedAt); return !isNaN(d) && (now - d) < 90 * 24 * 3600 * 1000; });
+
+  const lines = [];
+  lines.push(`ORGANIZATION: ${parentHolding || 'All holdings'}`);
+  if (selectedOpco) lines.push(`SELECTED OPCO: ${selectedOpco} (all data in this snapshot is scoped to this OpCo only)`);
+  lines.push(`DATE: ${now.toISOString().slice(0,10)}`);
+  lines.push('');
+  lines.push('=== GOVERNANCE & REGULATORY ===');
+  lines.push(`Supported frameworks: ${FRAMEWORKS.join(', ')}`);
+  lines.push(`Recent changes (30d): ${recentChanges.length} total. By framework: ${topFws || 'none'}`);
+  lines.push(`Upcoming deadlines (60d): ${upcomingDeadlines.length} items`);
+  if (upcomingDeadlines.length > 0) {
+    upcomingDeadlines.slice(0,5).forEach(c => lines.push(`  - [${c.framework}] "${c.title}" deadline: ${c.deadline}, affects: ${(c.affectedCompanies||[]).join(', ')}`));
+  }
+  lines.push(`Overdue items (past deadline): ${overdueChanges.length} items`);
+  if (overdueChanges.length > 0) {
+    overdueChanges.slice(0,5).forEach(c => lines.push(`  - [${c.framework}] "${c.title}" was due: ${c.deadline}`));
+  }
+  lines.push('');
+  lines.push('=== COMPANIES & ONBOARDING ===');
+  lines.push(`Parent holdings: ${parentSummary || 'none loaded'}`);
+  lines.push(`Total onboarded OpCos: ${onboardArr.length}. Recently onboarded (90d): ${recentOnboard.length}`);
+  lines.push('');
+  lines.push('=== TASKS ===');
+  lines.push(`Open/in-progress tasks: ${openTasks.length}`);
+  lines.push(`Priority breakdown — critical: ${taskByPriority.critical}, high: ${taskByPriority.high}, medium: ${taskByPriority.medium}, low: ${taskByPriority.low}`);
+  lines.push(`Overdue tasks: ${overdueTasks.length}. Stale (no update >10d): ${staleTasks.length}`);
+  if (criticalTasks.length > 0) {
+    criticalTasks.slice(0,3).forEach(t => lines.push(`  - CRITICAL: "${t.title}" assigned to: ${t.assignedTo || 'unassigned'}`));
+  }
+  lines.push('');
+  lines.push('=== LEGAL ===');
+  lines.push(`Power of Attorney — total: ${poaArr.length}, expiring within 90d: ${poaExpiring.length}, already expired: ${poaExpired.length}`);
+  if (poaExpiring.length > 0) poaExpiring.slice(0,3).forEach(r => lines.push(`  - POA: ${r.holderName} / ${r.opco}, expires: ${r.validUntil}`));
+  lines.push(`IP assets — total: ${ipArr.length}, expiring within 90d: ${ipExpiring.length}`);
+  lines.push(`Licences — total: ${licArr.length}, expiring within 90d: ${licExpiring.length}`);
+  if (licExpiring.length > 0) licExpiring.slice(0,3).forEach(r => lines.push(`  - Licence: ${r.name || r.licenceName || 'unnamed'} / ${r.opco}, expires: ${r.expiryDate || r.validUntil}`));
+  lines.push(`Litigations — total: ${litArr.length}, active: ${activeLit.length}`);
+  lines.push(`Contracts — total: ${contractArr.length}, expiring within 90d: ${contractsExpiring.length}`);
+  lines.push('');
+  lines.push('=== ESG ===');
+  lines.push(`ESG data recorded for: ${esgKeys.length} entity-period combinations`);
+  lines.push(`Latest ESG entries: ${esgSummary || 'No ESG data entered yet'}`);
+  lines.push('');
+
+  return lines.join('\n');
+}
+
+function buildFallbackResponse(message) {
+  return {
+    module: 'cross',
+    summary: 'GRC Intelligence Assistant is ready — AI engine not yet configured.',
+    narrative: 'The assistant UI is fully operational, but the AI reasoning engine is not connected.\n\nTo enable full intelligence capabilities, set **LLM_BASE_URL** and **LLM_API_KEY** (or **OPENAI_API_KEY**) in the server `.env` file.\n\nOnce configured, I can:\n- **Answer questions** across all modules (Governance, Legal, ESG, Data, Ownership, Analysis)\n- **Detect cross-module correlations** — e.g., expiring POAs affecting the same OpCos with overdue governance tasks\n- **Suggest actions** with clear reasoning for human review and approval\n- **Surface visual metrics** and breakdowns tailored to your role',
+    reasoning: [
+      'Received user question: "' + message.slice(0, 80) + '"',
+      'Checked LLM configuration → API credentials not found in environment',
+      'Returning capability overview instead of AI-generated answer',
+    ],
+    metrics: [],
+    chart: { type: 'none', title: '', data: [] },
+    correlations: [],
+    actions: [],
+    followups: [
+      'How do I configure the AI engine?',
+      'What data sources does the assistant analyse?',
+      'Which modules can the assistant help with?',
+    ],
+  };
+}
+
+function parseStructuredResponse(content, fallbackMessage) {
+  try {
+    const cleaned = content.replace(/^```json?\s*|\s*```$/gm, '').trim();
+    // Find the JSON object in the response
+    const start = cleaned.indexOf('{');
+    const end = cleaned.lastIndexOf('}');
+    if (start === -1 || end === -1) throw new Error('No JSON object found');
+    const parsed = JSON.parse(cleaned.slice(start, end + 1));
+    return {
+      module: typeof parsed.module === 'string' ? parsed.module : 'cross',
+      summary: typeof parsed.summary === 'string' ? parsed.summary : 'Analysis complete.',
+      narrative: typeof parsed.narrative === 'string' ? parsed.narrative : content,
+      reasoning: Array.isArray(parsed.reasoning) ? parsed.reasoning.slice(0, 5) : [],
+      metrics: Array.isArray(parsed.metrics) ? parsed.metrics.slice(0, 4) : [],
+      chart: parsed.chart && parsed.chart.type !== 'none' ? parsed.chart : { type: 'none', title: '', data: [] },
+      correlations: Array.isArray(parsed.correlations) ? parsed.correlations.slice(0, 3) : [],
+      actions: Array.isArray(parsed.actions) ? parsed.actions.slice(0, 2) : [],
+      followups: Array.isArray(parsed.followups) ? parsed.followups.slice(0, 3) : [],
+    };
+  } catch {
+    return {
+      module: 'cross',
+      summary: content.slice(0, 200),
+      narrative: content,
+      reasoning: [],
+      metrics: [],
+      chart: { type: 'none', title: '', data: [] },
+      correlations: [],
+      actions: [],
+      followups: ['Tell me more', 'What should I prioritise?', 'Show me a breakdown'],
+    };
+  }
+}
+
+const PERSONA_GUIDES = {
+  board: 'Board member: provide a 2-paragraph strategic executive summary. Focus on risk exposure, regulatory reputation, and financial impact. Avoid operational detail.',
+  'c-level': 'C-Level executive (CEO/CFO/CCO): provide strategic context with financial and reputational impact. Include key metrics and 1-2 clear actions.',
+  legal: 'Legal team member: focus on legal obligations, specific deadlines, jurisdiction nuances, and enforcement risk. Be precise about regulatory requirements.',
+  governance: 'Governance team member: provide detailed framework-level analysis, OpCo mapping, regulatory change specifics, and compliance status.',
+  data: 'Data & Security professional: focus on technical controls, security posture scores, data flow risks, and framework-control gap analysis.',
+  operations: 'Operations / Business user: be practical and action-oriented. Focus on what needs to be done, by when, and by whom.',
+};
+
+const MODULE_CONTEXT = {
+  governance: 'The user is currently in the Governance module, looking at regulatory frameworks and changes.',
+  legal: 'The user is currently in the Legal module, managing POAs, IP assets, licences, and litigations.',
+  esg: 'The user is currently in the ESG module, reviewing Environmental, Social, and Governance scores.',
+  data: 'The user is currently in the Data & Security module, checking data sovereignty and security posture.',
+  ownership: 'The user is currently in the Ownership module, reviewing UBO records and beneficial ownership.',
+  analysis: 'The user is currently in the Analysis module, running risk predictions and M&A assessments.',
+  overview: 'The user is currently viewing an organisation-wide overview dashboard.',
+  tasks: 'The user is currently in the Task Tracker, managing compliance action items.',
+  cross: 'The user is asking a cross-module or general question.',
+};
+
+/**
+ * Global GRC Intelligence Assistant — answers questions across all modules
+ * with structured JSON responses for rich UI rendering.
+ */
+export async function answerGlobal({ message, history, currentModule, persona, parentHolding, selectedOpco }) {
+  if (!isLlmConfigured()) return buildFallbackResponse(message);
+
+  const context = await buildGlobalContext(parentHolding, selectedOpco);
+  const personaGuide = PERSONA_GUIDES[persona] || PERSONA_GUIDES['c-level'];
+  const moduleContext = MODULE_CONTEXT[currentModule] || MODULE_CONTEXT['cross'];
+
+  const historyText = history.length > 0
+    ? '\n\nCONVERSATION HISTORY (recent turns):\n' + history.map(h => `${h.role.toUpperCase()}: ${(h.content || '').slice(0, 200)}`).join('\n')
+    : '';
+
+  const systemPrompt = `You are the GRC Intelligence Assistant for a GCC multi-entity holding group compliance platform (Raqib). You are a trusted thinking partner for compliance professionals at all organisational levels.
+
+CURRENT USER CONTEXT:
+- Persona: ${personaGuide}
+- Active module: ${moduleContext}
+- Selected organisation: ${parentHolding || 'all holdings'}${selectedOpco ? `\n- Selected OpCo: ${selectedOpco} — IMPORTANT: answer exclusively from this OpCo's data. Do not reference data from other OpCos.` : ''}
+
+YOUR CAPABILITIES:
+1. Detect which GRC module(s) the question relates to (governance, legal, esg, data, ownership, analysis, tasks, overview, cross)
+2. Surface insights from all platform data, citing specific numbers
+3. Identify cross-module correlations (e.g., POA expiry affecting OpCos with overdue governance tasks)
+4. Suggest up to 2 concrete, reversible actions with clear human-readable reasoning — never suggest deleting data
+5. Adapt response depth and language to the user's persona
+6. Provide data for visual rendering (metrics, charts)
+
+RESPOND WITH VALID JSON ONLY — no markdown fences, no extra text. Use this exact schema:
+{
+  "module": "governance|legal|esg|data|ownership|analysis|tasks|overview|cross",
+  "summary": "1-2 sentence headline answer (plain text, no markdown)",
+  "narrative": "Full analysis in markdown. Bold key terms with **bold**. Use bullet lists. 2-4 paragraphs. Data-backed. Persona-adapted.",
+  "reasoning": ["Step 1: ...", "Step 2: ...", "Step 3: ..."],
+  "metrics": [
+    { "label": "string", "value": "string", "trend": "up|down|flat|none", "change": "string (e.g. +3 this week)", "color": "green|red|amber|blue|purple" }
+  ],
+  "chart": {
+    "type": "bar|ring|none",
+    "title": "string",
+    "data": [{ "label": "string", "value": 75, "color": "#hex" }]
+  },
+  "correlations": [
+    { "module": "string", "insight": "1-2 sentence cross-module finding", "severity": "critical|high|medium|low" }
+  ],
+  "actions": [
+    {
+      "id": "action-1",
+      "label": "Short action label",
+      "description": "What this action will do",
+      "reasoning": "Why this is recommended based on the data",
+      "endpoint": "/api/tasks",
+      "method": "POST",
+      "payload": {},
+      "risk": "low|medium|high",
+      "requiresApproval": true
+    }
+  ],
+  "followups": ["Question 1?", "Question 2?", "Question 3?"]
+}
+
+RULES:
+- metrics: 2-4 items, only if you have data. Use "none" trend if not applicable.
+- chart: Include only if a bar or ring chart meaningfully visualises the data. "bar" for comparisons, "ring" for a single completion/score percentage. Omit if not useful.
+- chart.data values should be 0-100 for ring, or raw numbers for bar.
+- correlations: Only genuine data-backed cross-module insights. Max 2.
+- actions: Max 2. Only safe, reversible actions: create task, escalate, flag for review, send notification. Never delete data. Always set requiresApproval: true.
+- followups: 3 natural follow-up questions.
+- Board persona: concise (2 paragraphs max), strategic, financial risk focus.
+- narrative uses markdown: **bold**, - bullets, paragraph breaks.
+
+PLATFORM DATA SNAPSHOT:
+${context}${historyText}`;
+
+  try {
+    const completion = await createChatCompletion({
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: message },
+      ],
+      maxTokens: 1400,
+      responseFormat: 'json',
+    });
+    const content = completion.choices?.[0]?.message?.content?.trim() || '{}';
+    return parseStructuredResponse(content, message);
+  } catch (err) {
+    console.error('answerGlobal error:', err.message);
+    return {
+      module: currentModule || 'cross',
+      summary: 'I encountered an error processing your question.',
+      narrative: `I was unable to process your question due to an error: **${err.message}**\n\nPlease try rephrasing or try again in a moment.`,
+      reasoning: ['LLM call failed', err.message],
+      metrics: [],
+      chart: { type: 'none', title: '', data: [] },
+      correlations: [],
+      actions: [],
+      followups: ['Try a simpler question', 'Check the data in this module', 'View the task tracker'],
+    };
   }
 }
