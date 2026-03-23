@@ -24,6 +24,7 @@ import { governanceRouter } from './routes/governance.js';
 import { defenderIntegrationRouter } from './routes/defenderIntegration.js';
 import { dataSovereigntyRouter } from './routes/dataSovereignty.js';
 import { dashboardRouter } from './routes/dashboard.js';
+import { extractRouter } from './routes/extract.js';
 import { startFeedScheduler } from './services/regulatoryFeed.js';
 
 const app = express();
@@ -50,6 +51,7 @@ app.use('/api/contracts', contractsRouter);
 app.use('/api/defender', defenderIntegrationRouter);
 app.use('/api/data-sovereignty', dataSovereigntyRouter);
 app.use('/api/dashboard', dashboardRouter);
+app.use('/api/extract', extractRouter);
 
 app.get('/api/health', (_, res) => res.json({ status: 'ok' }));
 app.get('/api/frameworks', (_, res) => res.json({ frameworks: FRAMEWORKS, references: FRAMEWORK_REFERENCES }));
