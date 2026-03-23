@@ -22,6 +22,7 @@ import { LegalOnboarding } from './components/LegalOnboarding';
 import GlobalAssistant from './components/GlobalAssistant';
 import { Help } from './components/Help';
 import { ManagementDashboard } from './components/ManagementDashboard';
+import { TaskTracker } from './components/TaskTracker';
 
 const FRAMEWORKS = [
   'DFSA Rulebook',
