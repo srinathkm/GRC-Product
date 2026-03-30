@@ -1,1 +1,23 @@
-[]
+[
+  {
+    "id": "lit-1774879300629-8qa8az",
+    "createdAt": "2026-03-30T14:01:40.628Z",
+    "updatedAt": "2026-03-30T14:01:40.628Z",
+    "opco": "SKM LLC (SKM Life Sciences & Technology)",
+    "caseId": "TEST-LIT-PAT-0001-2024-001",
+    "court": "Commercial Court - Riyadh",
+    "jurisdiction": "Kingdom of Saudi Arabia",
+    "claimType": "IP Dispute",
+    "claimant": "SKM LLC (SKM Life Sciences & Technology)",
+    "respondent": "MediTech Innovations Co. LLC",
+    "claimAmount": "3500000",
+    "expectedExposure": "3500000",
+    "status": "Open",
+    "filingDate": "2026-03-15",
+    "externalCounsel": "[Fictitious Law Firm - SPECIMEN]",
+    "internalOwner": "Ahmed Khalid Al-Rashidi",
+    "parent": "First Holding Group",
+    "notes": "**1. Current Context & Status**  \nAs of the record dated 2026-03-15, SKM LLC (SKM Life Sciences & Technology) is pursuing an open IP Dispute (caseId: TEST-LIT-PAT-0001-2024-001) in the Commercial Court - Riyadh, Kingdom of Saudi Arabia, against MediTech Innovations Co. LLC. The claim amount and expected exposure are both SAR 3,500,000. The case is managed by external counsel \"Fictitious Law Firm - SPECIMEN\" and internally owned by Ahmed Khalid Al-Rashidi.\n\n**2. Operational Impact**  \nThe litigation exposes SKM LLC to a maximum financial risk of SAR 3,500,000, directly impacting cash flow and provisioning. Since the status is \"Open\" as of 2026-03-15, financial and operational planning should account for this outflow. The absence of timeline details or a scheduled hearing limits further impact assessment. Insufficient data — No approaching deadlines or compliance milestones specified.\n\n**3. Next Steps — Business Ops & C-Level**  \na) Business Operations: It is advisable for the internal owner, Ahmed Khalid Al-Rashidi, to coordinate with \"Fictitious Law Firm - SPECIMEN\" by 2026-04-01 to prepare an up-to-date case summary and risk assessment for management.  \nb) C-Level/Board: Recommend reviewing financial reserves and initiating board briefing by 2026-04-15 to discuss possible provisioning of SAR 3,500,000 exposure and strategic implications with First Holding Group.",
+    "nextHearingDate": "2026-04-29"
+  }
+]

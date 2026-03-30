@@ -1,1 +1,30 @@
-[]
+[
+  {
+    "id": "con-1774879832570-lam7sg",
+    "createdAt": "2026-03-30T14:10:32.570Z",
+    "updatedAt": "2026-03-30T14:10:32.570Z",
+    "contractId": "CON-20260330-D9LUUZ-M6CB",
+    "parent": "First Holding Group",
+    "opco": "SKM LLC (SKM Life Sciences & Technology)",
+    "contractType": "Service",
+    "title": "SERVICE AGREEMENT - THIRD-PARTY SOFTWARE SUPPORT",
+    "counterparty": "TechSolve Arabia LLC",
+    "effectiveDate": "2026-03-15",
+    "expiryDate": "2027-03-31",
+    "renewalWindowStart": "2028-03-31",
+    "renewalWindowEnd": "2029-03-31",
+    "vatAmount": "72000",
+    "taxAmount": "",
+    "netAmount": "480000",
+    "totalAmount": "552000",
+    "obligations": "",
+    "riskLevel": "Medium",
+    "status": "Draft",
+    "documentLink": "contract-1774879800443-0-24mkal.pdf",
+    "documentOriginalName": "Contract_3rd_Party_Software_Support.pdf",
+    "pendingApprovalFrom": "Finance",
+    "reviewDueBy": "2026-04-04",
+    "assignedTo": "SKM",
+    "notes": "1. Current Context & Status  \nAs of today, the SERVICE AGREEMENT - THIRD-PARTY SOFTWARE SUPPORT (contractId: CON-20260330-D9LUUZ-M6CB) is in Draft status between SKM LLC (SKM Life Sciences & Technology) and TechSolve Arabia LLC. The contract is valued at a net amount of 480,000 plus a VAT amount of 72,000 (total 552,000), effective from 2026-03-15 until 2027-03-31. It is currently pending approval from Finance and assigned to SKM.\n\n2. Operational Impact  \nThis service contract represents a financial commitment of 552,000 for the specified term. The review is due by 2026-04-04, and its Medium risk level indicates the need for thorough assessment. As the renewal window opens much later (2028-03-31 to 2029-03-31), there is no imminent need for renewal actions; however, pending Finance approval could delay onboarding and support service readiness.\n\n3. Next Steps — Business Ops & C-Level  \na) Business Operations: Ensure Finance completes its approval process before the review due date of 2026-04-04 to maintain contract execution timelines and avoid operational delays.  \nb) C-Level / Board: It is advisable for senior leadership to review the Medium risk profile and the sizable financial exposure (total 552,000) before final sign-off, ensuring alignment with group risk appetite and existing provisioning."
+  }
+]

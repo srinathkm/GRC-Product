@@ -26,6 +26,9 @@ const paths = {
   litigations:    join(__dirname, '../data/litigations.json'),
   contracts:      join(__dirname, '../data/contracts.json'),
   feedMeta:       join(__dirname, '../data/feed-meta.json'),
+  dataSovereignty: join(__dirname, '../data/data-sovereignty-checks.json'),
+  aiModelUsage:   join(__dirname, '../data/ai-model-usage.json'),
+  tasks:          join(__dirname, '../data/tasks.json'),
 };
 
 async function safeRead(path, fallback) {
@@ -77,6 +80,15 @@ function isExpired(dateStr) {
   return du !== null && du < 0;
 }
 
+function norm(v) {
+  return String(v || '').trim().toLowerCase();
+}
+
+function includesAny(text, terms) {
+  const t = norm(text);
+  return terms.some((x) => t.includes(norm(x)));
+}
+
 export const dashboardRouter = Router();
 
 dashboardRouter.get('/summary', async (req, res) => {
@@ -87,7 +99,7 @@ dashboardRouter.get('/summary', async (req, res) => {
     const today = now.toISOString().slice(0, 10);
 
     // ── Load all data sources in parallel ──────────────────────────────────
-    const [changesRaw, companies, onboarding, poa, ip, licences, litigations, contracts, feedMeta] =
+    const [changesRaw, companies, onboarding, poa, ip, licences, litigations, contracts, feedMeta, dataSovereignty, aiModelUsage, tasks] =
       await Promise.all([
         safeRead(paths.changes, []),
         safeRead(paths.companies, {}),
@@ -98,6 +110,9 @@ dashboardRouter.get('/summary', async (req, res) => {
         safeRead(paths.litigations, []),
         safeRead(paths.contracts, []),
         safeRead(paths.feedMeta, null),
+        safeRead(paths.dataSovereignty, { checks: [] }),
+        safeRead(paths.aiModelUsage, []),
+        safeRead(paths.tasks, []),
       ]);
 
     // ── OpCo filter helper ─────────────────────────────────────────────────
@@ -255,6 +270,175 @@ dashboardRouter.get('/summary', async (req, res) => {
       .slice(0, 8)
       .map(([opco, changeCount]) => ({ opco, changeCount }));
 
+    // ── Intelligence: lineage & framework impact from legal operations ──────
+    const expiringPoaByOpco = new Map();
+    for (const p of expiringPoa) {
+      if (!p?.opco) continue;
+      const key = p.opco;
+      if (!expiringPoaByOpco.has(key)) expiringPoaByOpco.set(key, []);
+      expiringPoaByOpco.get(key).push(p);
+    }
+
+    const lineageImpacts = [];
+    for (const [opcoName, poaList] of expiringPoaByOpco.entries()) {
+      const relatedChanges = recentChanges.filter((c) =>
+        (c.affectedCompanies || []).some((co) => norm(co) === norm(opcoName))
+      );
+      const fwCounts = {};
+      for (const c of relatedChanges) {
+        const fw = c.framework || 'Other';
+        fwCounts[fw] = (fwCounts[fw] || 0) + 1;
+      }
+      const frameworksImpacted = Object.entries(fwCounts)
+        .sort(([, a], [, b]) => b - a)
+        .map(([framework, count]) => ({ framework, count }));
+
+      if (frameworksImpacted.length === 0) continue;
+
+      const ownerTask = (tasks || []).find((t) =>
+        norm(t?.opco) === norm(opcoName) &&
+        includesAny(t?.module || '', ['poa', 'power of attorney']) &&
+        !includesAny(t?.status || '', ['done', 'closed', 'cancelled'])
+      );
+
+      lineageImpacts.push({
+        opco: opcoName,
+        parent: poaList[0]?.parent || '—',
+        legalOwner: ownerTask?.assignee || ownerTask?.assignedTo || 'Legal team',
+        expiringPoaCount: poaList.length,
+        soonestPoaExpiry: poaList
+          .map((p) => p.validUntil)
+          .filter(Boolean)
+          .sort()[0] || null,
+        frameworksImpacted,
+        impactScore: Math.max(10, 100 - (poaList.length * 8 + frameworksImpacted.length * 6)),
+      });
+    }
+
+    lineageImpacts.sort((a, b) => a.impactScore - b.impactScore);
+
+    // ── Intelligence: data compliance / model egress risks ──────────────────
+    const modelUsage = Array.isArray(aiModelUsage) ? aiModelUsage : [];
+    const sovereigntyChecks = Array.isArray(dataSovereignty?.checks) ? dataSovereignty.checks : [];
+
+    const detectJurisdictionFromLocations = (locations = []) => {
+      const joined = locations.join(' ').toLowerCase();
+      if (joined.includes('saudi')) return 'KSA';
+      if (joined.includes('qatar')) return 'Qatar';
+      if (joined.includes('bahrain')) return 'Bahrain';
+      if (joined.includes('oman')) return 'Oman';
+      if (joined.includes('kuwait')) return 'Kuwait';
+      return 'UAE';
+    };
+
+    const defaultModelCatalog = [
+      { model: 'OpenAI GPT-4o', app: 'Global Assistant', hostRegion: 'US', dataLeavesJurisdiction: true },
+      { model: 'Azure OpenAI GPT-4', app: 'Document Intelligence', hostRegion: 'EU', dataLeavesJurisdiction: true },
+      { model: 'Local Llama 3', app: 'Internal Analytics', hostRegion: 'UAE', dataLeavesJurisdiction: false },
+    ];
+
+    const modelCatalog = modelUsage.length > 0 ? modelUsage : defaultModelCatalog;
+    const opcoRows = Array.isArray(onboarding) ? onboarding : [];
+    const dataComplianceInsights = [];
+
+    for (const row of opcoRows) {
+      if (selectedOpco && norm(row.opco) !== norm(selectedOpco)) continue;
+      const jurisdiction = detectJurisdictionFromLocations(Array.isArray(row.locations) ? row.locations : []);
+      const sectorList = Array.isArray(row.sectorOfOperations) ? row.sectorOfOperations : [];
+      for (const model of modelCatalog) {
+        const leaves = !!model.dataLeavesJurisdiction;
+        if (!leaves) continue;
+        const matchingCheck = sovereigntyChecks.find((c) =>
+          includesAny(c.jurisdiction || '', [jurisdiction, 'GCC']) &&
+          includesAny(c.name || '', ['data', 'localisation', 'cross-border'])
+        );
+        dataComplianceInsights.push({
+          opco: row.opco,
+          parent: row.parent || '—',
+          jurisdiction,
+          sectors: sectorList,
+          model: model.model,
+          application: model.app,
+          hostRegion: model.hostRegion,
+          severity: matchingCheck?.severity || 'High',
+          regulation: matchingCheck?.regulation || 'Data residency requirements',
+          risk: `${model.model} for ${model.app} may transfer ${jurisdiction} operational data to ${model.hostRegion}.`,
+        });
+      }
+    }
+
+    // ── Intelligence: litigation ↔ contractual/IP obligations ────────────────
+    const litigationObligationInsights = [];
+    const activeLitigationRows = activeLitigations || [];
+    for (const lit of activeLitigationRows) {
+      const litText = `${lit.caseId || ''} ${lit.claimType || ''} ${lit.notes || ''} ${lit.subject || ''}`;
+      const relatedContracts = activeContracts.filter((c) =>
+        (lit.opco && norm(c.opco) === norm(lit.opco)) ||
+        includesAny(litText, [c.contractId, c.title, c.counterparty])
+      );
+      const relatedIp = activeIp.filter((a) =>
+        (lit.opco && norm(a.opco) === norm(lit.opco)) ||
+        includesAny(litText, [a.mark, a.registrationNo, a.applicationNo])
+      );
+      if (relatedContracts.length === 0 && relatedIp.length === 0) continue;
+
+      const baseExposure = Number(lit.claimAmount || 0) || 0;
+      const contractExposure = relatedContracts.length * 250000;
+      const ipExposure = relatedIp.length * 150000;
+      const exposure = baseExposure + contractExposure + ipExposure;
+
+      litigationObligationInsights.push({
+        caseId: lit.caseId || lit.id || '—',
+        opco: lit.opco || '—',
+        status: lit.status || 'Open',
+        relatedContracts: relatedContracts.map((c) => c.contractId || c.title || 'Contract'),
+        relatedIpAssets: relatedIp.map((a) => a.mark || a.registrationNo || 'IP Asset'),
+        financialExposure: exposure,
+        commercialImpact: exposure >= 1000000 ? 'High' : exposure >= 300000 ? 'Medium' : 'Low',
+      });
+    }
+
+    // ── Intelligence: incomplete documentation / missing evidence ────────────
+    const documentationGaps = [];
+    for (const p of poa) {
+      if (!matchOpco(p.opco)) continue;
+      const missing = [];
+      if (p.notarised !== true && norm(p.notarised) !== 'true') missing.push('Notarization');
+      if (p.mofaStamp !== true && norm(p.mofaStamp) !== 'true') missing.push('MOFA stamp');
+      if (p.embassyStamp !== true && norm(p.embassyStamp) !== 'true') missing.push('Embassy stamp');
+      if (missing.length === 0) continue;
+      documentationGaps.push({
+        module: 'POA',
+        recordId: p.fileId || p.id || p.holderName || 'POA record',
+        opco: p.opco || '—',
+        parent: p.parent || '—',
+        missingItems: missing,
+        criticality: p.validUntil && isExpiringWithin(p.validUntil, 30) ? 'Critical' : 'High',
+      });
+    }
+
+    for (const c of contracts) {
+      if (!matchOpco(c.opco)) continue;
+      const missing = [];
+      if (!c.documentLink && !c.documentOriginalName) missing.push('Source contract document');
+      if (!c.effectiveDate) missing.push('Effective date');
+      if (!c.expiryDate) missing.push('Expiry date');
+      if (missing.length === 0) continue;
+      documentationGaps.push({
+        module: 'Contract',
+        recordId: c.contractId || c.id || c.title || 'Contract record',
+        opco: c.opco || '—',
+        parent: c.parent || '—',
+        missingItems: missing,
+        criticality: c.riskLevel === 'High' ? 'Critical' : 'Medium',
+      });
+    }
+
+    documentationGaps.sort((a, b) => {
+      const rank = { Critical: 3, High: 2, Medium: 1, Low: 0 };
+      return (rank[b.criticality] || 0) - (rank[a.criticality] || 0);
+    });
+
     // ── Feed metadata ──────────────────────────────────────────────────────
     const feedStatus = feedMeta
       ? { lastRun: feedMeta.lastRun, added: feedMeta.added, total: feedMeta.total }
@@ -311,6 +495,12 @@ dashboardRouter.get('/summary', async (req, res) => {
 
       upcomingExpiry,
       topOpcoAlerts,
+      intelligence: {
+        lineageImpacts: lineageImpacts.slice(0, 12),
+        dataComplianceInsights: dataComplianceInsights.slice(0, 12),
+        litigationObligationInsights: litigationObligationInsights.slice(0, 12),
+        documentationGaps: documentationGaps.slice(0, 20),
+      },
 
       feedStatus,
 

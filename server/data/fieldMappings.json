@@ -1,8 +1,8 @@
 {
   "poa": {
-    "_count": 1,
+    "_count": 3,
     "opco": {
-      "count": 1,
+      "count": 3,
       "labels": [
         "Company"
       ],
@@ -15,11 +15,15 @@
       "avgConfidence": 1
     },
     "fileId": {
-      "count": 1,
+      "count": 3,
       "labels": [
         "Reference No."
       ],
       "valueExamples": [
+        {
+          "label": "Reference No.",
+          "value": "TEST-POA-BANK-0001-2024"
+        },
         {
           "label": "Reference No.",
           "value": "TEST-POA-GOVT-0001-2024"
@@ -28,7 +32,7 @@
       "avgConfidence": 1
     },
     "holderName": {
-      "count": 1,
+      "count": 3,
       "labels": [
         "Name"
       ],
@@ -41,11 +45,16 @@
       "avgConfidence": 1
     },
     "poaType": {
-      "count": 1,
+      "count": 3,
       "labels": [
+        "POWER OF ATTORNEY - BANKING OPERATIONS",
         "POWER OF ATTORNEY - GOVERNMENT & REGULATORY AFFAIRS"
       ],
       "valueExamples": [
+        {
+          "label": "POWER OF ATTORNEY - BANKING OPERATIONS",
+          "value": "Banking"
+        },
         {
           "label": "POWER OF ATTORNEY - GOVERNMENT & REGULATORY AFFAIRS",
           "value": "Government"
@@ -54,7 +63,7 @@
       "avgConfidence": 1
     },
     "jurisdiction": {
-      "count": 1,
+      "count": 3,
       "labels": [
         "Jurisdiction"
       ],
@@ -67,7 +76,7 @@
       "avgConfidence": 1
     },
     "signedOn": {
-      "count": 1,
+      "count": 3,
       "labels": [
         "Date"
       ],
@@ -80,7 +89,7 @@
       "avgConfidence": 1
     },
     "validFrom": {
-      "count": 1,
+      "count": 3,
       "labels": [
         "Effective"
       ],
@@ -93,11 +102,15 @@
       "avgConfidence": 1
     },
     "validUntil": {
-      "count": 1,
+      "count": 3,
       "labels": [
         "Expiry"
       ],
       "valueExamples": [
+        {
+          "label": "Expiry",
+          "value": "2026-12-31"
+        },
         {
           "label": "Expiry",
           "value": "2025-12-31"
@@ -106,7 +119,7 @@
       "avgConfidence": 1
     },
     "notarised": {
-      "count": 1,
+      "count": 3,
       "labels": [
         "NOTARISATION"
       ],
@@ -119,7 +132,7 @@
       "avgConfidence": 1
     },
     "mofaStamp": {
-      "count": 1,
+      "count": 3,
       "labels": [],
       "valueExamples": [
         {
@@ -130,7 +143,7 @@
       "avgConfidence": 1
     },
     "embassyStamp": {
-      "count": 1,
+      "count": 3,
       "labels": [],
       "valueExamples": [
         {
@@ -141,11 +154,15 @@
       "avgConfidence": 1
     },
     "scope": {
-      "count": 1,
+      "count": 3,
       "labels": [
         "scope/notes section"
       ],
       "valueExamples": [
+        {
+          "label": "scope/notes section",
+          "value": "The Attorney-in-Fact is hereby authorised, on behalf of the Grantor, to:\n  1. Open, operate, and close current, savings,"
+        },
         {
           "label": "scope/notes section",
           "value": "SCOPE OF AUTHORITY\n  1. Submit and collect commercial registration documents from MISA, MCI (KSA),\n     and MOCIIP (Oman"
@@ -154,5 +171,432 @@
       "avgConfidence": 0.85
     }
   },
-  "_updatedAt": "2026-03-30T13:01:14.531Z"
+  "_updatedAt": "2026-03-30T14:10:03.246Z",
+  "ip": {
+    "_count": 1,
+    "opco": {
+      "count": 1,
+      "labels": [
+        "PATENT OWNER (ASSIGNEE)\n  Name"
+      ],
+      "valueExamples": [
+        {
+          "label": "PATENT OWNER (ASSIGNEE)\n  Name",
+          "value": "SKM LLC (SKM Life Sciences & Technology)"
+        }
+      ],
+      "avgConfidence": 1
+    },
+    "mark": {
+      "count": 1,
+      "labels": [
+        "Title"
+      ],
+      "valueExamples": [
+        {
+          "label": "Title",
+          "value": "Sustained-Release Formulation for Multi-Indication Generic Analgesics"
+        }
+      ],
+      "avgConfidence": 1
+    },
+    "ipType": {
+      "count": 1,
+      "labels": [
+        "PATENT GRANT CERTIFICATE"
+      ],
+      "valueExamples": [
+        {
+          "label": "PATENT GRANT CERTIFICATE",
+          "value": "Patent"
+        }
+      ],
+      "avgConfidence": 1
+    },
+    "class": {
+      "count": 1,
+      "labels": [
+        "IPC Classification"
+      ],
+      "valueExamples": [
+        {
+          "label": "IPC Classification",
+          "value": "A61K 9/22   A61K 31/165   A61P 29/00"
+        }
+      ],
+      "avgConfidence": 1
+    },
+    "jurisdiction": {
+      "count": 1,
+      "labels": [
+        "Issuing Authority : Saudi Authority for Intellectual Property (SAIP), Riyadh"
+      ],
+      "valueExamples": [
+        {
+          "label": "Issuing Authority : Saudi Authority for Intellectual Property (SAIP), Riyadh",
+          "value": "Saudi Arabia"
+        }
+      ],
+      "avgConfidence": 1
+    },
+    "registrationNo": {
+      "count": 1,
+      "labels": [
+        "Patent Reference No."
+      ],
+      "valueExamples": [
+        {
+          "label": "Patent Reference No.",
+          "value": "TEST-PAT-KSA-2024-0011"
+        }
+      ],
+      "avgConfidence": 1
+    },
+    "filingDate": {
+      "count": 1,
+      "labels": [
+        "Filing Date"
+      ],
+      "valueExamples": [
+        {
+          "label": "Filing Date",
+          "value": "2024-01-10"
+        }
+      ],
+      "avgConfidence": 1
+    },
+    "registrationDate": {
+      "count": 1,
+      "labels": [
+        "Grant Date"
+      ],
+      "valueExamples": [
+        {
+          "label": "Grant Date",
+          "value": "2024-08-09"
+        }
+      ],
+      "avgConfidence": 1
+    },
+    "renewalDate": {
+      "count": 1,
+      "labels": [
+        "Expiry Date"
+      ],
+      "valueExamples": [
+        {
+          "label": "Expiry Date",
+          "value": "2044-08-09"
+        }
+      ],
+      "avgConfidence": 1
+    },
+    "status": {
+      "count": 1,
+      "labels": [
+        "MAINTENANCE FEES  - PAID"
+      ],
+      "valueExamples": [
+        {
+          "label": "MAINTENANCE FEES  - PAID",
+          "value": "Active"
+        }
+      ],
+      "avgConfidence": 0.9
+    }
+  },
+  "litigations": {
+    "_count": 1,
+    "opco": {
+      "count": 1,
+      "labels": [
+        "CLAIMANT\n  Name    : SKM LLC (SKM Life Sciences & Technology)"
+      ],
+      "valueExamples": [
+        {
+          "label": "CLAIMANT\n  Name    : SKM LLC (SKM Life Sciences & Technology)",
+          "value": "SKM LLC (SKM Life Sciences & Technology)"
+        }
+      ],
+      "avgConfidence": 1
+    },
+    "caseId": {
+      "count": 1,
+      "labels": [
+        "Case Reference   : TEST-LIT-PAT-0001-2024-001"
+      ],
+      "valueExamples": [
+        {
+          "label": "Case Reference   : TEST-LIT-PAT-0001-2024-001",
+          "value": "TEST-LIT-PAT-0001-2024-001"
+        }
+      ],
+      "avgConfidence": 1
+    },
+    "court": {
+      "count": 1,
+      "labels": [
+        "Forum            : Commercial Court - Riyadh"
+      ],
+      "valueExamples": [
+        {
+          "label": "Forum            : Commercial Court - Riyadh",
+          "value": "Commercial Court - Riyadh"
+        }
+      ],
+      "avgConfidence": 1
+    },
+    "jurisdiction": {
+      "count": 1,
+      "labels": [
+        "Address : Level 12, King Fahd Road, Al Olaya, Riyadh 12214, Kingdom of Saudi Arabia"
+      ],
+      "valueExamples": [
+        {
+          "label": "Address : Level 12, King Fahd Road, Al Olaya, Riyadh 12214, Kingdom of Saudi Arabia",
+          "value": "Kingdom of Saudi Arabia"
+        }
+      ],
+      "avgConfidence": 1
+    },
+    "claimType": {
+      "count": 1,
+      "labels": [
+        "NOTICE OF PATENT INFRINGEMENT CLAIM"
+      ],
+      "valueExamples": [
+        {
+          "label": "NOTICE OF PATENT INFRINGEMENT CLAIM",
+          "value": "IP Dispute"
+        }
+      ],
+      "avgConfidence": 1
+    },
+    "claimant": {
+      "count": 1,
+      "labels": [
+        "CLAIMANT\n  Name    : SKM LLC (SKM Life Sciences & Technology)"
+      ],
+      "valueExamples": [
+        {
+          "label": "CLAIMANT\n  Name    : SKM LLC (SKM Life Sciences & Technology)",
+          "value": "SKM LLC (SKM Life Sciences & Technology)"
+        }
+      ],
+      "avgConfidence": 1
+    },
+    "respondent": {
+      "count": 1,
+      "labels": [
+        "RESPONDENT\n  Name    : MediTech Innovations Co. LLC"
+      ],
+      "valueExamples": [
+        {
+          "label": "RESPONDENT\n  Name    : MediTech Innovations Co. LLC",
+          "value": "MediTech Innovations Co. LLC"
+        }
+      ],
+      "avgConfidence": 1
+    },
+    "claimAmount": {
+      "count": 1,
+      "labels": [
+        "estimated at\n     SAR 3,500,000 based on market analysis."
+      ],
+      "valueExamples": [
+        {
+          "label": "estimated at\n     SAR 3,500,000 based on market analysis.",
+          "value": "3500000"
+        }
+      ],
+      "avgConfidence": 1
+    },
+    "expectedExposure": {
+      "count": 1,
+      "labels": [
+        "estimated at\n     SAR 3,500,000 based on market analysis."
+      ],
+      "valueExamples": [
+        {
+          "label": "estimated at\n     SAR 3,500,000 based on market analysis.",
+          "value": "3500000"
+        }
+      ],
+      "avgConfidence": 0.9
+    },
+    "status": {
+      "count": 1,
+      "labels": [],
+      "valueExamples": [
+        {
+          "label": "",
+          "value": "Open"
+        }
+      ],
+      "avgConfidence": 0.7
+    },
+    "filingDate": {
+      "count": 1,
+      "labels": [
+        "Date Filed       : 15 March 2026"
+      ],
+      "valueExamples": [
+        {
+          "label": "Date Filed       : 15 March 2026",
+          "value": "2026-03-15"
+        }
+      ],
+      "avgConfidence": 1
+    },
+    "externalCounsel": {
+      "count": 1,
+      "labels": [
+        "Counsel : [Fictitious Law Firm - SPECIMEN]"
+      ],
+      "valueExamples": [
+        {
+          "label": "Counsel : [Fictitious Law Firm - SPECIMEN]",
+          "value": "[Fictitious Law Firm - SPECIMEN]"
+        }
+      ],
+      "avgConfidence": 1
+    },
+    "internalOwner": {
+      "count": 1,
+      "labels": [
+        "Ahmed Khalid Al-Rashidi  |  Chief Executive Officer  |  15 March 2026"
+      ],
+      "valueExamples": [
+        {
+          "label": "Ahmed Khalid Al-Rashidi  |  Chief Executive Officer  |  15 March 2026",
+          "value": "Ahmed Khalid Al-Rashidi"
+        }
+      ],
+      "avgConfidence": 0.9
+    }
+  },
+  "contracts": {
+    "_count": 2,
+    "title": {
+      "count": 2,
+      "labels": [],
+      "valueExamples": [
+        {
+          "label": "",
+          "value": "SERVICE AGREEMENT - THIRD-PARTY SOFTWARE SUPPORT"
+        }
+      ],
+      "avgConfidence": 0.8
+    },
+    "vatAmount": {
+      "count": 2,
+      "labels": [],
+      "valueExamples": [
+        {
+          "label": "",
+          "value": "72000"
+        }
+      ],
+      "avgConfidence": 0.8
+    },
+    "netAmount": {
+      "count": 2,
+      "labels": [],
+      "valueExamples": [
+        {
+          "label": "",
+          "value": "480000"
+        }
+      ],
+      "avgConfidence": 0.8
+    },
+    "totalAmount": {
+      "count": 2,
+      "labels": [],
+      "valueExamples": [
+        {
+          "label": "",
+          "value": "552000"
+        }
+      ],
+      "avgConfidence": 0.8
+    },
+    "effectiveDate": {
+      "count": 2,
+      "labels": [],
+      "valueExamples": [
+        {
+          "label": "",
+          "value": "2026-03-15"
+        }
+      ],
+      "avgConfidence": 0.8
+    },
+    "expiryDate": {
+      "count": 2,
+      "labels": [],
+      "valueExamples": [
+        {
+          "label": "",
+          "value": "2027-03-31"
+        }
+      ],
+      "avgConfidence": 0.8
+    },
+    "renewalStart": {
+      "count": 2,
+      "labels": [],
+      "valueExamples": [
+        {
+          "label": "",
+          "value": "2028-03-31"
+        }
+      ],
+      "avgConfidence": 0.8
+    },
+    "renewalEnd": {
+      "count": 2,
+      "labels": [],
+      "valueExamples": [
+        {
+          "label": "",
+          "value": "2029-03-31"
+        }
+      ],
+      "avgConfidence": 0.8
+    },
+    "counterparty": {
+      "count": 2,
+      "labels": [],
+      "valueExamples": [
+        {
+          "label": "",
+          "value": "TechSolve Arabia LLC"
+        }
+      ],
+      "avgConfidence": 0.8
+    },
+    "contractType": {
+      "count": 2,
+      "labels": [],
+      "valueExamples": [
+        {
+          "label": "",
+          "value": "Service"
+        }
+      ],
+      "avgConfidence": 0.8
+    },
+    "opco": {
+      "count": 2,
+      "labels": [],
+      "valueExamples": [
+        {
+          "label": "",
+          "value": "SKM LLC"
+        }
+      ],
+      "avgConfidence": 0.8
+    }
+  }
 }

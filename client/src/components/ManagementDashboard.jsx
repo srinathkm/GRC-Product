@@ -284,7 +284,12 @@ export function ManagementDashboard({ onNavigateToView }) {
   if (!data)   return null;
 
   const { entities, regulatoryChanges, poa, licences, contracts, litigations, ip,
-          upcomingExpiry, topOpcoAlerts, feedStatus, complianceHealthScore, generatedAt } = data;
+          upcomingExpiry, topOpcoAlerts, feedStatus, complianceHealthScore, generatedAt, intelligence = {} } = data;
+
+  const lineageImpacts = Array.isArray(intelligence.lineageImpacts) ? intelligence.lineageImpacts : [];
+  const dataComplianceInsights = Array.isArray(intelligence.dataComplianceInsights) ? intelligence.dataComplianceInsights : [];
+  const litigationObligationInsights = Array.isArray(intelligence.litigationObligationInsights) ? intelligence.litigationObligationInsights : [];
+  const documentationGaps = Array.isArray(intelligence.documentationGaps) ? intelligence.documentationGaps : [];
 
   const totalExpiring = (poa.expiringSoon || 0) + (licences.expiringSoon || 0) + (contracts.expiringSoon || 0);
   const totalExpired  = (poa.expired || 0) + (licences.expired || 0) + (contracts.expired || 0);
@@ -464,6 +469,93 @@ export function ManagementDashboard({ onNavigateToView }) {
             <span className="mgmt-panel-title">Quick Navigation</span>
           </div>
           <QuickActions onNavigate={navigate} />
+        </div>
+      </div>
+
+      {/* ── INTELLIGENCE PANELS ── */}
+      <div>
+        <p className="mgmt-dash-section-title">Real-time Compliance Intelligence</p>
+        <div className="mgmt-intel-grid">
+          <div className="mgmt-panel">
+            <div className="mgmt-panel-header">
+              <span className="mgmt-panel-title">Framework Lineage Impact Tree</span>
+            </div>
+            {lineageImpacts.length === 0 ? (
+              <p className="mgmt-opco-empty">No active lineage impacts detected.</p>
+            ) : (
+              <div className="mgmt-intel-list">
+                {lineageImpacts.slice(0, 6).map((row, idx) => (
+                  <div key={`${row.opco}-${idx}`} className="mgmt-intel-item">
+                    <div className="mgmt-intel-item-title">{row.opco} · Owner: {row.legalOwner}</div>
+                    <div className="mgmt-intel-item-sub">
+                      POAs expiring: {row.expiringPoaCount} · Soonest: {row.soonestPoaExpiry || '—'} · Impact score: {row.impactScore}
+                    </div>
+                    <div className="mgmt-intel-chips">
+                      {(row.frameworksImpacted || []).slice(0, 4).map((fw) => (
+                        <span key={fw.framework} className="mgmt-intel-chip">{fw.framework} ({fw.count})</span>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="mgmt-panel">
+            <div className="mgmt-panel-header">
+              <span className="mgmt-panel-title">Data Compliance Insights (AI Cross-Border)</span>
+            </div>
+            {dataComplianceInsights.length === 0 ? (
+              <p className="mgmt-opco-empty">No cross-border AI data transfer risks detected.</p>
+            ) : (
+              <div className="mgmt-intel-list">
+                {dataComplianceInsights.slice(0, 6).map((row, idx) => (
+                  <div key={`${row.opco}-${row.model}-${idx}`} className="mgmt-intel-item">
+                    <div className="mgmt-intel-item-title">{row.opco} · {row.model} · {row.hostRegion}</div>
+                    <div className="mgmt-intel-item-sub">{row.risk}</div>
+                    <div className="mgmt-intel-item-sub">Regulation: {row.regulation} · Severity: {row.severity}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="mgmt-panel">
+            <div className="mgmt-panel-header">
+              <span className="mgmt-panel-title">Litigation Contractual/IP Impact</span>
+            </div>
+            {litigationObligationInsights.length === 0 ? (
+              <p className="mgmt-opco-empty">No litigation linked to contractual/IP obligations.</p>
+            ) : (
+              <div className="mgmt-intel-list">
+                {litigationObligationInsights.slice(0, 6).map((row, idx) => (
+                  <div key={`${row.caseId}-${idx}`} className="mgmt-intel-item">
+                    <div className="mgmt-intel-item-title">Case {row.caseId} · {row.opco} · {row.commercialImpact} impact</div>
+                    <div className="mgmt-intel-item-sub">Contracts: {row.relatedContracts.length} · IP assets: {row.relatedIpAssets.length}</div>
+                    <div className="mgmt-intel-item-sub">Estimated exposure: AED {Number(row.financialExposure || 0).toLocaleString()}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="mgmt-panel">
+            <div className="mgmt-panel-header">
+              <span className="mgmt-panel-title">Incomplete Documentation Alerts</span>
+            </div>
+            {documentationGaps.length === 0 ? (
+              <p className="mgmt-opco-empty">No critical documentation gaps found.</p>
+            ) : (
+              <div className="mgmt-intel-list">
+                {documentationGaps.slice(0, 8).map((row, idx) => (
+                  <div key={`${row.module}-${row.recordId}-${idx}`} className="mgmt-intel-item">
+                    <div className="mgmt-intel-item-title">{row.module} · {row.recordId} · {row.criticality}</div>
+                    <div className="mgmt-intel-item-sub">{row.opco} · Missing: {(row.missingItems || []).join(', ')}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

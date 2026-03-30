@@ -110,9 +110,9 @@ async function extractContractFieldsFromText(text) {
   };
 }
 
-async function extractContractFieldsFromBuffer(buffer, mimetype) {
+async function extractContractFieldsFromBuffer(buffer, mimetype, filename = '') {
   try {
-    const text = await extractTextFromBuffer(buffer, mimetype || 'application/octet-stream');
+    const text = await extractTextFromBuffer(buffer, mimetype || 'application/octet-stream', filename);
     if (!text) return null;
     return await extractContractFieldsFromText(text);
   } catch (e) {
@@ -259,7 +259,11 @@ contractsRouter.post('/upload', contractUpload.array('files', 20), async (req, r
       const contractId = generateContractId();
       const path = join(UPLOADS_DIR, fileId);
       await writeFile(path, file.buffer);
-      const extracted = await extractContractFieldsFromBuffer(file.buffer, file.mimetype || 'application/octet-stream');
+      const extracted = await extractContractFieldsFromBuffer(
+        file.buffer,
+        file.mimetype || 'application/octet-stream',
+        file.originalname || ''
+      );
       if (extracted) {
         const learningFields = Object.fromEntries(
           Object.entries(extracted).filter(([, v]) => v !== '' && v != null)

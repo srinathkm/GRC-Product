@@ -350,11 +350,12 @@ export default function App() {
             />
           )}
           {currentView === 'contracts-upload' && (
-            <LegalOnboarding
+            <ContractsManagement
               language={language}
               parents={parentHoldingList}
-              initialModule="contracts"
-              singleModule
+              selectedParentHolding={selectedParentHolding}
+              onParentHoldingChange={setSelectedParentHolding}
+              currentView={currentView}
             />
           )}
           {currentView === 'esg' && (

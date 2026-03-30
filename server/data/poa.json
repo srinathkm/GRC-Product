@@ -1,1 +1,23 @@
-[]
+[
+  {
+    "id": "poa-1774879223946-1y7bwa",
+    "createdAt": "2026-03-30T14:00:23.945Z",
+    "updatedAt": "2026-03-30T14:00:23.945Z",
+    "opco": "SKM LLC",
+    "fileId": "TEST-POA-BANK-0001-2024",
+    "holderName": "Sara Mohammed Al-Mahmoud",
+    "poaType": "Banking",
+    "jurisdiction": "Kingdom of Saudi Arabia",
+    "signedOn": "2026-03-15",
+    "validFrom": "2026-03-15",
+    "validUntil": "2026-12-31",
+    "notarised": true,
+    "mofaStamp": false,
+    "embassyStamp": false,
+    "scope": "The Attorney-in-Fact is hereby authorised, on behalf of the Grantor, to:\n  1. Open, operate, and close current, savings, and trade-finance accounts.\n  2. Sign cheques, demand drafts, and payment instructions up to SAR 500,000\n     per transaction without further approval.\n  3. Execute wire transfers, SWIFT messages, and SADAD payment orders.\n  4. Negotiate and execute Letters of Credit (LC) and Bank Guarantees.\n  5. Receive bank statements, SWIFT confirmations, and correspondence.\n  6. Represent the Company before any bank or financial institution in KSA.\n  7. Delegate specific sub-authorities to named officers in writing.\nLIMITATIONS\n  - Does not extend to real estate mortgages or share pledges.\n  - Any single transaction exceeding SAR 500,000 requires co-signature of CFO.",
+    "parent": "First Holding Group",
+    "holderRole": "Senior Ops Lead",
+    "issuingAuthority": "KSA",
+    "notes": "**1. Current Context & Status**  \nAs of today, Sara Mohammed Al-Mahmoud, Senior Ops Lead at SKM LLC (subsidiary of First Holding Group), holds a notarised Banking Power of Attorney (POA) under fileId TEST-POA-BANK-0001-2024, issued in the Kingdom of Saudi Arabia. The POA is effective from 2026-03-15 to 2026-12-31, authorising banking operations within KSA with a transaction cap of SAR 500,000 per transaction unless co-signed by the CFO. MOFA and embassy stamping are not present.\n\n**2. Operational Impact**  \nThis POA provides Sara Mohammed Al-Mahmoud significant authority for daily banking functions—including account management, cheque signing, and trade finance—up to a SAR 500,000 threshold per transaction from 2026-03-15 to 2026-12-31. Absence of MOFA and embassy stamps may limit acceptance outside KSA banks. Transactions above said cap require CFO co-signature, introducing a compliance dependency. There is currently no real estate or share pledge scope.\n\n**3. Next Steps — Business Ops & C-Level**  \na) Business Operations: Prior to the validFrom date (2026-03-15), ensure internal teams are briefed on POA transaction limits (SAR 500,000), co-signature requirements, and sub-authority delegation processes.  \nb) C-Level/Board: It is advisable for the Board or First Holding Group to review the validity period and the lack of MOFA/embassy stamps before 2026-03-15 to confirm sufficiency for all required banking relationships and consider additional authentication if cross-border transactions are anticipated."
+  }
+]

@@ -457,14 +457,25 @@ export function ContractsManagement({ language = 'en', parents = [], selectedPar
     }
   }, [form]);
 
-  // Upload Document Contract section only: show upload in a table, separate from other content
-  if (currentView === 'contracts-upload') {
-    return (
-      <div className="lit-section">
-        <h2 className="lit-title">Upload Document Contract</h2>
-        <p className="lit-intro">
-          Upload contract documents (PDF, DOC, DOCX) to onboard new contracts. After uploading, go to Contract Lifecycle Management to complete metadata and add to the register.
-        </p>
+  const isContractsUploadView = currentView === 'contracts-upload';
+
+  // Contract Lifecycle Management
+  return (
+    <div className="lit-section">
+      <h2 className="lit-title">{isContractsUploadView ? 'Upload Document Contract' : 'Contract Lifecycle Management'}</h2>
+      <p className="lit-intro">
+        {isContractsUploadView
+          ? 'Upload a contract document and run AI extraction to auto-populate the contract form fields below, similar to POA Management.'
+          : (
+            <>
+              Central register of <strong>contracts</strong> across the group — vendor agreements, employment contracts,
+              service agreements, NDAs, leases and partnership deeds. Track <strong>obligations, deadlines, renewal windows</strong> and
+              risk exposure. Use the Upload Document Contract section to onboard contract files.
+            </>
+          )}
+      </p>
+
+      {isContractsUploadView && (
         <div className="lit-table-wrap contract-upload-table-wrap">
           <table className="lit-table contract-upload-table">
             <thead>
@@ -507,7 +518,7 @@ export function ContractsManagement({ language = 'en', parents = [], selectedPar
                   {uploadError && <p className="poa-upload-error">{uploadError}</p>}
                   {uploadedFiles.length > 0 && (
                     <div className="contract-uploaded-list-wrap">
-                      <p className="lit-intro" style={{ marginTop: '0.75rem', marginBottom: '0.5rem' }}>Uploaded files — scroll right to review:</p>
+                      <p className="lit-intro" style={{ marginTop: '0.75rem', marginBottom: '0.5rem' }}>Uploaded files — click "Use for new contract" to apply AI-extracted values into fields below:</p>
                       <div className="contract-uploaded-list" dir="ltr">
                         {uploadedFiles.map((item, idx) => (
                           <div key={item.fileId || idx} className="contract-uploaded-card">
@@ -525,20 +536,9 @@ export function ContractsManagement({ language = 'en', parents = [], selectedPar
             </tbody>
           </table>
         </div>
-      </div>
-    );
-  }
+      )}
 
-  // Contract Lifecycle Management: register, filters, form — no upload block
-  return (
-    <div className="lit-section">
-      <h2 className="lit-title">Contract Lifecycle Management</h2>
-      <p className="lit-intro">
-        Central register of <strong>contracts</strong> across the group — vendor agreements, employment contracts,
-        service agreements, NDAs, leases and partnership deeds. Track <strong>obligations, deadlines, renewal windows</strong> and
-        risk exposure. Use the Upload Document Contract section to onboard contract files.
-      </p>
-
+      {!isContractsUploadView && (
       <div className="lit-cards">
         <div className="lit-card">
           <span className="lit-card-label">Total contracts</span>
@@ -557,7 +557,9 @@ export function ContractsManagement({ language = 'en', parents = [], selectedPar
           <span className="lit-card-value">{stats.expiring}</span>
         </div>
       </div>
+      )}
 
+      {!isContractsUploadView && (
       <div className="lit-filters">
         <div className="lit-filter-row">
           <label htmlFor="con-parent-select">Parent Holding</label>
@@ -628,6 +630,7 @@ export function ContractsManagement({ language = 'en', parents = [], selectedPar
           <button type="button" className="lit-btn-secondary" onClick={() => setContractIdLookup(filterContractId)} style={{ marginLeft: '0.5rem' }}>Lookup</button>
         </div>
       </div>
+      )}
 
       <form className="lit-form" onSubmit={handleSave}>
         <div className="contract-form-header">
@@ -933,6 +936,7 @@ export function ContractsManagement({ language = 'en', parents = [], selectedPar
         </div>
       </form>
 
+      {!isContractsUploadView && (
       <section className="lit-list-section">
         <h3 className="lit-list-title">Contract register</h3>
         {visibleRecords.length === 0 ? (
@@ -1041,6 +1045,7 @@ export function ContractsManagement({ language = 'en', parents = [], selectedPar
           </div>
         )}
       </section>
+      )}
 
       {pendingSavePayload && pendingSaveDiff && (
         <div className="lit-modal-backdrop">
