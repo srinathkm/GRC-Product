@@ -224,12 +224,27 @@ export function ManagementDashboard({ onNavigateToView }) {
   const [error, setError] = useState(null);
   const [days, setDays] = useState(30);
   const [refreshing, setRefreshing] = useState(false);
+  const [selectedOpco, setSelectedOpco] = useState('');
+  const [opcoList, setOpcoList] = useState([]);
 
-  const load = useCallback((d, isRefresh = false) => {
+  // Load OpCo list once on mount
+  useEffect(() => {
+    fetch(`${API}/companies/roles`)
+      .then((r) => r.json())
+      .then((json) => {
+        const names = (json.opcos || []).map((o) => (typeof o === 'string' ? o : o.name || o)).filter(Boolean).sort();
+        setOpcoList(names);
+      })
+      .catch(() => {});
+  }, []);
+
+  const load = useCallback((d, opco, isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
     else setLoading(true);
     setError(null);
-    fetch(`${API}/dashboard/summary?days=${d}`)
+    const params = new URLSearchParams({ days: d });
+    if (opco) params.set('opco', opco);
+    fetch(`${API}/dashboard/summary?${params}`)
       .then((r) => r.json())
       .then((json) => {
         if (json.error) throw new Error(json.error);
@@ -239,9 +254,9 @@ export function ManagementDashboard({ onNavigateToView }) {
       .finally(() => { setLoading(false); setRefreshing(false); });
   }, []);
 
-  useEffect(() => { load(days); }, [days, load]);
+  useEffect(() => { load(days, selectedOpco); }, [days, selectedOpco, load]);
 
-  const handleRefresh = () => load(days, true);
+  const handleRefresh = () => load(days, selectedOpco, true);
 
   const navigate = (view) => {
     if (onNavigateToView) onNavigateToView(view);
@@ -264,7 +279,10 @@ export function ManagementDashboard({ onNavigateToView }) {
         <div>
           <h2 className="mgmt-dash-title">Management Dashboard</h2>
           <div className="mgmt-dash-subtitle">
-            Cross-portfolio compliance intelligence · {entities.totalParents} parent{entities.totalParents !== 1 ? 's' : ''} · {entities.totalOpcos} OpCos
+            {selectedOpco
+              ? <>Viewing <strong>{selectedOpco}</strong> · {entities.totalParents} parent{entities.totalParents !== 1 ? 's' : ''}</>
+              : <>Cross-portfolio compliance intelligence · {entities.totalParents} parent{entities.totalParents !== 1 ? 's' : ''} · {entities.totalOpcos} OpCos</>
+            }
           </div>
         </div>
         <div className="mgmt-dash-header-right">
@@ -276,6 +294,17 @@ export function ManagementDashboard({ onNavigateToView }) {
           <span className="mgmt-dash-last-updated">
             Updated {generatedAt ? new Date(generatedAt).toLocaleTimeString() : '—'}
           </span>
+          <select
+            className="mgmt-dash-period-select"
+            value={selectedOpco}
+            onChange={(e) => setSelectedOpco(e.target.value)}
+            aria-label="Select OpCo"
+          >
+            <option value="">All OpCos</option>
+            {opcoList.map((name) => (
+              <option key={name} value={name}>{name}</option>
+            ))}
+          </select>
           <select
             className="mgmt-dash-period-select"
             value={days}
@@ -306,7 +335,7 @@ export function ManagementDashboard({ onNavigateToView }) {
           <div className="mgmt-kpi-tile health-score" style={{ '--kpi-accent': complianceHealthScore >= 80 ? '#22c55e' : complianceHealthScore >= 60 ? '#3b82f6' : '#ef4444' }}>
             <HealthGauge score={complianceHealthScore} />
             <div className="mgmt-kpi-label" style={{ textAlign: 'center', marginTop: '0.2rem' }}>Compliance Health</div>
-            <div className="mgmt-kpi-sub" style={{ textAlign: 'center' }}>Portfolio-wide score</div>
+            <div className="mgmt-kpi-sub" style={{ textAlign: 'center' }}>{selectedOpco ? selectedOpco : 'Portfolio-wide score'}</div>
           </div>
 
           <KpiTile
@@ -338,9 +367,9 @@ export function ManagementDashboard({ onNavigateToView }) {
 
           <KpiTile
             icon="🏢"
-            value={entities.totalOpcos}
+            value={selectedOpco ? selectedOpco : entities.totalOpcos}
             label="Active Entities"
-            sub={`${entities.totalParents} parent holdings`}
+            sub={selectedOpco ? `Under ${entities.totalParents} parent holding${entities.totalParents !== 1 ? 's' : ''}` : `${entities.totalParents} parent holdings`}
             accentColor="#8b5cf6"
             onClick={() => navigate('org-overview')}
           />

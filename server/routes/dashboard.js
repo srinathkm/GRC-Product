@@ -82,6 +82,7 @@ export const dashboardRouter = Router();
 dashboardRouter.get('/summary', async (req, res) => {
   try {
     const days = parseInt(req.query.days, 10) || 30;
+    const selectedOpco = (req.query.opco || '').trim();
     const now = new Date();
     const today = now.toISOString().slice(0, 10);
 
@@ -98,6 +99,9 @@ dashboardRouter.get('/summary', async (req, res) => {
         safeRead(paths.contracts, []),
         safeRead(paths.feedMeta, null),
       ]);
+
+    // ── OpCo filter helper ─────────────────────────────────────────────────
+    const matchOpco = (val) => !selectedOpco || (val || '').toLowerCase() === selectedOpco.toLowerCase();
 
     const changes = normalizeDates(changesRaw);
 
@@ -116,8 +120,33 @@ dashboardRouter.get('/summary', async (req, res) => {
       if (row.opco) opcoSet.add(row.opco);
     }
 
+    // When filtering by OpCo, resolve its parent from companies data
+    let filteredParentSet = parentSet;
+    let filteredOpcoSet = opcoSet;
+    if (selectedOpco) {
+      const resolvedParent = new Set();
+      for (const fw of Object.values(companies)) {
+        if (!Array.isArray(fw)) continue;
+        for (const { parent, companies: cos } of fw) {
+          if ((cos || []).some((co) => (co || '').toLowerCase() === selectedOpco.toLowerCase())) {
+            if (parent) resolvedParent.add(parent);
+          }
+        }
+      }
+      for (const row of onboarding) {
+        if ((row.opco || '').toLowerCase() === selectedOpco.toLowerCase() && row.parent) {
+          resolvedParent.add(row.parent);
+        }
+      }
+      filteredParentSet = resolvedParent;
+      filteredOpcoSet = new Set([selectedOpco]);
+    }
+
     // ── Regulatory changes ─────────────────────────────────────────────────
-    const recentChanges = changes.filter((c) => isWithinDays(c.date, days));
+    const allRecentChanges = changes.filter((c) => isWithinDays(c.date, days));
+    const recentChanges = selectedOpco
+      ? allRecentChanges.filter((c) => (c.affectedCompanies || []).some((co) => (co || '').toLowerCase() === selectedOpco.toLowerCase()))
+      : allRecentChanges;
     const frameworkCounts = {};
     for (const c of recentChanges) {
       const fw = c.framework || 'Other';
@@ -140,7 +169,7 @@ dashboardRouter.get('/summary', async (req, res) => {
       .map(([framework, count]) => ({ framework, count }));
 
     // ── POA expiry ─────────────────────────────────────────────────────────
-    const activePoa = poa.filter((p) => !p.revoked);
+    const activePoa = poa.filter((p) => !p.revoked && matchOpco(p.opco));
     const expiringPoa = activePoa.filter((p) => isExpiringWithin(p.validUntil, 60));
     const expiredPoa = activePoa.filter((p) => isExpired(p.validUntil));
 
@@ -160,7 +189,7 @@ dashboardRouter.get('/summary', async (req, res) => {
       }));
 
     // ── Licence expiry ─────────────────────────────────────────────────────
-    const activeLicences = licences.filter((l) => l.status !== 'Revoked' && l.status !== 'Cancelled');
+    const activeLicences = licences.filter((l) => l.status !== 'Revoked' && l.status !== 'Cancelled' && matchOpco(l.opco));
     const expiringLicences = activeLicences.filter((l) => isExpiringWithin(l.expiryDate, 60));
     const expiredLicences = activeLicences.filter((l) => isExpired(l.expiryDate));
 
@@ -179,7 +208,7 @@ dashboardRouter.get('/summary', async (req, res) => {
       }));
 
     // ── Contract expiry ────────────────────────────────────────────────────
-    const activeContracts = contracts.filter((c) => c.status === 'Active' || !c.status);
+    const activeContracts = contracts.filter((c) => (c.status === 'Active' || !c.status) && matchOpco(c.opco));
     const expiringContracts = activeContracts.filter((c) => isExpiringWithin(c.expiryDate, 60));
     const expiredContracts = activeContracts.filter((c) => isExpired(c.expiryDate));
 
@@ -205,14 +234,14 @@ dashboardRouter.get('/summary', async (req, res) => {
 
     // ── Litigations ────────────────────────────────────────────────────────
     const activeLitigations = litigations.filter(
-      (l) => !['Closed', 'Settled', 'Dismissed'].includes(l.status),
+      (l) => !['Closed', 'Settled', 'Dismissed'].includes(l.status) && matchOpco(l.opco),
     );
     const highRiskLitigations = activeLitigations.filter(
       (l) => l.riskLevel === 'High' || l.riskLevel === 'Critical',
     );
 
     // ── IP assets ──────────────────────────────────────────────────────────
-    const activeIp = ip.filter((a) => a.status !== 'Expired' && a.status !== 'Abandoned');
+    const activeIp = ip.filter((a) => a.status !== 'Expired' && a.status !== 'Abandoned' && matchOpco(a.opco));
 
     // ── OpCo alert heat map (top 8 OpCos by total change exposure) ─────────
     const opcoChangeCounts = {};
@@ -235,11 +264,14 @@ dashboardRouter.get('/summary', async (req, res) => {
     res.json({
       generatedAt: now.toISOString(),
       periodDays: days,
+      selectedOpco: selectedOpco || null,
 
       entities: {
-        totalParents: parentSet.size,
-        totalOpcos: opcoSet.size,
-        onboardedOpcos: onboarding.length,
+        totalParents: filteredParentSet.size,
+        totalOpcos: filteredOpcoSet.size,
+        onboardedOpcos: selectedOpco
+          ? onboarding.filter((r) => (r.opco || '').toLowerCase() === selectedOpco.toLowerCase()).length
+          : onboarding.length,
       },
 
       regulatoryChanges: {
