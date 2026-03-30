@@ -317,7 +317,7 @@
 
 .ubo-summary-card.ubo-summary-total {
   border-color: var(--accent);
-  background: rgba(59, 130, 246, 0.08);
+  background: rgba(212, 114, 92, 0.08);
 }
 
 .ubo-summary-value {
@@ -544,7 +544,7 @@
   flex-shrink: 0;
 }
 
-.ubo-holding-pill-0 { background: rgba(59, 130, 246, 0.2);  color: #1d4ed8; border: 1px solid rgba(59, 130, 246, 0.4); }
+.ubo-holding-pill-0 { background: rgba(212, 114, 92, 0.2);  color: #1d4ed8; border: 1px solid rgba(212, 114, 92, 0.4); }
 .ubo-holding-pill-1 { background: rgba(34, 197, 94, 0.2);  color: #15803d; border: 1px solid rgba(34, 197, 94, 0.4); }
 .ubo-holding-pill-2 { background: rgba(234, 179, 8, 0.25); color: #a16207; border: 1px solid rgba(234, 179, 8, 0.5); }
 .ubo-holding-pill-3 { background: rgba(168, 85, 247, 0.2);  color: #6b21a8; border: 1px solid rgba(168, 85, 247, 0.4); }
@@ -813,7 +813,7 @@
 .ubo-structure-badge {
   font-size: 0.75rem;
   padding: 0.2rem 0.5rem;
-  background: rgba(59, 130, 246, 0.15);
+  background: rgba(212, 114, 92, 0.15);
   color: var(--accent);
   border-radius: 4px;
 }
@@ -876,12 +876,12 @@
 
 .ubo-structure-card:hover {
   border-color: var(--accent);
-  background: rgba(59, 130, 246, 0.06);
+  background: rgba(212, 114, 92, 0.06);
 }
 
 .ubo-structure-card.ubo-structure-card-selected {
   border-color: var(--accent);
-  background: rgba(59, 130, 246, 0.1);
+  background: rgba(212, 114, 92, 0.1);
 }
 
 .ubo-structure-card-multi.ubo-structure-card-selected {
@@ -952,7 +952,7 @@
 
 .ubo-structure-viz-root.ubo-structure-viz-highlight {
   border-color: var(--accent);
-  background: rgba(59, 130, 246, 0.1);
+  background: rgba(212, 114, 92, 0.1);
   box-shadow: 0 0 0 1px var(--accent);
 }
 
@@ -1006,12 +1006,12 @@
 
 .ubo-structure-viz-opco:hover {
   border-color: var(--accent);
-  background: rgba(59, 130, 246, 0.06);
+  background: rgba(212, 114, 92, 0.06);
 }
 
 .ubo-structure-viz-opco.ubo-structure-viz-opco-selected {
   border-color: var(--accent);
-  background: rgba(59, 130, 246, 0.12);
+  background: rgba(212, 114, 92, 0.12);
   box-shadow: 0 0 0 1px var(--accent);
 }
 
@@ -1081,7 +1081,7 @@
 
 .ubo-structure-viz-parent.ubo-structure-viz-highlight {
   border-color: var(--accent);
-  background: rgba(59, 130, 246, 0.08);
+  background: rgba(212, 114, 92, 0.08);
   color: var(--text);
 }
 
@@ -1545,7 +1545,7 @@
   font-size: 0.75rem;
   font-weight: 500;
   padding: 0.2rem 0.5rem;
-  background: rgba(59, 130, 246, 0.15);
+  background: rgba(212, 114, 92, 0.15);
   color: var(--accent);
   border-radius: 4px;
 }
@@ -1588,7 +1588,7 @@
 .ubo-download-doc-note {
   margin-top: 1rem;
   padding: 0.6rem 0.75rem;
-  background: rgba(59, 130, 246, 0.08);
+  background: rgba(212, 114, 92, 0.08);
   border-radius: 6px;
   font-size: 0.85rem;
   color: var(--text-muted);
@@ -1598,7 +1598,7 @@
 .ubo-view-summary-bar {
   display: flex;
   gap: 0;
-  background: rgba(59,130,246,0.06);
+  background: rgba(212, 114, 92,0.06);
   border: 1px solid var(--border);
   border-radius: 8px;
   margin-bottom: 1.25rem;
@@ -1825,8 +1825,8 @@
   gap: 0.3rem;
 }
 .ubo-placeholder-chip {
-  background: rgba(59,130,246,0.12);
-  border: 1px solid rgba(59,130,246,0.25);
+  background: rgba(212, 114, 92,0.12);
+  border: 1px solid rgba(212, 114, 92,0.25);
   border-radius: 4px;
   padding: 0.1rem 0.4rem;
   font-size: 0.78rem;

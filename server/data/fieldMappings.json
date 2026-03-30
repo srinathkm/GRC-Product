@@ -1,1 +1,158 @@
-{}
+{
+  "poa": {
+    "_count": 1,
+    "opco": {
+      "count": 1,
+      "labels": [
+        "Company"
+      ],
+      "valueExamples": [
+        {
+          "label": "Company",
+          "value": "SKM LLC"
+        }
+      ],
+      "avgConfidence": 1
+    },
+    "fileId": {
+      "count": 1,
+      "labels": [
+        "Reference No."
+      ],
+      "valueExamples": [
+        {
+          "label": "Reference No.",
+          "value": "TEST-POA-GOVT-0001-2024"
+        }
+      ],
+      "avgConfidence": 1
+    },
+    "holderName": {
+      "count": 1,
+      "labels": [
+        "Name"
+      ],
+      "valueExamples": [
+        {
+          "label": "Name",
+          "value": "Sara Mohammed Al-Mahmoud"
+        }
+      ],
+      "avgConfidence": 1
+    },
+    "poaType": {
+      "count": 1,
+      "labels": [
+        "POWER OF ATTORNEY - GOVERNMENT & REGULATORY AFFAIRS"
+      ],
+      "valueExamples": [
+        {
+          "label": "POWER OF ATTORNEY - GOVERNMENT & REGULATORY AFFAIRS",
+          "value": "Government"
+        }
+      ],
+      "avgConfidence": 1
+    },
+    "jurisdiction": {
+      "count": 1,
+      "labels": [
+        "Jurisdiction"
+      ],
+      "valueExamples": [
+        {
+          "label": "Jurisdiction",
+          "value": "Kingdom of Saudi Arabia"
+        }
+      ],
+      "avgConfidence": 1
+    },
+    "signedOn": {
+      "count": 1,
+      "labels": [
+        "Date"
+      ],
+      "valueExamples": [
+        {
+          "label": "Date",
+          "value": "2026-03-15"
+        }
+      ],
+      "avgConfidence": 1
+    },
+    "validFrom": {
+      "count": 1,
+      "labels": [
+        "Effective"
+      ],
+      "valueExamples": [
+        {
+          "label": "Effective",
+          "value": "2026-03-15"
+        }
+      ],
+      "avgConfidence": 1
+    },
+    "validUntil": {
+      "count": 1,
+      "labels": [
+        "Expiry"
+      ],
+      "valueExamples": [
+        {
+          "label": "Expiry",
+          "value": "2025-12-31"
+        }
+      ],
+      "avgConfidence": 1
+    },
+    "notarised": {
+      "count": 1,
+      "labels": [
+        "NOTARISATION"
+      ],
+      "valueExamples": [
+        {
+          "label": "NOTARISATION",
+          "value": "true"
+        }
+      ],
+      "avgConfidence": 1
+    },
+    "mofaStamp": {
+      "count": 1,
+      "labels": [],
+      "valueExamples": [
+        {
+          "label": "",
+          "value": "false"
+        }
+      ],
+      "avgConfidence": 1
+    },
+    "embassyStamp": {
+      "count": 1,
+      "labels": [],
+      "valueExamples": [
+        {
+          "label": "",
+          "value": "false"
+        }
+      ],
+      "avgConfidence": 1
+    },
+    "scope": {
+      "count": 1,
+      "labels": [
+        "scope/notes section"
+      ],
+      "valueExamples": [
+        {
+          "label": "scope/notes section",
+          "value": "SCOPE OF AUTHORITY\n  1. Submit and collect commercial registration documents from MISA, MCI (KSA),\n     and MOCIIP (Oman"
+        }
+      ],
+      "avgConfidence": 0.85
+    }
+  },
+  "_updatedAt": "2026-03-30T13:01:14.531Z"
+}

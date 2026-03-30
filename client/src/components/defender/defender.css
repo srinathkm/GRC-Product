@@ -57,8 +57,8 @@
 
 .defender-upload-dropzone:hover,
 .defender-upload-dropzone-active {
-  border-color: var(--accent, #0d6efd);
-  background: rgba(13, 110, 253, 0.05);
+  border-color: var(--accent, #d4725c);
+  background: rgba(212, 114, 92, 0.06);
 }
 
 .defender-upload-input-hidden {

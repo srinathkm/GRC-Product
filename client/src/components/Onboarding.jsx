@@ -834,6 +834,12 @@ export function Onboarding({ language = 'en', onOpcoAdded, onApplicableFramework
   };
 
   const handleAnalyzeDocuments = async () => {
+    const applyAnalyzedLocations = (extractedLocations) => {
+      if (!Array.isArray(extractedLocations) || extractedLocations.length === 0) return;
+      // Analyze should actively set the Location dropdown from certificate heading intelligence.
+      setLocations([...new Set(extractedLocations)]);
+    };
+
     if (documentUploadMode === 'application') {
       const linkRaw = uploadLinks['regional-branch-licence'] || '';
       const urls = linkRaw.trim().split(/[\n\s]+/).filter(Boolean);
@@ -854,10 +860,7 @@ export function Onboarding({ language = 'en', onOpcoAdded, onApplicableFramework
         const sectorData = sectorRes.ok ? await sectorRes.json() : {};
         const extractedLocations = Array.isArray(locData.locations) ? locData.locations : [];
         const extractedSectors = Array.isArray(sectorData.sectors) ? sectorData.sectors : [];
-        setLocations((prev) => {
-          const combined = [...new Set([...extractedLocations, ...prev])];
-          return combined.length ? combined : prev;
-        });
+        applyAnalyzedLocations(extractedLocations);
         if (extractedSectors.length > 0) {
           setSectorOfOperations((prev) => [...new Set([...extractedSectors, ...prev])]);
         }
@@ -885,10 +888,7 @@ export function Onboarding({ language = 'en', onOpcoAdded, onApplicableFramework
       const sectorData = sectorRes.ok ? await sectorRes.json() : {};
       const extractedLocations = Array.isArray(locData.locations) ? locData.locations : [];
       const extractedSectors = Array.isArray(sectorData.sectors) ? sectorData.sectors : [];
-      setLocations((prev) => {
-        const combined = [...new Set([...extractedLocations, ...prev])];
-        return combined.length ? combined : prev;
-      });
+      applyAnalyzedLocations(extractedLocations);
       if (extractedSectors.length > 0) {
         setSectorOfOperations((prev) => [...new Set([...extractedSectors, ...prev])]);
       }
@@ -1293,10 +1293,10 @@ export function Onboarding({ language = 'en', onOpcoAdded, onApplicableFramework
       {/* ── Modals ── */}
 
       {uboCertRequiredModal && (
-        <div className="onboarding-modal-backdrop" role="dialog" aria-modal="true">
+        <div className="onboarding-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="ubo-cert-required-title">
           <div className="onboarding-modal">
             <div className="onboarding-modal-header">
-              <h4 className="onboarding-modal-title">UBO Certificate Number required</h4>
+              <h4 id="ubo-cert-required-title" className="onboarding-modal-title">UBO Certificate Number required</h4>
               <button
                 type="button"
                 className="onboarding-modal-close"
@@ -1328,10 +1328,10 @@ export function Onboarding({ language = 'en', onOpcoAdded, onApplicableFramework
       )}
 
       {locationsModal && (
-        <div className="onboarding-modal-backdrop" role="dialog" aria-modal="true">
+        <div className="onboarding-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="locations-modal-title">
           <div className="onboarding-modal">
             <div className="onboarding-modal-header">
-              <h4 className="onboarding-modal-title">Locations from Regional Branch Commercial Licence</h4>
+              <h4 id="locations-modal-title" className="onboarding-modal-title">Locations from Regional Branch Commercial Licence</h4>
               <button
                 type="button"
                 className="onboarding-modal-close"
@@ -1369,10 +1369,10 @@ export function Onboarding({ language = 'en', onOpcoAdded, onApplicableFramework
       )}
 
       {frameworksModalOpen && (
-        <div className="onboarding-modal-backdrop" role="dialog" aria-modal="true">
+        <div className="onboarding-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="frameworks-modal-title">
           <div className="onboarding-modal onboarding-modal-frameworks">
             <div className="onboarding-modal-header">
-              <h4 className="onboarding-modal-title">Applicable governance frameworks</h4>
+              <h4 id="frameworks-modal-title" className="onboarding-modal-title">Applicable governance frameworks</h4>
               <button
                 type="button"
                 className="onboarding-modal-close"
@@ -1408,10 +1408,10 @@ export function Onboarding({ language = 'en', onOpcoAdded, onApplicableFramework
       )}
 
       {frameworksConfirmModal && (
-        <div className="onboarding-modal-backdrop" role="dialog" aria-modal="true">
+        <div className="onboarding-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="frameworks-confirm-title">
           <div className="onboarding-modal onboarding-modal-frameworks">
             <div className="onboarding-modal-header">
-              <h4 className="onboarding-modal-title">Frameworks to be added for this organization</h4>
+              <h4 id="frameworks-confirm-title" className="onboarding-modal-title">Frameworks to be added for this organization</h4>
               <button
                 type="button"
                 className="onboarding-modal-close"
@@ -1454,10 +1454,10 @@ export function Onboarding({ language = 'en', onOpcoAdded, onApplicableFramework
       )}
 
       {extractedMemberDetailsModal && extractedMemberDetailsModal.length > 0 && (
-        <div className="onboarding-modal-backdrop" role="dialog" aria-modal="true">
+        <div className="onboarding-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="member-details-title">
           <div className="onboarding-modal">
             <div className="onboarding-modal-header">
-              <h4 className="onboarding-modal-title">Extracted member details</h4>
+              <h4 id="member-details-title" className="onboarding-modal-title">Extracted member details</h4>
               <button
                 type="button"
                 className="onboarding-modal-close"
@@ -1512,10 +1512,10 @@ export function Onboarding({ language = 'en', onOpcoAdded, onApplicableFramework
       )}
 
       {existingLinkModal && (
-        <div className="onboarding-modal-backdrop" role="dialog" aria-modal="true">
+        <div className="onboarding-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="existing-link-title">
           <div className="onboarding-modal">
             <div className="onboarding-modal-header">
-              <h4 className="onboarding-modal-title">Existing relationship detected</h4>
+              <h4 id="existing-link-title" className="onboarding-modal-title">Existing relationship detected</h4>
               <button
                 type="button"
                 className="onboarding-modal-close"

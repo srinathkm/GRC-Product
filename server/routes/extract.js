@@ -79,12 +79,25 @@ function validateModule(module, res) {
 }
 
 async function processFile(file, moduleType, only) {
-  const text = await extractTextFromBuffer(file.buffer, file.mimetype);
+  const text = await extractTextFromBuffer(file.buffer, file.mimetype, file.originalname);
+  if (!text || !text.trim()) {
+    return {
+      filename: file.originalname,
+      fields: {},
+      warning: 'No readable text was extracted from the file. You can still fill fields manually.',
+    };
+  }
   const { fields, rawResponse, error } = await extractDocumentFields(
     text, moduleType, { filename: file.originalname, only }
   );
 
-  if (error) return { filename: file.originalname, fields: {}, error };
+  if (error) {
+    return {
+      filename: file.originalname,
+      fields: {},
+      warning: error,
+    };
+  }
 
   // Record into learning store (fire-and-forget — don't block response)
   recordExtraction(moduleType, fields).catch(() => {});

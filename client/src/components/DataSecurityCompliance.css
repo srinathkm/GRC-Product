@@ -105,8 +105,8 @@
 }
 
 .data-security-medium {
-  background: rgba(59, 130, 246, 0.1);
-  border-color: rgba(59, 130, 246, 0.4);
+  background: rgba(212, 114, 92, 0.1);
+  border-color: rgba(212, 114, 92, 0.4);
 }
 
 .data-security-medium.data-security-card-selected {
@@ -280,7 +280,7 @@
 }
 
 .data-security-severity-medium {
-  background: rgba(59, 130, 246, 0.2);
+  background: rgba(212, 114, 92, 0.2);
   color: var(--accent);
 }
 

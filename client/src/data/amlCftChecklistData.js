@@ -739,3 +739,349 @@ export const AML_CFT_DOMAINS = [
 export const AML_CFT_ALL_ITEMS = AML_CFT_DOMAINS.flatMap((d) =>
   d.items.map((item) => ({ ...item, domainId: d.id, domainLabel: d.domain }))
 );
+
+/**
+ * Kuwait AML/CFT Compliance Checklist — internal benchmarks.
+ *
+ * For now, Kuwait benchmarks reuse the same 17-domain structure as the UAE
+ * checklist, with Kuwait-specific wording and regulatory references applied.
+ * (Each item id is prefixed with `KWT-` to keep state separated from UAE.)
+ */
+function transformUaeTextToKuwait(text) {
+  let s = String(text ?? '');
+
+  // Core geography / jurisdiction terms
+  s = s.replace(/\bUAE\b/gi, 'Kuwait');
+  s = s.replace(/United Arab Emirates/gi, 'State of Kuwait');
+
+  // Core authorities / systems
+  s = s.replace(/\bUAEFIU\b/gi, 'FIU Kuwait');
+  s = s.replace(/\bCBUAE\b/gi, 'Central Bank of Kuwait');
+  s = s.replace(/\bgoAML\b/gi, 'Kuwait FIU electronic reporting system (to be confirmed)');
+
+  // Typical UAE-specific document/citation fragments
+  s = s.replace(/FDL\s*20\/2018/gi, 'Kuwait AML Law (Law No. 106 of 2013) (to be confirmed)');
+  s = s.replace(/Cab\.\s*Dec\.\s*10\/2019/gi, 'Kuwait implementing regulations / FIU guidance (to be confirmed)');
+  s = s.replace(/Cab\.\s*Dec\./gi, 'Kuwait implementing regulations / FIU guidance (to be confirmed)');
+
+  // Threshold placeholders
+  s = s.replace(/AED\s*55,000/gi, 'KWD cash reporting threshold (to be confirmed)');
+
+  // Common UAE-ID phrasing
+  s = s.replace(/Emirates ID/gi, 'Kuwait civil ID / passport');
+
+  // Keep FATF references as-is; replace other UAE regulators with generic Kuwait authorities.
+  s = s.replace(/\bDFSA\b/gi, 'Kuwait securities / financial regulator (to be confirmed)');
+  s = s.replace(/\bADGM\b/gi, 'Kuwait competent authorities (to be confirmed)');
+  s = s.replace(/\bSCA\b/gi, 'Kuwait competent authorities (to be confirmed)');
+  s = s.replace(/\bUAE Local Terrorist List\b/gi, 'Kuwait Local Terrorist List');
+
+  return s;
+}
+
+export const AML_CFT_DOMAINS_KUWAIT = AML_CFT_DOMAINS.map((d) => ({
+  ...d,
+  id: `KWT-${d.id}`,
+  domain: transformUaeTextToKuwait(d.domain),
+  items: d.items.map((it) => ({
+    ...it,
+    id: `KWT-${it.id}`,
+    control: transformUaeTextToKuwait(it.control),
+    evidence: transformUaeTextToKuwait(it.evidence),
+    regulatoryRef: transformUaeTextToKuwait(it.regulatoryRef),
+  })),
+}));
+
+/** Flat list of all Kuwait items for easy lookup by ID */
+export const AML_CFT_ALL_ITEMS_KUWAIT = AML_CFT_DOMAINS_KUWAIT.flatMap((d) =>
+  d.items.map((item) => ({ ...item, domainId: d.id, domainLabel: d.domain }))
+);
+
+const DOMAIN_LIBRARY = {
+  financial: [
+    { id: 'GOV', domain: 'Governance & Accountability', controls: [
+      ['Board-approved compliance framework and annual attestations are in place', true, 'Annual'],
+      ['Senior compliance officer appointment, independence, and reporting lines are documented', true, 'On change / Annual'],
+      ['Roles and responsibilities across first, second, and third lines are formally defined', false, 'Annual'],
+      ['Material compliance issues are escalated to senior management within defined SLAs', true, 'Ongoing'],
+    ]},
+    { id: 'RISK', domain: 'Regulatory Risk Assessment', controls: [
+      ['Enterprise compliance risk assessment is documented and refreshed for material changes', true, 'Annual / On change'],
+      ['Risk taxonomy covers products, clients, channels, geography, and outsourcing', false, 'Annual'],
+      ['High-risk activities have enhanced controls and pre-approval requirements', true, 'Ongoing'],
+      ['Risk scoring methodology and residual risk treatment are evidenced', false, 'Annual'],
+    ]},
+    { id: 'CTRL', domain: 'Control Execution & Surveillance', controls: [
+      ['Mandatory preventive controls are embedded into onboarding and transaction workflows', true, 'Ongoing'],
+      ['Exception handling, overrides, and maker-checker controls are logged and reviewed', true, 'Monthly'],
+      ['Automated surveillance/scenario rules are tuned and validated periodically', false, 'Quarterly'],
+      ['Control breaches trigger documented investigation and root-cause analysis', true, 'Per event'],
+    ]},
+    { id: 'RPT', domain: 'Regulatory Reporting & Notifications', controls: [
+      ['Statutory returns and regulatory notifications are submitted accurately and on time', true, 'Per deadline'],
+      ['Regulator requests are tracked with accountable owner and closure evidence', true, 'Per request'],
+      ['Late filing and breach registers are maintained with remediation actions', false, 'Monthly'],
+      ['Management information includes timeliness, quality, and breach metrics', false, 'Monthly'],
+    ]},
+    { id: 'DOC', domain: 'Documentation & Record Retention', controls: [
+      ['Policies, SOPs, and control standards are version-controlled and approved', false, 'Annual'],
+      ['Evidence is retained in retrievable form per local retention requirements', true, 'Ongoing'],
+      ['Critical decisions and approvals are supported by complete audit trails', true, 'Ongoing'],
+      ['Third-party and intercompany compliance obligations are contractually documented', false, 'Annual'],
+    ]},
+    { id: 'AUD', domain: 'Independent Assurance & Remediation', controls: [
+      ['Independent compliance testing/audit plan covers high-risk obligations', true, 'Annual'],
+      ['Findings are risk-rated with accountable owners and due dates', false, 'Per cycle'],
+      ['High/Critical findings are escalated and tracked to validated closure', true, 'Monthly'],
+      ['Lessons learned are incorporated into policies, controls, and training', false, 'Quarterly'],
+    ]},
+  ],
+  corporate: [
+    { id: 'GOV', domain: 'Corporate Governance', controls: [
+      ['Constitutional documents, delegated authorities, and governance approvals are current', true, 'Annual'],
+      ['Board and committee governance calendar is maintained and executed', false, 'Quarterly'],
+      ['Conflict-of-interest declarations are completed and reviewed', false, 'Annual'],
+      ['Material corporate actions follow formal approval workflows', true, 'Per event'],
+    ]},
+    { id: 'LIC', domain: 'Licensing & Entity Administration', controls: [
+      ['Commercial licences and permits are valid, renewed, and conditions tracked', true, 'Monthly'],
+      ['Regulatory filings for entity changes are submitted within statutory timelines', true, 'Per event'],
+      ['Branch/free-zone/mainland legal structure is reflected in operational controls', false, 'Annual'],
+      ['Authorised signatory matrix aligns with licence scope and legal mandates', true, 'On change'],
+    ]},
+    { id: 'OPS', domain: 'Operational Compliance', controls: [
+      ['Mandatory legal notices, registers, and statutory books are maintained', true, 'Quarterly'],
+      ['Contract templates include mandatory local law and regulatory clauses', false, 'Annual'],
+      ['Material outsourcing arrangements include compliance obligations and audit rights', false, 'Annual'],
+      ['Breach incidents are logged and resolved with preventive actions', true, 'Per event'],
+    ]},
+    { id: 'RPT', domain: 'Authority Interaction & Reporting', controls: [
+      ['Authority submissions and renewals are filed accurately and on time', true, 'Per deadline'],
+      ['Inspection requests are tracked and responded to with evidence packs', true, 'Per request'],
+      ['Regulatory commitments are monitored to completion', true, 'Monthly'],
+      ['Management receives periodic status on filing and inspection readiness', false, 'Monthly'],
+    ]},
+    { id: 'DOC', domain: 'Records & Legal Evidence', controls: [
+      ['Core legal records are retained as per jurisdictional retention periods', true, 'Ongoing'],
+      ['Document repositories support rapid retrieval for audit/inspection', false, 'Quarterly'],
+      ['Arabic/English official documents are controlled for consistency where required', false, 'Annual'],
+      ['Corporate minute books and resolutions are complete and signed', true, 'Quarterly'],
+    ]},
+    { id: 'AUD', domain: 'Compliance Monitoring', controls: [
+      ['Internal compliance reviews cover licence conditions and statutory obligations', true, 'Annual'],
+      ['Findings and remediation actions are logged with owner and timeline', false, 'Per review'],
+      ['Critical non-compliance events are escalated to management immediately', true, 'Per event'],
+      ['Recurring issues trigger process redesign and control hardening', false, 'Quarterly'],
+    ]},
+  ],
+  data: [
+    { id: 'GOV', domain: 'Data Governance & Accountability', controls: [
+      ['Data governance policy and accountable officer are formally appointed', true, 'Annual'],
+      ['Data classification and ownership are documented across critical systems', true, 'Annual'],
+      ['Cross-border and third-party data handling obligations are defined', true, 'Annual'],
+      ['Governance committee reviews high-risk data decisions and incidents', false, 'Quarterly'],
+    ]},
+    { id: 'PRV', domain: 'Privacy & Lawful Processing', controls: [
+      ['Personal data processing has lawful basis and purpose limitation controls', true, 'Ongoing'],
+      ['Consent/notice mechanisms are documented and auditable where required', false, 'Ongoing'],
+      ['Data subject rights process is operational with SLA tracking', true, 'Monthly'],
+      ['Retention and deletion schedules are enforced', true, 'Quarterly'],
+    ]},
+    { id: 'SEC', domain: 'Information Security Controls', controls: [
+      ['Access control, authentication, and privileged access reviews are enforced', true, 'Quarterly'],
+      ['Encryption and secure transmission controls are applied to sensitive data', true, 'Ongoing'],
+      ['Vulnerability management and patching SLAs are monitored', true, 'Monthly'],
+      ['Security logging and monitoring detect unauthorized access', true, 'Ongoing'],
+    ]},
+    { id: 'IR', domain: 'Incident Response & Breach Management', controls: [
+      ['Data/security incident response plan is approved and tested', true, 'Annual'],
+      ['Incidents are classified, investigated, and tracked to closure', true, 'Per event'],
+      ['Regulatory and stakeholder notification obligations are mapped and met', true, 'Per event'],
+      ['Post-incident lessons learned drive control improvements', false, 'Per event'],
+    ]},
+    { id: 'TPR', domain: 'Third-Party & Outsourcing Data Controls', controls: [
+      ['Vendor due diligence evaluates privacy/security controls before onboarding', true, 'Per onboarding'],
+      ['Contracts include data protection clauses, breach notices, and audit rights', true, 'Per contract'],
+      ['Third-party assurance evidence is collected and reviewed periodically', false, 'Annual'],
+      ['Shared-service processing activities are documented and risk-assessed', false, 'Annual'],
+    ]},
+    { id: 'AUD', domain: 'Assurance, Training & Continuous Compliance', controls: [
+      ['Periodic privacy/security compliance testing is performed independently', true, 'Annual'],
+      ['Mandatory role-based training completion is tracked and enforced', false, 'Annual'],
+      ['Control deficiencies have remediation plans with accountable owners', true, 'Monthly'],
+      ['Compliance dashboard includes KRIs, breaches, and remediation progress', false, 'Monthly'],
+    ]},
+  ],
+  strategy: [
+    { id: 'GOV', domain: 'Strategy Governance', controls: [
+      ['Strategic program governance and accountable sponsors are documented', true, 'Annual'],
+      ['Program objectives are mapped to regulator/authority expectations', false, 'Annual'],
+      ['Portfolio steering cadence and decisions are minuted', false, 'Quarterly'],
+      ['Critical strategic risks are escalated to executive governance', true, 'Quarterly'],
+    ]},
+    { id: 'PLAN', domain: 'Implementation Planning & Resourcing', controls: [
+      ['Roadmaps, milestones, and dependencies are baselined and approved', true, 'Quarterly'],
+      ['Resource plans and budget controls support execution commitments', false, 'Quarterly'],
+      ['Inter-entity operating model (parent/opco) responsibilities are clear', false, 'Annual'],
+      ['Material plan variances trigger corrective action workflows', true, 'Monthly'],
+    ]},
+    { id: 'KPI', domain: 'KPI Measurement & Outcomes', controls: [
+      ['KPIs are defined with owners, targets, and evidence sources', true, 'Quarterly'],
+      ['Progress reporting uses validated data with auditability', true, 'Monthly'],
+      ['Underperformance thresholds and escalation triggers are predefined', true, 'Monthly'],
+      ['Program benefits realization is tracked and reviewed', false, 'Quarterly'],
+    ]},
+    { id: 'RISK', domain: 'Risk, Compliance & Sustainability Alignment', controls: [
+      ['Strategic initiatives include compliance-by-design checkpoints', true, 'Per initiative'],
+      ['Risk assessments cover legal, operational, cyber, and reputational impacts', true, 'Quarterly'],
+      ['Sustainability and resilience obligations are integrated into delivery', false, 'Annual'],
+      ['Independent challenge function reviews strategic control quality', false, 'Annual'],
+    ]},
+    { id: 'RPT', domain: 'Public/Authority Reporting & Transparency', controls: [
+      ['Program disclosures and authority reporting are timely and accurate', true, 'Per deadline'],
+      ['Evidence packs support reported progress metrics', false, 'Monthly'],
+      ['External stakeholder communications follow approval controls', false, 'Per release'],
+      ['Non-compliance in disclosures is remediated with root-cause analysis', true, 'Per event'],
+    ]},
+    { id: 'AUD', domain: 'Assurance & Improvement', controls: [
+      ['Periodic assurance reviews test strategic delivery controls', false, 'Annual'],
+      ['Findings are risk-rated and tracked to closure', false, 'Per review'],
+      ['High/Critical deficiencies have accelerated remediation', true, 'Monthly'],
+      ['Control lessons learned are embedded into next planning cycle', false, 'Annual'],
+    ]},
+  ],
+  esg: [
+    { id: 'GOV', domain: 'ESG Governance & Accountability', controls: [
+      ['ESG governance structure and board oversight are documented', true, 'Annual'],
+      ['ESG policy set and role-based accountability are approved', true, 'Annual'],
+      ['Material ESG risks are integrated into enterprise governance', false, 'Quarterly'],
+      ['Compliance obligations for ESG disclosures are assigned', true, 'Annual'],
+    ]},
+    { id: 'MAT', domain: 'Materiality & Risk Assessment', controls: [
+      ['Materiality methodology is documented and periodically refreshed', true, 'Annual'],
+      ['Stakeholder input and sector context are evidenced in materiality outcomes', false, 'Annual'],
+      ['Climate, social, and governance risks are assessed with clear owners', true, 'Annual'],
+      ['Materiality changes trigger KPI and disclosure updates', false, 'On change'],
+    ]},
+    { id: 'DATA', domain: 'ESG Data Quality & Controls', controls: [
+      ['ESG data dictionary, lineage, and ownership are defined', true, 'Annual'],
+      ['Data collection controls include validation and reconciliation checks', true, 'Quarterly'],
+      ['Manual adjustments are logged with approval and rationale', false, 'Monthly'],
+      ['Evidence for reported ESG metrics is retained and retrievable', true, 'Ongoing'],
+    ]},
+    { id: 'TGT', domain: 'Targets, Programs & Monitoring', controls: [
+      ['ESG targets are approved, measurable, and time-bound', false, 'Annual'],
+      ['Program delivery plans map initiatives to targets and owners', false, 'Quarterly'],
+      ['Performance against targets is monitored and escalated when off-track', true, 'Monthly'],
+      ['Corrective actions for underperformance are tracked to closure', true, 'Monthly'],
+    ]},
+    { id: 'DISC', domain: 'Disclosure & Reporting Compliance', controls: [
+      ['ESG disclosures follow required framework/regulatory guidance', true, 'Per deadline'],
+      ['Disclosure governance includes legal and compliance review', true, 'Per disclosure cycle'],
+      ['Public statements are supported by evidence and traceability', true, 'Per disclosure cycle'],
+      ['Disclosure errors are corrected with transparent restatement process', true, 'Per event'],
+    ]},
+    { id: 'AUD', domain: 'Assurance & Continuous Improvement', controls: [
+      ['Independent assurance scope includes key ESG metrics and controls', false, 'Annual'],
+      ['Assurance findings are risk-rated and remediated with owners', false, 'Per cycle'],
+      ['Critical disclosure/control gaps trigger executive escalation', true, 'Per event'],
+      ['Improvement plans are integrated into next reporting cycle', false, 'Annual'],
+    ]},
+  ],
+};
+
+const FRAMEWORK_CATALOG = [
+  { key: 'DFSA Rulebook', authority: 'Dubai Financial Services Authority', jurisdictions: ['DIFC, UAE'], family: 'financial', riskThemes: ['Market conduct', 'Prudential controls', 'AML/CFT', 'Governance'] },
+  { key: 'SAMA', authority: 'Saudi Central Bank', jurisdictions: ['KSA'], family: 'financial', riskThemes: ['Banking compliance', 'Consumer protection', 'AML/CFT', 'Operational resilience'] },
+  { key: 'CMA', authority: 'Capital Market Authority (Saudi Arabia)', jurisdictions: ['KSA'], family: 'financial', riskThemes: ['Capital markets', 'Disclosure', 'Conduct', 'Governance'] },
+  { key: 'Dubai 2040', authority: 'Government of Dubai', jurisdictions: ['Dubai, UAE'], family: 'strategy', riskThemes: ['Urban strategy', 'Program governance', 'Delivery assurance'] },
+  { key: 'Saudi 2030', authority: 'Vision 2030 Program Offices / Government of KSA', jurisdictions: ['KSA'], family: 'strategy', riskThemes: ['Strategic delivery', 'Transformation governance', 'KPI assurance'] },
+  { key: 'SDAIA', authority: 'Saudi Data & AI Authority', jurisdictions: ['KSA'], family: 'data', riskThemes: ['Data governance', 'AI governance', 'Privacy', 'Cybersecurity'] },
+  { key: 'ADGM FSRA Rulebook', authority: 'ADGM FSRA', jurisdictions: ['ADGM, UAE'], family: 'financial', riskThemes: ['Financial regulation', 'AML/CFT', 'Conduct', 'Governance'] },
+  { key: 'ADGM Companies Regulations', authority: 'ADGM Registration Authority', jurisdictions: ['ADGM, UAE'], family: 'corporate', riskThemes: ['Corporate governance', 'Entity administration', 'Statutory filings'] },
+  { key: 'CBUAE Rulebook', authority: 'Central Bank of the UAE', jurisdictions: ['UAE'], family: 'financial', riskThemes: ['Prudential controls', 'AML/CFT', 'Consumer protection', 'Reporting'] },
+  { key: 'UAE Federal Laws', authority: 'UAE Federal Government', jurisdictions: ['UAE'], family: 'corporate', riskThemes: ['Corporate law', 'Statutory governance', 'Licensing obligations'] },
+  { key: 'JAFZA Operating Regulations', authority: 'JAFZA Authority', jurisdictions: ['JAFZA, Dubai, UAE'], family: 'corporate', riskThemes: ['Free-zone operations', 'Licensing', 'Entity compliance'] },
+  { key: 'DMCC Company Regulations', authority: 'DMCC Authority', jurisdictions: ['DMCC, Dubai, UAE'], family: 'corporate', riskThemes: ['Company regulations', 'Governance', 'Licensing and filings'] },
+  { key: 'DMCC Compliance & AML', authority: 'DMCC Authority', jurisdictions: ['DMCC, Dubai, UAE'], family: 'financial', riskThemes: ['AML/CFT', 'Free-zone compliance', 'Reporting'] },
+  { key: 'ADHICS', authority: 'Department of Health - Abu Dhabi', jurisdictions: ['Abu Dhabi, UAE'], family: 'data', riskThemes: ['Health data security', 'Privacy', 'Cyber governance'] },
+  { key: 'DHA Health Data Protection Regulation', authority: 'Dubai Health Authority', jurisdictions: ['Dubai, UAE'], family: 'data', riskThemes: ['Health data protection', 'Privacy compliance', 'Information security'] },
+  { key: 'QFCRA Rules', authority: 'QFCRA', jurisdictions: ['QFC, Qatar'], family: 'financial', riskThemes: ['Financial regulation', 'AML/CFT', 'Governance', 'Reporting'] },
+  { key: 'Qatar AML Law', authority: 'State of Qatar Competent Authorities', jurisdictions: ['Qatar'], family: 'financial', riskThemes: ['AML/CFT', 'Sanctions', 'Suspicious reporting', 'Record keeping'] },
+  { key: 'CBB Rulebook', authority: 'Central Bank of Bahrain', jurisdictions: ['Bahrain'], family: 'financial', riskThemes: ['Prudential regulation', 'AML/CFT', 'Governance', 'Disclosures'] },
+  { key: 'BHB Sustainability ESG', authority: 'Bahrain Bourse', jurisdictions: ['Bahrain'], family: 'esg', riskThemes: ['ESG governance', 'Disclosure', 'Sustainability performance'] },
+  { key: 'Oman CMA Regulations', authority: 'Capital Market Authority (Oman)', jurisdictions: ['Oman'], family: 'financial', riskThemes: ['Capital markets', 'Governance', 'Disclosure controls'] },
+  { key: 'Oman AML Law', authority: 'Oman Competent Authorities', jurisdictions: ['Oman'], family: 'financial', riskThemes: ['AML/CFT', 'Monitoring', 'STR/CTR compliance'] },
+  { key: 'Kuwait CMA Regulations', authority: 'Capital Markets Authority (Kuwait)', jurisdictions: ['Kuwait'], family: 'financial', riskThemes: ['Market compliance', 'Governance', 'Regulatory reporting'] },
+  { key: 'Kuwait AML Law', authority: 'Kuwait Competent Authorities', jurisdictions: ['Kuwait'], family: 'financial', riskThemes: ['AML/CFT', 'Sanctions', 'Transaction controls'] },
+];
+
+function makeIdPrefix(frameworkKey) {
+  return frameworkKey
+    .replace(/[^A-Za-z0-9]+/g, ' ')
+    .trim()
+    .split(/\s+/)
+    .map((p) => p.slice(0, 3).toUpperCase())
+    .join('')
+    .slice(0, 8);
+}
+
+function buildChecklistForFramework(meta) {
+  const blueprint = DOMAIN_LIBRARY[meta.family] || DOMAIN_LIBRARY.financial;
+  const prefix = makeIdPrefix(meta.key);
+  const domains = blueprint.map((d) => ({
+    id: `${prefix}-${d.id}`,
+    domain: d.domain,
+    items: d.controls.map(([statement, critical, reviewFrequency], idx) => ({
+      id: `${prefix}-${d.id}-${String(idx + 1).padStart(3, '0')}`,
+      control: `${statement} under ${meta.key}.`,
+      evidence: `Approved policy/SOP, control logs, management approvals, and sample records evidencing compliance for ${meta.key}.`,
+      regulatoryRef: `${meta.authority} - ${meta.key} (internal benchmark alignment for GCC operations).`,
+      reviewFrequency,
+      critical,
+    })),
+  }));
+  const allItems = domains.flatMap((d) => d.items.map((item) => ({ ...item, domainId: d.id, domainLabel: d.domain })));
+  return {
+    key: meta.key,
+    label: `${meta.key} Internal Compliance Checklist`,
+    domains,
+    allItems,
+    llmAuditor: `expert ${meta.key} compliance auditor for GCC organizations`,
+    profile: {
+      authority: meta.authority,
+      jurisdictions: meta.jurisdictions,
+      applicableEntityTypes: ['Parent holding companies', 'OpCos', 'Regulated entities', 'Free-zone entities where applicable'],
+      riskThemes: meta.riskThemes,
+    },
+  };
+}
+
+const GENERATED_FRAMEWORK_CHECKLISTS = Object.fromEntries(
+  FRAMEWORK_CATALOG.map((meta) => [meta.key, buildChecklistForFramework(meta)])
+);
+
+export const AML_CFT_CHECKLISTS = {
+  UAE: {
+    key: 'UAE',
+    label: 'UAE AML/CFT Compliance Checklist',
+    domains: AML_CFT_DOMAINS,
+    allItems: AML_CFT_ALL_ITEMS,
+    llmAuditor: 'expert UAE AML/CFT compliance auditor',
+  },
+  'UAE AML/CFT': {
+    key: 'UAE AML/CFT',
+    label: 'UAE AML/CFT Compliance Checklist',
+    domains: AML_CFT_DOMAINS,
+    allItems: AML_CFT_ALL_ITEMS,
+    llmAuditor: 'expert UAE AML/CFT compliance auditor',
+  },
+  Kuwait: {
+    key: 'Kuwait',
+    label: 'Kuwait AML/CFT Compliance Checklist',
+    domains: AML_CFT_DOMAINS_KUWAIT,
+    allItems: AML_CFT_ALL_ITEMS_KUWAIT,
+    llmAuditor: 'expert Kuwait AML/CFT compliance auditor',
+  },
+  ...GENERATED_FRAMEWORK_CHECKLISTS,
+};

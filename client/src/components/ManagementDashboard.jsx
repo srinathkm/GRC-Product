@@ -5,28 +5,56 @@ const API = '/api';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
-function daysChipStyle(daysLeft) {
-  if (daysLeft <= 7)  return { background: 'rgba(239,68,68,0.18)',  color: '#ef4444', border: '1px solid #ef444444' };
-  if (daysLeft <= 30) return { background: 'rgba(234,179,8,0.18)',  color: '#eab308', border: '1px solid #eab30844' };
-  return               { background: 'rgba(34,197,94,0.13)',  color: '#22c55e', border: '1px solid #22c55e44' };
+function daysChipClass(daysLeft) {
+  if (daysLeft <= 7) return 'mgmt-days-chip-critical';
+  if (daysLeft <= 30) return 'mgmt-days-chip-warning';
+  return 'mgmt-days-chip-healthy';
 }
 
-function heatColor(count, max) {
-  if (!max) return 'rgba(59,130,246,0.15)';
+function heatClass(count, max) {
+  if (!max) return 'mgmt-heat-medium';
   const ratio = count / max;
-  if (ratio >= 0.75) return 'rgba(239,68,68,0.65)';
-  if (ratio >= 0.5)  return 'rgba(234,179,8,0.55)';
-  if (ratio >= 0.25) return 'rgba(59,130,246,0.45)';
-  return 'rgba(34,197,94,0.30)';
+  if (ratio >= 0.75) return 'mgmt-heat-critical';
+  if (ratio >= 0.5) return 'mgmt-heat-warning';
+  if (ratio >= 0.25) return 'mgmt-heat-medium';
+  return 'mgmt-heat-healthy';
 }
 
-function typeStyle(type) {
+function typeClass(type) {
+  if (type === 'POA') return 'mgmt-expiry-type-poa';
+  if (type === 'Licence') return 'mgmt-expiry-type-licence';
+  if (type === 'Contract') return 'mgmt-expiry-type-contract';
+  return 'mgmt-expiry-type-default';
+}
+
+function healthTone(score) {
+  if (score < 40) return { tone: 'critical', label: 'Critical' };
+  if (score < 65) return { tone: 'warning', label: 'Developing' };
+  if (score < 80) return { tone: 'medium', label: 'Compliant' };
+  return { tone: 'healthy', label: 'Healthy' };
+}
+
+function kpiAccentClass(accentColor) {
   const map = {
-    POA:      { bg: 'rgba(139,92,246,0.18)', color: '#a78bfa' },
-    Licence:  { bg: 'rgba(59,130,246,0.18)', color: '#60a5fa' },
-    Contract: { bg: 'rgba(234,179,8,0.18)',  color: '#fbbf24' },
+    '#3b82f6': 'mgmt-kpi-accent-blue',
+    '#ef4444': 'mgmt-kpi-accent-red',
+    '#22c55e': 'mgmt-kpi-accent-green',
+    '#eab308': 'mgmt-kpi-accent-yellow',
+    '#8b5cf6': 'mgmt-kpi-accent-violet',
+    '#a78bfa': 'mgmt-kpi-accent-purple',
+    '#60a5fa': 'mgmt-kpi-accent-sky',
+    '#fbbf24': 'mgmt-kpi-accent-amber',
+    '#94a3b8': 'mgmt-kpi-accent-slate',
+    '#34d399': 'mgmt-kpi-accent-emerald',
   };
-  return map[type] || { bg: 'rgba(100,116,139,0.18)', color: '#94a3b8' };
+  return map[accentColor] || 'mgmt-kpi-accent-default';
+}
+
+function handleKeyboardActivate(event, callback) {
+  if (event.key === 'Enter' || event.key === ' ') {
+    event.preventDefault();
+    callback();
+  }
 }
 
 // ── Health score gauge (SVG semicircle) ──────────────────────────────────────
@@ -38,22 +66,18 @@ function HealthGauge({ score }) {
   const dash = circ * (score / 100);
   const arc = `M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${cx + r} ${cy}`;
 
-  let color = '#22c55e';
-  let label = 'Healthy';
-  if (score < 40) { color = '#ef4444'; label = 'Critical'; }
-  else if (score < 65) { color = '#eab308'; label = 'Developing'; }
-  else if (score < 80) { color = '#3b82f6'; label = 'Compliant'; }
+  const { tone, label } = healthTone(score);
 
   return (
-    <div className="mgmt-health-arc-wrap">
-      <svg width="88" height="56" viewBox="0 0 88 56" style={{ overflow: 'visible' }}>
-        <path d={arc} fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth="8" strokeLinecap="round" />
-        <path d={arc} fill="none" stroke={color} strokeWidth="8" strokeLinecap="round"
-          strokeDasharray={`${dash} ${circ}`} style={{ transition: 'stroke-dasharray 0.8s ease' }} />
+    <div className={`mgmt-health-arc-wrap mgmt-health-tone-${tone}`}>
+      <svg width="88" height="56" viewBox="0 0 88 56" className="mgmt-health-svg">
+        <path d={arc} fill="none" className="mgmt-health-track" strokeWidth="8" strokeLinecap="round" />
+        <path d={arc} fill="none" stroke="var(--health-color)" strokeWidth="8" strokeLinecap="round"
+          strokeDasharray={`${dash} ${circ}`} className="mgmt-health-progress" />
         <text x={cx} y={cy - 4} textAnchor="middle" fontSize="18" fontWeight="800"
-          fontFamily="var(--font-mono),monospace" fill={color}>{score}</text>
+          fontFamily="var(--font-mono),monospace" fill="var(--health-color)" className="mgmt-health-score">{score}</text>
       </svg>
-      <div style={{ fontSize: '0.7rem', color, fontWeight: 700, textAlign: 'center', marginTop: '-4px' }}>{label}</div>
+      <div className="mgmt-health-label">{label}</div>
     </div>
   );
 }
@@ -63,8 +87,7 @@ function KpiTile({ icon, value, label, sub, accentColor, onClick, navHint = 'Vie
   return (
     <button
       type="button"
-      className="mgmt-kpi-tile"
-      style={{ '--kpi-accent': accentColor, textAlign: 'left', border: 'none', width: '100%' }}
+      className={`mgmt-kpi-tile ${kpiAccentClass(accentColor)}`}
       onClick={onClick}
     >
       <span className="mgmt-kpi-icon">{icon}</span>
@@ -79,7 +102,7 @@ function KpiTile({ icon, value, label, sub, accentColor, onClick, navHint = 'Vie
 // ── Framework bar chart ──────────────────────────────────────────────────────
 function FrameworkBars({ topFrameworks, onNavigate }) {
   if (!topFrameworks || topFrameworks.length === 0) {
-    return <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', textAlign: 'center', padding: '1rem' }}>No changes recorded in this period.</p>;
+    return <p className="mgmt-empty-note">No changes recorded in this period.</p>;
   }
   const max = topFrameworks[0]?.count || 1;
   return (
@@ -92,7 +115,7 @@ function FrameworkBars({ topFrameworks, onNavigate }) {
           title={`${framework}: ${count} changes — click to view`}
           role="button"
           tabIndex={0}
-          onKeyDown={(e) => e.key === 'Enter' && onNavigate('governance-framework')}
+          onKeyDown={(e) => handleKeyboardActivate(e, () => onNavigate('governance-framework'))}
         >
           <span className="mgmt-fw-bar-label" title={framework}>{framework}</span>
           <div className="mgmt-fw-bar-track">
@@ -116,13 +139,12 @@ function OpcoHeatMap({ topOpcoAlerts, onNavigate }) {
       {topOpcoAlerts.map(({ opco, changeCount }) => (
         <div
           key={opco}
-          className="mgmt-opco-cell"
-          style={{ background: heatColor(changeCount, max) }}
+          className={`mgmt-opco-cell ${heatClass(changeCount, max)}`}
           onClick={() => onNavigate('org-dashboard')}
           title={`${opco}: ${changeCount} regulatory changes — click to view dashboard`}
           role="button"
           tabIndex={0}
-          onKeyDown={(e) => e.key === 'Enter' && onNavigate('org-dashboard')}
+          onKeyDown={(e) => handleKeyboardActivate(e, () => onNavigate('org-dashboard'))}
         >
           <div className="mgmt-opco-cell-name" title={opco}>{opco}</div>
           <div className="mgmt-opco-cell-count">{changeCount}</div>
@@ -150,8 +172,8 @@ function ExpiryTable({ upcomingExpiry, onNavigate }) {
       </thead>
       <tbody>
         {upcomingExpiry.map((row, i) => {
-          const ts = typeStyle(row.type);
-          const dc = daysChipStyle(row.daysLeft);
+          const typeBadgeClass = typeClass(row.type);
+          const chipClass = daysChipClass(row.daysLeft);
           return (
             <tr
               key={i}
@@ -160,20 +182,15 @@ function ExpiryTable({ upcomingExpiry, onNavigate }) {
               title={`Go to ${row.module}`}
             >
               <td>
-                <span
-                  className="mgmt-expiry-type-badge"
-                  style={{ background: ts.bg, color: ts.color }}
-                >
+                <span className={`mgmt-expiry-type-badge ${typeBadgeClass}`}>
                   {row.type}
                 </span>
               </td>
-              <td style={{ maxWidth: '140px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-                  title={row.name}>{row.name}</td>
-              <td style={{ maxWidth: '110px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '0.7rem', color: 'var(--text-muted)' }}
-                  title={row.opco}>{row.opco}</td>
-              <td style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{row.expiryDate}</td>
+              <td className="mgmt-expiry-name" title={row.name}>{row.name}</td>
+              <td className="mgmt-expiry-opco" title={row.opco}>{row.opco}</td>
+              <td className="mgmt-expiry-date">{row.expiryDate}</td>
               <td>
-                <span className="mgmt-days-chip" style={dc}>{row.daysLeft}d</span>
+                <span className={`mgmt-days-chip ${chipClass}`}>{row.daysLeft}d</span>
               </td>
             </tr>
           );
@@ -317,8 +334,7 @@ export function ManagementDashboard({ onNavigateToView }) {
           </select>
           <button
             type="button"
-            className="btn btn-secondary"
-            style={{ fontSize: '0.76rem', padding: '5px 12px' }}
+            className="btn btn-secondary mgmt-refresh-btn"
             onClick={handleRefresh}
             disabled={refreshing}
           >
@@ -332,10 +348,10 @@ export function ManagementDashboard({ onNavigateToView }) {
         <p className="mgmt-dash-section-title">Key Performance Indicators</p>
         <div className="mgmt-dash-kpi-row">
           {/* Health score gauge */}
-          <div className="mgmt-kpi-tile health-score" style={{ '--kpi-accent': complianceHealthScore >= 80 ? '#22c55e' : complianceHealthScore >= 60 ? '#3b82f6' : '#ef4444' }}>
+          <div className={`mgmt-kpi-tile health-score ${complianceHealthScore >= 80 ? 'mgmt-kpi-accent-green' : complianceHealthScore >= 60 ? 'mgmt-kpi-accent-blue' : 'mgmt-kpi-accent-red'}`}>
             <HealthGauge score={complianceHealthScore} />
-            <div className="mgmt-kpi-label" style={{ textAlign: 'center', marginTop: '0.2rem' }}>Compliance Health</div>
-            <div className="mgmt-kpi-sub" style={{ textAlign: 'center' }}>{selectedOpco ? selectedOpco : 'Portfolio-wide score'}</div>
+            <div className="mgmt-kpi-label mgmt-kpi-label-centered">Compliance Health</div>
+            <div className="mgmt-kpi-sub mgmt-kpi-sub-centered">{selectedOpco ? selectedOpco : 'Portfolio-wide score'}</div>
           </div>
 
           <KpiTile
@@ -379,7 +395,7 @@ export function ManagementDashboard({ onNavigateToView }) {
       {/* ── SECONDARY KPIs (legal operations) ── */}
       <div>
         <p className="mgmt-dash-section-title">Legal Operations Overview</p>
-        <div className="mgmt-dash-kpi-row" style={{ gridTemplateColumns: 'repeat(5, 1fr)' }}>
+        <div className="mgmt-dash-kpi-row">
           <KpiTile icon="📜" value={poa.total} label="Active POAs"
             sub={`${poa.expiringSoon} expiring · ${poa.expired} expired`}
             accentColor="#a78bfa" onClick={() => navigate('poa-management')} />
@@ -420,7 +436,7 @@ export function ManagementDashboard({ onNavigateToView }) {
               View details →
             </button>
           </div>
-          <p style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginBottom: '0.6rem', marginTop: 0 }}>
+          <p className="mgmt-heatmap-caption">
             Colour intensity = regulatory change exposure. Click any cell for entity details.
           </p>
           <OpcoHeatMap topOpcoAlerts={topOpcoAlerts} onNavigate={navigate} />
@@ -432,9 +448,9 @@ export function ManagementDashboard({ onNavigateToView }) {
         {/* Expiry tracker */}
         <div className="mgmt-panel">
           <div className="mgmt-panel-header">
-            <span className="mgmt-panel-title">Upcoming Expirations <span style={{ fontWeight: 400, color: 'var(--text-muted)', fontSize: '0.72rem' }}>(next 60 days)</span></span>
+            <span className="mgmt-panel-title">Upcoming Expirations <span className="mgmt-panel-title-sub">(next 60 days)</span></span>
             {totalExpired > 0 && (
-              <span style={{ fontSize: '0.72rem', color: '#ef4444', fontWeight: 600 }}>
+              <span className="mgmt-expired-count">
                 {totalExpired} already expired
               </span>
             )}

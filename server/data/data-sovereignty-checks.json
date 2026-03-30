@@ -1,0 +1,140 @@
+{
+  "checks": [
+    {
+      "id": "uae-pdpl-residency",
+      "name": "UAE PDPL – Data localisation",
+      "regulation": "UAE Federal Decree-Law 45/2021 (PDPL)",
+      "description": "Personal data processed in UAE must be stored and processed within UAE unless transfer is permitted.",
+      "severity": "Critical",
+      "jurisdiction": "UAE",
+      "lastUpdated": "2024-01-01"
+    },
+    {
+      "id": "ksa-pdpl-residency",
+      "name": "KSA PDPL – Data localisation",
+      "regulation": "Saudi PDPL (Royal Decree M/19)",
+      "description": "Critical personal data must be stored and processed in KSA; cross-border transfer subject to NDMO approval.",
+      "severity": "Critical",
+      "jurisdiction": "KSA",
+      "lastUpdated": "2024-01-01"
+    },
+    {
+      "id": "cbuae-data-local",
+      "name": "CBUAE – Financial data in UAE",
+      "regulation": "CBUAE Rulebook & circulars",
+      "description": "Regulated financial institutions must maintain core systems and customer data within UAE or approved jurisdictions.",
+      "severity": "Critical",
+      "jurisdiction": "UAE",
+      "lastUpdated": "2024-01-01"
+    },
+    {
+      "id": "sama-data-local",
+      "name": "SAMA – Financial data in KSA",
+      "regulation": "SAMA regulations",
+      "description": "Banking and insurance data must reside in KSA; cloud and outsourcing subject to SAMA approval.",
+      "severity": "Critical",
+      "jurisdiction": "KSA",
+      "lastUpdated": "2024-01-01"
+    },
+    {
+      "id": "cross-border-transfer",
+      "name": "Cross-border transfer mechanisms",
+      "regulation": "UAE PDPL / KSA PDPL",
+      "description": "Adequate transfer mechanisms (adequacy, SCCs, binding corporate rules) in place for permitted transfers.",
+      "severity": "Critical",
+      "jurisdiction": "GCC",
+      "lastUpdated": "2024-01-01"
+    },
+    {
+      "id": "dpa-registration",
+      "name": "Data Protection Authority registration",
+      "regulation": "UAE PDPL / Executive regulations",
+      "description": "Registration with UAE DPA where required for controllers/processors.",
+      "severity": "Medium",
+      "jurisdiction": "UAE",
+      "lastUpdated": "2024-01-01"
+    },
+    {
+      "id": "data-retention",
+      "name": "Retention limits aligned with law",
+      "regulation": "UAE PDPL / KSA PDPL / sector rules",
+      "description": "Retention periods defined and aligned with minimum/maximum under applicable law.",
+      "severity": "Medium",
+      "jurisdiction": "GCC",
+      "lastUpdated": "2024-01-01"
+    },
+    {
+      "id": "consent-records",
+      "name": "Consent and lawful basis records",
+      "regulation": "UAE PDPL / KSA PDPL",
+      "description": "Documented lawful basis and consent where required for processing.",
+      "severity": "Medium",
+      "jurisdiction": "GCC",
+      "lastUpdated": "2024-01-01"
+    },
+    {
+      "id": "dpias",
+      "name": "Data Protection Impact Assessments",
+      "regulation": "UAE PDPL / KSA PDPL",
+      "description": "DPIAs conducted for high-risk processing and filed with regulator where required.",
+      "severity": "Medium",
+      "jurisdiction": "GCC",
+      "lastUpdated": "2024-01-01"
+    },
+    {
+      "id": "breach-notification",
+      "name": "Breach notification readiness",
+      "regulation": "UAE PDPL / KSA PDPL",
+      "description": "Process to notify regulator and data subjects within required timelines.",
+      "severity": "Medium",
+      "jurisdiction": "GCC",
+      "lastUpdated": "2024-01-01"
+    },
+    {
+      "id": "processor-binding",
+      "name": "Processor binding agreements",
+      "regulation": "UAE PDPL / KSA PDPL",
+      "description": "Contracts with processors imposing data protection and sovereignty obligations.",
+      "severity": "Low",
+      "jurisdiction": "GCC",
+      "lastUpdated": "2024-01-01"
+    },
+    {
+      "id": "cloud-sovereignty",
+      "name": "Cloud and sovereign cloud use",
+      "regulation": "UAE / KSA government and sector guidance",
+      "description": "Use of in-country or approved sovereign cloud for sensitive/critical data.",
+      "severity": "Medium",
+      "jurisdiction": "GCC",
+      "lastUpdated": "2024-01-01"
+    },
+    {
+      "id": "adgm-data",
+      "name": "ADGM – Data in ADGM / UAE",
+      "regulation": "ADGM data protection regime",
+      "description": "ADGM entities' data handling consistent with onshore UAE and ADGM rules.",
+      "severity": "Medium",
+      "jurisdiction": "UAE",
+      "lastUpdated": "2024-01-01"
+    },
+    {
+      "id": "dfsa-data",
+      "name": "DFSA – DIFC data handling",
+      "regulation": "DFSA rulebook",
+      "description": "DIFC firms' data residency and processing in line with DFSA and UAE requirements.",
+      "severity": "Medium",
+      "jurisdiction": "UAE",
+      "lastUpdated": "2024-01-01"
+    },
+    {
+      "id": "free-zone-local",
+      "name": "Free zone data localisation",
+      "regulation": "JAFZA / DMCC / other zone rules",
+      "description": "Free zone entity data stored and processed in line with UAE and zone requirements.",
+      "severity": "Low",
+      "jurisdiction": "UAE",
+      "lastUpdated": "2024-01-01"
+    }
+  ],
+  "fetchedAt": 1774203292181
+}

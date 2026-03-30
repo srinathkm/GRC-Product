@@ -180,7 +180,7 @@
 }
 
 .onboarding-panel-doc:hover, .onboarding-panel-doc.active {
-  background: rgba(59, 130, 246, 0.07);
+  background: rgba(212, 114, 92, 0.07);
 }
 
 .onboarding-panel-doc-icon {
@@ -218,7 +218,7 @@
 .onboarding-ai-progress {
   padding: 0.75rem 1rem;
   border-bottom: 1px solid var(--border);
-  background: rgba(59, 130, 246, 0.04);
+  background: rgba(212, 114, 92, 0.04);
 }
 
 .onboarding-ai-progress-title {
@@ -549,7 +549,7 @@
 
 .onboarding-upload-btn:hover {
   border-color: var(--accent);
-  background: rgba(59, 130, 246, 0.06);
+  background: rgba(212, 114, 92, 0.06);
 }
 
 .onboarding-documents {
@@ -756,7 +756,7 @@
 
 .onboarding-btn-secondary:hover {
   border-color: var(--accent);
-  background: rgba(59, 130, 246, 0.06);
+  background: rgba(212, 114, 92, 0.06);
 }
 
 .onboarding-btn-confirm {
@@ -871,6 +871,7 @@
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 0.75rem 1rem;
+  color: var(--text, #0f172a);
 }
 
 .onboarding-entity-details-header {
@@ -903,7 +904,7 @@
 .onboarding-entity-details-chevron {
   flex-shrink: 0;
   font-size: 0.65rem;
-  color: var(--text-muted);
+  color: var(--text, #0f172a);
   width: 1em;
   display: inline-block;
 }
@@ -927,7 +928,7 @@
 
 .onboarding-entity-ownership {
   font-size: 0.9rem;
-  color: var(--text-muted);
+  color: #334155;
 }
 
 .onboarding-entity-details-grid {
@@ -941,11 +942,24 @@
   display: block;
   margin-bottom: 0.15rem;
   font-size: 0.8rem;
-  color: var(--text-muted);
+  color: #1e293b;
 }
 
 .onboarding-entity-details-grid strong + div {
-  color: var(--text);
+  color: var(--text, #0f172a);
+  font-weight: 500;
+}
+
+/* Legal Document Onboarding card readability overrides */
+.onboarding-entity-details-header,
+.onboarding-entity-details-header strong,
+.onboarding-entity-type-badge,
+.onboarding-mandatory-details-title {
+  color: var(--text, #0f172a);
+}
+
+.onboarding-mandatory-details-intro {
+  color: #334155;
 }
 
 .onboarding-field-label {

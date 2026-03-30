@@ -126,7 +126,7 @@
 }
 
 .data-sovereignty-met {
-  background: rgba(59, 130, 246, 0.08);
+  background: rgba(212, 114, 92, 0.08);
   border-color: var(--accent);
 }
 
@@ -256,7 +256,7 @@
 
 .data-sovereignty-item-met {
   border-left-color: var(--accent);
-  background: rgba(59, 130, 246, 0.04);
+  background: rgba(212, 114, 92, 0.04);
 }
 
 .data-sovereignty-met-section {
@@ -389,8 +389,8 @@
   gap: 0.75rem;
   padding: 1rem 1.25rem;
   margin-bottom: 1.25rem;
-  background: rgba(59, 130, 246, 0.08);
-  border: 1px solid rgba(59, 130, 246, 0.35);
+  background: rgba(212, 114, 92, 0.08);
+  border: 1px solid rgba(212, 114, 92, 0.35);
   border-radius: var(--radius);
   border-left: 4px solid var(--accent);
 }

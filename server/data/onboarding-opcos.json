@@ -1,1 +1,23 @@
-[]
+[
+  {
+    "parent": "First Holding Group",
+    "opco": "SKM LLC (SKM Life Sciences & Technology)",
+    "framework": "Onboarded",
+    "addedAt": "2026-03-22T18:14:38.587Z",
+    "locations": [
+      "Kuwait (CMA, Boursa Kuwait)"
+    ],
+    "applicableFrameworksByLocation": [
+      {
+        "framework": "Kuwait CMA Regulations",
+        "location": "Kuwait (CMA, Boursa Kuwait)",
+        "category": "Financial, Governance"
+      },
+      {
+        "framework": "Kuwait AML Law",
+        "location": "Kuwait (CMA, Boursa Kuwait)",
+        "category": "AML"
+      }
+    ]
+  }
+]

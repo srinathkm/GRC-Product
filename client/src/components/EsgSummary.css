@@ -67,9 +67,9 @@
   align-items: center;
   gap: 0.3rem;
   font-size: 0.75rem;
-  color: var(--accent, #3b82f6);
-  background: rgba(59, 130, 246, 0.1);
-  border: 1px solid rgba(59, 130, 246, 0.2);
+  color: var(--accent, var(--accent));
+  background: rgba(212, 114, 92, 0.1);
+  border: 1px solid rgba(212, 114, 92, 0.2);
   border-radius: 20px;
   padding: 0.2rem 0.6rem;
   font-weight: 600;
@@ -133,9 +133,9 @@
   background: rgba(255, 255, 255, 0.04);
 }
 .esg2-tab-btn.active {
-  color: var(--accent, #3b82f6);
-  border-bottom-color: var(--accent, #3b82f6);
-  background: rgba(59, 130, 246, 0.05);
+  color: var(--accent, var(--accent));
+  border-bottom-color: var(--accent, var(--accent));
+  background: rgba(212, 114, 92, 0.05);
 }
 
 .esg2-tab-icon { font-size: 0.95rem; }
@@ -210,7 +210,7 @@
 .esg2-btn:disabled { opacity: 0.45; cursor: not-allowed; }
 
 .esg2-btn-primary {
-  background: var(--accent, #3b82f6);
+  background: var(--accent, var(--accent));
   color: #fff;
 }
 .esg2-btn-primary:hover:not(:disabled) { opacity: 0.85; }
@@ -280,7 +280,7 @@
 }
 
 .esg2-rating-leading    { background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); }
-.esg2-rating-progressing{ background: rgba(59, 130, 246, 0.12); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.25); }
+.esg2-rating-progressing{ background: rgba(212, 114, 92, 0.12); color: var(--accent); border: 1px solid rgba(212, 114, 92, 0.25); }
 .esg2-rating-developing { background: rgba(245, 158, 11, 0.12); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.25); }
 .esg2-rating-nascent    { background: rgba(239, 68, 68, 0.12);  color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.25); }
 
@@ -394,7 +394,7 @@
 
 .esg2-insight-critical { background: rgba(239, 68, 68, 0.07);  border-color: rgba(239, 68, 68, 0.2); }
 .esg2-insight-high     { background: rgba(245, 158, 11, 0.06); border-color: rgba(245, 158, 11, 0.2); }
-.esg2-insight-medium   { background: rgba(59, 130, 246, 0.06); border-color: rgba(59, 130, 246, 0.18); }
+.esg2-insight-medium   { background: rgba(212, 114, 92, 0.06); border-color: rgba(212, 114, 92, 0.18); }
 .esg2-insight-low      { background: rgba(16, 185, 129, 0.05); border-color: rgba(16, 185, 129, 0.15); }
 
 .esg2-insight-icon   { font-size: 1.2rem; flex-shrink: 0; line-height: 1.3; }
@@ -416,8 +416,8 @@
   align-items: center;
   gap: 2rem;
   padding: 1.5rem;
-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.08) 0%, rgba(16, 185, 129, 0.06) 100%);
-  border: 1px solid rgba(59, 130, 246, 0.2);
+  background: linear-gradient(135deg, rgba(212, 114, 92, 0.08) 0%, rgba(16, 185, 129, 0.06) 100%);
+  border: 1px solid rgba(212, 114, 92, 0.2);
   border-radius: 12px;
   flex-wrap: wrap;
 }
@@ -468,7 +468,7 @@
 .esg2-pillar-card:hover { transform: translateY(-2px); }
 
 .esg2-pillar-e { background: rgba(16, 185, 129, 0.07);  border-color: rgba(16, 185, 129, 0.2); }
-.esg2-pillar-s { background: rgba(59, 130, 246, 0.07);  border-color: rgba(59, 130, 246, 0.2); }
+.esg2-pillar-s { background: rgba(212, 114, 92, 0.07);  border-color: rgba(212, 114, 92, 0.2); }
 .esg2-pillar-g { background: rgba(168, 85, 247, 0.07);  border-color: rgba(168, 85, 247, 0.2); }
 
 .esg2-pillar-icon  { font-size: 1.5rem; line-height: 1; }
@@ -562,7 +562,7 @@
   min-width: 180px;
   transition: border-color 0.15s;
 }
-.esg2-selector-group select:focus { outline: none; border-color: var(--accent, #3b82f6); }
+.esg2-selector-group select:focus { outline: none; border-color: var(--accent, var(--accent)); }
 
 /* Pillar sub-tabs */
 .esg2-pillar-tabs {
@@ -587,7 +587,7 @@
   margin-bottom: -1px;
 }
 .esg2-pillar-tab:hover { color: var(--text, #e8e8f0); }
-.esg2-pillar-tab.active { color: var(--accent, #3b82f6); border-bottom-color: var(--accent, #3b82f6); }
+.esg2-pillar-tab.active { color: var(--accent, var(--accent)); border-bottom-color: var(--accent, var(--accent)); }
 
 /* Fields grid */
 .esg2-fields-grid {
@@ -638,7 +638,7 @@
   font-family: inherit;
   transition: border-color 0.15s;
 }
-.esg2-metric-input:focus { outline: none; border-color: var(--accent, #3b82f6); }
+.esg2-metric-input:focus { outline: none; border-color: var(--accent, var(--accent)); }
 .esg2-metric-input::placeholder { color: var(--text-muted, #555); }
 
 /* Boolean toggle */
@@ -662,9 +662,9 @@
   text-align: center;
 }
 .esg2-bool-btn.active {
-  background: rgba(59, 130, 246, 0.15);
-  border-color: var(--accent, #3b82f6);
-  color: var(--accent, #3b82f6);
+  background: rgba(212, 114, 92, 0.15);
+  border-color: var(--accent, var(--accent));
+  color: var(--accent, var(--accent));
 }
 
 /* Live score bar */
@@ -673,8 +673,8 @@
   align-items: center;
   gap: 0.75rem;
   padding: 0.6rem 1rem;
-  background: rgba(59, 130, 246, 0.06);
-  border: 1px solid rgba(59, 130, 246, 0.15);
+  background: rgba(212, 114, 92, 0.06);
+  border: 1px solid rgba(212, 114, 92, 0.15);
   border-radius: 8px;
   flex-wrap: wrap;
 }
@@ -701,9 +701,9 @@
 }
 
 .esg2-live-overall {
-  background: rgba(59, 130, 246, 0.12);
-  border-color: rgba(59, 130, 246, 0.25);
-  color: var(--accent, #3b82f6);
+  background: rgba(212, 114, 92, 0.12);
+  border-color: rgba(212, 114, 92, 0.25);
+  color: var(--accent, var(--accent));
 }
 
 .esg2-metrics-footer {
@@ -1001,11 +1001,11 @@
   font-family: inherit;
   white-space: nowrap;
 }
-.esg2-region-btn:hover { border-color: var(--accent, #3b82f6); color: var(--accent, #3b82f6); }
+.esg2-region-btn:hover { border-color: var(--accent, var(--accent)); color: var(--accent, var(--accent)); }
 .esg2-region-btn.active {
-  background: rgba(59, 130, 246, 0.12);
-  border-color: rgba(59, 130, 246, 0.35);
-  color: var(--accent, #3b82f6);
+  background: rgba(212, 114, 92, 0.12);
+  border-color: rgba(212, 114, 92, 0.35);
+  color: var(--accent, var(--accent));
 }
 
 /* Framework list */
@@ -1079,11 +1079,11 @@
 
 .esg2-fw-region {
   font-size: 0.68rem;
-  background: rgba(59, 130, 246, 0.1);
-  border: 1px solid rgba(59, 130, 246, 0.2);
+  background: rgba(212, 114, 92, 0.1);
+  border: 1px solid rgba(212, 114, 92, 0.2);
   border-radius: 4px;
   padding: 0.1rem 0.4rem;
-  color: var(--accent, #3b82f6);
+  color: var(--accent, var(--accent));
   font-weight: 600;
 }
 
@@ -1114,7 +1114,7 @@
   cursor: pointer;
   transition: border-color 0.15s;
 }
-.esg2-fw-status-select:focus { outline: none; border-color: var(--accent, #3b82f6); }
+.esg2-fw-status-select:focus { outline: none; border-color: var(--accent, var(--accent)); }
 
 .esg2-fw-reviewed { font-size: 0.68rem; color: var(--text-muted, #666); }
 

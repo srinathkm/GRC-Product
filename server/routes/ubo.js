@@ -1,9 +1,8 @@
 import { Router } from 'express';
 import multer from 'multer';
+import OpenAI from 'openai';
 import { createChatCompletion, isLlmConfigured } from '../services/llm.js';
 import { extractTextFromBuffer } from '../services/text-extract.js';
-import { getSharePointSession } from './auth.js';
-import { fetchFileContentFromUrl } from '../services/sharepoint.js';
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -1290,7 +1289,83 @@ Return a JSON object with a single key "locations" whose value is an array of st
     if (heuristic) locs = [heuristic];
   }
 
-  return locs;
+  return rankAndNormalizeLocations(locs, documentHeader);
+}
+
+const LOCATION_CANONICAL = [
+  'Dubai International Financial Centre',
+  'Abu Dhabi Global Market',
+  'Jebel Ali Free Zone',
+  'Dubai Multi Commodities Centre',
+  'Dubai (Mainland / Onshore)',
+  'Abu Dhabi (Mainland)',
+  'Sharjah (Free Zones & Mainland)',
+  'Ras Al Khaimah (RAK) Free Zones',
+  'Saudi Arabia (Onshore / National)',
+  'Saudi Giga-Projects (NEOM, Red Sea, etc.)',
+  'Qatar Financial Centre (QFC) & Mainland',
+  'Bahrain (BHB, CBB)',
+  'Oman (CMA, MSM)',
+  'Kuwait (CMA, Boursa Kuwait)',
+];
+
+function normalizeSpaces(v) {
+  return String(v || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+}
+
+function mapHeadingToCanonicalLocation(value) {
+  const s = normalizeSpaces(value);
+  if (!s) return '';
+
+  // Free zones / financial centers (priority)
+  if (/\bdifc\b|dubai international financial centre/.test(s)) return 'Dubai International Financial Centre';
+  if (/\badgm\b|abu dhabi global market/.test(s)) return 'Abu Dhabi Global Market';
+  if (/\bjafza\b|jebel ali free zone/.test(s)) return 'Jebel Ali Free Zone';
+  if (/\bdmcc\b|dubai multi commodities centre/.test(s)) return 'Dubai Multi Commodities Centre';
+  if (/\brak\b|ras al khaimah/.test(s)) return 'Ras Al Khaimah (RAK) Free Zones';
+
+  // Country / mainland mappings
+  if (/\bdubai\b/.test(s)) return 'Dubai (Mainland / Onshore)';
+  if (/abu dhabi/.test(s)) return 'Abu Dhabi (Mainland)';
+  if (/sharjah/.test(s)) return 'Sharjah (Free Zones & Mainland)';
+  if (/\bksa\b|saudi|kingdom of saudi|saudi arabia/.test(s)) return 'Saudi Arabia (Onshore / National)';
+  if (/neom|red sea/.test(s)) return 'Saudi Giga-Projects (NEOM, Red Sea, etc.)';
+  if (/qatar|qfc|qatar financial centre|doha/.test(s)) return 'Qatar Financial Centre (QFC) & Mainland';
+  if (/bahrain|manama/.test(s)) return 'Bahrain (BHB, CBB)';
+  if (/oman|muscat/.test(s)) return 'Oman (CMA, MSM)';
+  if (/kuwait/.test(s)) return 'Kuwait (CMA, Boursa Kuwait)';
+
+  return '';
+}
+
+function isFreeZoneLocation(loc) {
+  return [
+    'Dubai International Financial Centre',
+    'Abu Dhabi Global Market',
+    'Jebel Ali Free Zone',
+    'Dubai Multi Commodities Centre',
+    'Ras Al Khaimah (RAK) Free Zones',
+  ].includes(loc);
+}
+
+function rankAndNormalizeLocations(candidates, headingText = '') {
+  const mapped = [];
+  for (const raw of candidates || []) {
+    const v = mapHeadingToCanonicalLocation(raw);
+    if (v) mapped.push(v);
+  }
+
+  // Extra safeguard: detect directly from heading if LLM output is weak/noisy.
+  const headingMapped = mapHeadingToCanonicalLocation(headingText);
+  if (headingMapped) mapped.push(headingMapped);
+
+  const deduped = [...new Set(mapped.filter((v) => LOCATION_CANONICAL.includes(v)))];
+  if (deduped.length === 0) return [];
+
+  // If a free-zone location is present, prioritize it as primary choice.
+  const freeZones = deduped.filter(isFreeZoneLocation);
+  const others = deduped.filter((v) => !isFreeZoneLocation(v));
+  return [...freeZones, ...others];
 }
 
 export const uboRouter = Router();
@@ -1494,7 +1569,7 @@ uboRouter.post('/extract-locations-from-licence', (req, res, next) => {
         const match = name.match(/\b(Regional\s+Branch\s+Commercial\s+Licen[sc]e)\s*[-–—:,]?\s*([^.]+)/i);
         if (match && match[2]) {
           const fromName = match[2].trim();
-          if (fromName.length > 0 && fromName.length < 100) fileLocations = [fromName];
+          if (fromName.length > 0 && fromName.length < 100) fileLocations = rankAndNormalizeLocations([fromName], fromName);
         }
       }
       allLocations.push(...fileLocations);
@@ -1610,7 +1685,7 @@ uboRouter.post('/extract-locations-from-licence-urls', async (req, res) => {
         const match = url.match(/\/([^/?#]+\.(pdf|docx?))$/i);
         if (match && match[1]) {
           const fromName = match[1].replace(/\.[^.]+$/, '').trim();
-          if (fromName.length > 0 && fromName.length < 100) fileLocations = [fromName];
+          if (fromName.length > 0 && fromName.length < 100) fileLocations = rankAndNormalizeLocations([fromName], fromName);
         }
       }
       allLocations.push(...fileLocations);

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { AML_CFT_DOMAINS } from '../data/amlCftChecklistData.js';
+import { AML_CFT_CHECKLISTS } from '../data/amlCftChecklistData.js';
 import './AmlCftChecklist.css';
 
 const API = import.meta.env.VITE_API_URL || '';
@@ -7,15 +7,28 @@ const API = import.meta.env.VITE_API_URL || '';
 /**
  * AmlCftChecklist
  * ================
- * UAE AML/CFT compliance checklist across 17 regulatory domains.
+ * AML/CFT compliance checklist across 17 regulatory domains (UAE or Kuwait).
  * Supports manual checking and AI-assisted auto-checking from an uploaded audit document.
  *
  * Props:
  *   opco      – entity identifier used to persist state per organisation (optional)
  *   language  – locale string (reserved for i18n, unused for now)
+ *   selectedFramework – currently selected Governance framework name (used to choose UAE vs Kuwait dataset)
  */
-export default function AmlCftChecklist({ opco, language }) {
+export default function AmlCftChecklist({ opco, language, selectedFramework }) {
   const entityKey = opco || 'global';
+
+  const getChecklistKeyFromFramework = (fw) => {
+    if (!fw) return null;
+    if (AML_CFT_CHECKLISTS[fw]) return fw;
+    const normalized = String(fw).trim().toLowerCase();
+    const matched = Object.keys(AML_CFT_CHECKLISTS).find((k) => k.toLowerCase() === normalized);
+    return matched || null;
+  };
+
+  const frameworkChecklistKey = getChecklistKeyFromFramework(selectedFramework);
+  const [checklistKey, setChecklistKey] = useState(frameworkChecklistKey || 'UAE AML/CFT');
+  const checklist = AML_CFT_CHECKLISTS[checklistKey] || AML_CFT_CHECKLISTS['UAE AML/CFT'] || AML_CFT_CHECKLISTS.UAE;
 
   // ── section open/closed ──────────────────────────────────────────────────
   const [sectionOpen, setSectionOpen] = useState(false);
@@ -42,7 +55,16 @@ export default function AmlCftChecklist({ opco, language }) {
       .then((r) => r.json())
       .then((data) => setItemState(data.state || {}))
       .catch((e) => setLoadError(e.message));
-  }, [sectionOpen, entityKey]);
+  }, [sectionOpen, entityKey, checklistKey]);
+
+  // ── checklist selection (by selected governance framework) ───────────────
+  useEffect(() => {
+    if (frameworkChecklistKey) {
+      setChecklistKey(frameworkChecklistKey);
+      return;
+    }
+    setChecklistKey('UAE AML/CFT');
+  }, [frameworkChecklistKey]);
 
   // ── helpers ───────────────────────────────────────────────────────────────
   const setStatus = useCallback((id, status) => {
@@ -64,7 +86,7 @@ export default function AmlCftChecklist({ opco, language }) {
   }, []);
 
   // ── overall progress ──────────────────────────────────────────────────────
-  const totalItems = AML_CFT_DOMAINS.reduce((s, d) => s + d.items.length, 0);
+  const totalItems = checklist.domains.reduce((s, d) => s + d.items.length, 0);
   const answeredItems = Object.values(itemState).filter((v) => v && v.status).length;
   const compliantItems = Object.values(itemState).filter((v) => v && v.status === 'yes').length;
   const pct = totalItems > 0 ? Math.round((answeredItems / totalItems) * 100) : 0;
@@ -99,6 +121,7 @@ export default function AmlCftChecklist({ opco, language }) {
     setAutoMsg(null);
     const form = new FormData();
     form.append('file', file);
+    form.append('jurisdiction', checklist.key);
     try {
       const r = await fetch(
         `${API}/api/aml-checklist/${encodeURIComponent(entityKey)}/auto-check`,
@@ -136,9 +159,9 @@ export default function AmlCftChecklist({ opco, language }) {
         aria-expanded={sectionOpen}
       >
         <span className="aml-checklist-toggle-icon">🛡️</span>
-        <span>UAE AML/CFT Compliance Checklist</span>
+        <span>{checklist.label}</span>
         <span style={{ fontSize: '0.77rem', color: '#6b7280', fontWeight: 400, marginLeft: '0.5rem' }}>
-          17 domains · {totalItems} controls
+          {checklist.domains.length} domains · {totalItems} controls
         </span>
         <span className={`aml-checklist-toggle-chevron ${sectionOpen ? 'open' : ''}`}>▼</span>
       </button>
@@ -196,7 +219,7 @@ export default function AmlCftChecklist({ opco, language }) {
 
           {/* ── domain accordion list ── */}
           <div className="aml-domains-list">
-            {AML_CFT_DOMAINS.map((domain) => {
+            {checklist.domains.map((domain) => {
               const domainItems = domain.items;
               const yes = domainItems.filter((it) => itemState[it.id]?.status === 'yes').length;
               const answered = domainItems.filter((it) => itemState[it.id]?.status).length;

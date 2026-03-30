@@ -5,7 +5,7 @@ import { fileURLToPath } from 'url';
 import multer from 'multer';
 import { createChatCompletion, isLlmConfigured } from '../services/llm.js';
 import { extractTextFromBuffer } from '../services/text-extract.js';
-import { AML_CFT_DOMAINS, AML_CFT_ALL_ITEMS } from '../../client/src/data/amlCftChecklistData.js';
+import { AML_CFT_CHECKLISTS } from '../../client/src/data/amlCftChecklistData.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const DATA_FILE = join(__dirname, '../data/amlChecklist.json');
@@ -77,12 +77,21 @@ amlChecklistRouter.post('/:opco/auto-check', upload.single('file'), async (req, 
   // Truncate to ~12 000 chars to stay within token budget
   const truncated = docText.length > 12000 ? docText.slice(0, 12000) + '\n[...truncated]' : docText;
 
+  const requestedChecklistKey = String(
+    req.body?.jurisdiction || req.body?.country || req.body?.framework || 'UAE AML/CFT'
+  ).trim();
+  const checklist =
+    AML_CFT_CHECKLISTS[requestedChecklistKey] ||
+    AML_CFT_CHECKLISTS['UAE AML/CFT'] ||
+    AML_CFT_CHECKLISTS.UAE;
+  const validItemIds = new Set(checklist.allItems.map((it) => it.id));
+
   // Build compact item list for the prompt
-  const itemLines = AML_CFT_ALL_ITEMS.map(
+  const itemLines = checklist.allItems.map(
     (it) => `${it.id}: ${it.control}`
   ).join('\n');
 
-  const systemPrompt = `You are an expert UAE AML/CFT compliance auditor.
+  const systemPrompt = `You are ${checklist.llmAuditor}.
 You will review a compliance document and assess whether each listed control requirement is evidenced.
 Respond ONLY with a valid JSON object mapping each item ID to one of: "yes", "no", or "na".
 "yes"  = the document clearly evidences or describes compliance with this control.
@@ -90,7 +99,7 @@ Respond ONLY with a valid JSON object mapping each item ID to one of: "yes", "no
 "na"   = this control is explicitly not applicable based on the entity type or document context.
 Do not include explanations. Return only the JSON object.`;
 
-  const userPrompt = `DOCUMENT TEXT:\n${truncated}\n\nCOMPLIANCE ITEMS TO ASSESS:\n${itemLines}\n\nReturn only a JSON object like: {"GOV-001":"yes","GOV-002":"no",...}`;
+  const userPrompt = `DOCUMENT TEXT:\n${truncated}\n\nCOMPLIANCE ITEMS TO ASSESS:\n${itemLines}\n\nReturn only a JSON object mapping each item ID to: "yes", "no", or "na".`;
 
   let suggestions;
   try {
@@ -115,6 +124,7 @@ Do not include explanations. Return only the JSON object.`;
   const VALID = new Set(['yes', 'no', 'na']);
   const cleaned = {};
   for (const [k, v] of Object.entries(suggestions)) {
+    if (!validItemIds.has(k)) continue;
     if (VALID.has(v)) cleaned[k] = v;
   }
 

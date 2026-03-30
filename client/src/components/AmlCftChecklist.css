@@ -1,11 +1,12 @@
-/* AmlCftChecklist.css — UAE AML/CFT Compliance Checklist (dark-theme aware) */
+/* AmlCftChecklist.css — UAE AML/CFT Compliance Checklist (white + peach theme) */
 
 .aml-checklist {
   margin-top: 2rem;
-  border: 2px solid #3b82f6;
-  border-radius: 10px;
+  border: 2px solid var(--accent, #d4725c);
+  border-radius: var(--radius-md, 10px);
   overflow: hidden;
-  background: var(--surface, #1a2332);
+  background: var(--surface, #fff);
+  box-shadow: var(--shadow-card, 0 4px 24px rgba(41, 37, 36, 0.06));
 }
 
 /* ── Collapsible section header ── */
@@ -15,18 +16,18 @@
   align-items: center;
   gap: 0.75rem;
   padding: 1rem 1.25rem;
-  background: linear-gradient(135deg, #1e3a5f 0%, #1a2e4a 100%);
+  background: linear-gradient(135deg, #fff5f0 0%, #fbeee8 100%);
   border: none;
   cursor: pointer;
   text-align: left;
   font-size: 1rem;
   font-weight: 600;
-  color: #e2e8f0;
+  color: var(--text, #292524);
   transition: background 0.15s;
-  border-bottom: 1px solid #2d4a6e;
+  border-bottom: 1px solid var(--border, #efd7cc);
 }
 .aml-checklist-toggle:hover {
-  background: linear-gradient(135deg, #254b78 0%, #1e3a5f 100%);
+  background: linear-gradient(135deg, #fbeee8 0%, #ffe4d6 100%);
 }
 .aml-checklist-toggle-icon {
   font-size: 1.2rem;
@@ -34,7 +35,7 @@
 .aml-checklist-toggle-chevron {
   margin-left: auto;
   font-size: 0.85rem;
-  color: #94a3b8;
+  color: var(--text-muted, #78716c);
   transition: transform 0.2s;
 }
 .aml-checklist-toggle-chevron.open {
@@ -44,8 +45,8 @@
 /* ── Overall progress bar ── */
 .aml-checklist-progress-bar-wrap {
   padding: 0.75rem 1.25rem;
-  border-bottom: 1px solid var(--border, #2d3a4f);
-  background: var(--surface, #1a2332);
+  border-bottom: 1px solid var(--border, #efd7cc);
+  background: var(--surface, #fff);
 }
 .aml-checklist-progress-label {
   display: flex;
@@ -56,7 +57,7 @@
 }
 .aml-checklist-progress-bar {
   height: 6px;
-  background: var(--border, #2d3a4f);
+  background: var(--border, #efd7cc);
   border-radius: 3px;
   overflow: hidden;
 }
@@ -73,9 +74,9 @@
   align-items: center;
   gap: 0.75rem;
   padding: 0.75rem 1.25rem;
-  border-bottom: 1px solid var(--border, #2d3a4f);
+  border-bottom: 1px solid var(--border, #efd7cc);
   flex-wrap: wrap;
-  background: var(--surface, #1a2332);
+  background: var(--surface, #fff);
 }
 .aml-checklist-toolbar-label {
   font-size: 0.82rem;
@@ -86,17 +87,17 @@
   align-items: center;
   gap: 0.4rem;
   padding: 0.35rem 0.85rem;
-  border-radius: 6px;
-  border: 1px solid #7c3aed;
-  background: rgba(124, 58, 237, 0.15);
-  color: #a78bfa;
+  border-radius: var(--radius-sm, 8px);
+  border: 1px solid rgba(212, 114, 92, 0.35);
+  background: rgba(212, 114, 92, 0.1);
+  color: var(--accent-hover, #b85942);
   font-size: 0.8rem;
   font-weight: 500;
   cursor: pointer;
   transition: background 0.15s;
 }
 .aml-checklist-upload-btn:hover {
-  background: rgba(124, 58, 237, 0.25);
+  background: rgba(212, 114, 92, 0.18);
 }
 .aml-checklist-upload-btn:disabled {
   opacity: 0.6;
@@ -107,7 +108,7 @@
   padding: 0.35rem 0.85rem;
   border-radius: 6px;
   border: none;
-  background: #2563eb;
+  background: var(--accent, #d4725c);
   color: #fff;
   font-size: 0.8rem;
   font-weight: 500;
@@ -115,7 +116,7 @@
   transition: background 0.15s;
 }
 .aml-checklist-save-btn:hover {
-  background: #1d4ed8;
+  background: var(--accent-hover, #b85942);
 }
 .aml-checklist-save-btn:disabled {
   opacity: 0.6;
@@ -142,7 +143,7 @@
   padding: 0.25rem 0;
 }
 .aml-domain {
-  border-bottom: 1px solid var(--border, #2d3a4f);
+  border-bottom: 1px solid var(--border, #efd7cc);
 }
 .aml-domain:last-child {
   border-bottom: none;
@@ -161,15 +162,15 @@
   transition: background 0.15s;
 }
 .aml-domain-header:hover {
-  background: var(--surface-hover, #243044);
+  background: var(--accent-soft, #fbeee8);
 }
 .aml-domain-id {
   display: inline-block;
   min-width: 38px;
   padding: 2px 6px;
   border-radius: 4px;
-  background: rgba(59, 130, 246, 0.2);
-  color: #93c5fd;
+  background: rgba(212, 114, 92, 0.2);
+  color: var(--accent-hover, #b85942);
   font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.03em;
@@ -198,7 +199,7 @@
 /* ── Item list ── */
 .aml-items-list {
   padding: 0.25rem 0 0.5rem;
-  background: rgba(0, 0, 0, 0.15);
+  background: var(--surface-elevated, #fffdfb);
 }
 
 .aml-item {
@@ -206,7 +207,7 @@
   grid-template-columns: 1fr auto;
   gap: 0.5rem;
   padding: 0.75rem 1.5rem;
-  border-bottom: 1px solid var(--border, #2d3a4f);
+  border-bottom: 1px solid var(--border, #efd7cc);
   align-items: start;
 }
 .aml-item:last-child {
@@ -280,9 +281,9 @@
   width: 100%;
   font-size: 0.77rem;
   padding: 0.4rem 0.6rem;
-  border: 1px solid var(--border, #2d3a4f);
+  border: 1px solid var(--border, #efd7cc);
   border-radius: 5px;
-  background: var(--surface, #1a2332);
+  background: var(--surface, #fff);
   color: var(--text, #e6edf3);
   resize: vertical;
   min-height: 48px;
@@ -292,7 +293,7 @@
 }
 .aml-item-evidence-note textarea:focus {
   outline: none;
-  border-color: #3b82f6;
+  border-color: var(--accent, #d4725c);
 }
 .aml-item-evidence-note textarea::placeholder {
   color: #4b5563;
@@ -309,7 +310,7 @@
 
 .aml-status-group {
   display: flex;
-  border: 1px solid var(--border, #2d3a4f);
+  border: 1px solid var(--border, #efd7cc);
   border-radius: 6px;
   overflow: hidden;
 }
@@ -322,13 +323,13 @@
   cursor: pointer;
   color: var(--text-muted, #9baec8);
   transition: background 0.12s, color 0.12s;
-  border-right: 1px solid var(--border, #2d3a4f);
+  border-right: 1px solid var(--border, #efd7cc);
 }
 .aml-status-btn:last-child {
   border-right: none;
 }
 .aml-status-btn:hover {
-  background: var(--surface-hover, #243044);
+  background: var(--surface-hover, #fff5f0);
 }
 .aml-status-btn.active-yes {
   background: rgba(16, 185, 129, 0.2);
@@ -341,7 +342,7 @@
   font-weight: 700;
 }
 .aml-status-btn.active-na {
-  background: var(--surface-hover, #243044);
+  background: var(--surface-hover, #fff5f0);
   color: var(--text-muted, #9baec8);
   font-weight: 700;
 }

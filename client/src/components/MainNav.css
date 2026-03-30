@@ -1,5 +1,5 @@
 .main-nav {
-  background: var(--surface);
+  background: linear-gradient(180deg, var(--surface-elevated, #ffffff) 0%, var(--accent-soft, #eaf2ff) 100%);
   border-bottom: 1px solid var(--border);
   padding: 0.75rem 1.5rem 0.75rem;
   display: flex;
@@ -22,7 +22,7 @@
 .main-nav-module-item,
 .main-nav-section-item {
   border: 1px solid var(--border);
-  background: rgba(15, 20, 25, 0.85);
+  background: var(--surface);
   color: var(--text-muted);
   font-size: 0.88rem;
   padding: 0.6rem 1rem;
@@ -30,32 +30,35 @@
   cursor: pointer;
   min-width: 140px;
   text-align: left;
-  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.28);
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.12);
   transition:
     background-color 0.15s ease,
     color 0.15s ease,
     box-shadow 0.15s ease,
-    transform 0.1s ease;
+    transform 0.1s ease,
+    border-color 0.15s ease;
 }
 
 .main-nav-module-item:hover,
 .main-nav-section-item:hover {
-  background: var(--surface-hover);
+  background: var(--accent-soft);
   color: var(--text);
-  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.4);
+  border-color: var(--border-strong);
+  box-shadow: 0 8px 22px rgba(37, 99, 235, 0.16);
   transform: translateY(-1px);
 }
 
 .main-nav-module-item.active {
-  background: linear-gradient(135deg, var(--accent), #0ea5e9);
+  background: linear-gradient(135deg, var(--accent) 0%, #3b82f6 100%);
   border-color: transparent;
   color: #fff;
   font-weight: 600;
+  box-shadow: 0 6px 20px rgba(37, 99, 235, 0.28);
 }
 
 .main-nav-section-item.active {
-  background: rgba(59, 130, 246, 0.18);
+  background: rgba(37, 99, 235, 0.14);
   border-color: var(--accent);
-  color: var(--accent);
+  color: var(--accent-hover);
   font-weight: 600;
 }

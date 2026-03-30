@@ -105,21 +105,31 @@ function TreeNode({ label, children, level, parentCards, affectedOpcoNames, chan
   const hasParentCards = Array.isArray(parentCards) && parentCards.length > 0;
   const levelClass = level === 0 ? 'tree-root' : level === 1 ? 'tree-branch' : 'tree-leaf';
   const opcosList = Array.isArray(affectedOpcoNames) && affectedOpcoNames.length > 0 ? affectedOpcoNames : [];
+  const canToggle = hasChildren || hasParentCards;
+  const handleToggle = () => canToggle && setOpen((o) => !o);
 
   return (
     <li className={`tree-node tree-level-${level} ${levelClass}`}>
       <div
         className="tree-node-label"
-        onClick={() => (hasChildren || hasParentCards) && setOpen((o) => !o)}
-        role={hasChildren || hasParentCards ? 'button' : undefined}
-        aria-expanded={hasChildren || hasParentCards ? open : undefined}
+        onClick={handleToggle}
+        onKeyDown={(e) => {
+          if (!canToggle) return;
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            handleToggle();
+          }
+        }}
+        role={canToggle ? 'button' : undefined}
+        tabIndex={canToggle ? 0 : undefined}
+        aria-expanded={canToggle ? open : undefined}
       >
-        {(hasChildren || hasParentCards) && (
+        {canToggle && (
           <span className="tree-toggle" aria-hidden>
             {open ? '▼' : '▶'}
           </span>
         )}
-        {!hasChildren && !hasParentCards && <span className="tree-bullet" />}
+        {!canToggle && <span className="tree-bullet" />}
         <span className="tree-text">{label}</span>
       </div>
       {open && level === 1 && opcosList.length > 0 && (

@@ -396,7 +396,11 @@ export function Dashboard({
         />
       )}
 
-      <AmlCftChecklist opco={selectedOpCo || selectedParent || 'global'} language={language} />
+      <AmlCftChecklist
+        opco={selectedOpCo || selectedParent || 'global'}
+        language={language}
+        selectedFramework={selectedFramework}
+      />
     </>
   );
 }
