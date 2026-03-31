@@ -13,6 +13,7 @@ import { readFile } from 'fs/promises';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { FRAMEWORKS } from '../constants.js';
+import { computeDependencyIntelligence } from '../services/dependencyIntelligence.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -444,6 +445,12 @@ dashboardRouter.get('/summary', async (req, res) => {
       ? { lastRun: feedMeta.lastRun, added: feedMeta.added, total: feedMeta.total }
       : null;
 
+    const dependencyIntelligence = await computeDependencyIntelligence({
+      days,
+      selectedOpco,
+      includeAi: false,
+    });
+
     // ── Assemble response ──────────────────────────────────────────────────
     res.json({
       generatedAt: now.toISOString(),
@@ -501,6 +508,7 @@ dashboardRouter.get('/summary', async (req, res) => {
         litigationObligationInsights: litigationObligationInsights.slice(0, 12),
         documentationGaps: documentationGaps.slice(0, 20),
       },
+      dependencyIntelligence: dependencyIntelligence.summary,
 
       feedStatus,
 
