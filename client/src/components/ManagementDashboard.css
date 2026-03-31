@@ -239,6 +239,61 @@
 .mgmt-kpi-label-centered { text-align: center; margin-top: 0.2rem; }
 .mgmt-kpi-sub-centered { text-align: center; }
 
+.mgmt-health-explain-panel {
+  margin-top: 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-raised, #f9fbff);
+  padding: 0.65rem 0.8rem;
+}
+
+.mgmt-health-explain-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  margin-bottom: 0.45rem;
+}
+
+.mgmt-health-confidence {
+  font-size: 0.7rem;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 0.15rem 0.5rem;
+}
+
+.mgmt-health-confidence-high {
+  color: #166534;
+  background: #dcfce7;
+}
+
+.mgmt-health-confidence-medium {
+  color: #92400e;
+  background: #fef3c7;
+}
+
+.mgmt-health-confidence-low {
+  color: #991b1b;
+  background: #fee2e2;
+}
+
+.mgmt-health-driver-list {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.mgmt-health-driver-chip {
+  border: 1px solid rgba(37, 99, 235, 0.25);
+  background: rgba(37, 99, 235, 0.1);
+  color: #1e3a8a;
+  border-radius: 999px;
+  padding: 0.2rem 0.55rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
 /* ── Middle row (2-col) ── */
 .mgmt-dash-mid-row {
   display: grid;
@@ -424,17 +479,6 @@
   padding: 1rem;
 }
 
-/* ── Bottom row ── */
-.mgmt-dash-bottom-row {
-  display: grid;
-  grid-template-columns: 2fr 1fr;
-  gap: 0.75rem;
-}
-
-@media (max-width: 768px) {
-  .mgmt-dash-bottom-row { grid-template-columns: 1fr; }
-}
-
 /* ── Expiry tracker table ── */
 .mgmt-expiry-table {
   width: 100%;
@@ -523,58 +567,6 @@
   color: var(--text-muted);
   font-size: 0.78rem;
   padding: 1rem;
-}
-
-/* ── Quick actions grid ── */
-.mgmt-quick-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.mgmt-quick-tile {
-  display: flex;
-  align-items: center;
-  gap: 0.65rem;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 0.65rem 0.8rem;
-  cursor: pointer;
-  transition: border-color 0.15s, background 0.15s, transform 0.13s;
-  text-align: left;
-  width: 100%;
-}
-
-.mgmt-quick-tile:hover {
-  border-color: var(--accent);
-  background: rgba(212, 114, 92, 0.06);
-  transform: translateX(3px);
-}
-
-.mgmt-quick-icon {
-  font-size: 1.1rem;
-  flex-shrink: 0;
-}
-
-.mgmt-quick-label {
-  font-size: 0.76rem;
-  font-weight: 600;
-  color: var(--text);
-  line-height: 1.2;
-}
-
-.mgmt-quick-desc {
-  font-size: 0.66rem;
-  color: var(--text-muted);
-  margin-top: 1px;
-}
-
-.mgmt-quick-arrow {
-  margin-left: auto;
-  color: var(--accent);
-  font-size: 0.75rem;
-  opacity: 0.6;
 }
 
 /* ── Colour helpers ── */
