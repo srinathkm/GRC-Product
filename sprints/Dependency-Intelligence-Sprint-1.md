@@ -32,20 +32,20 @@ flowchart LR
     compliance[ComplianceFrameworks]
   end
 
-  ingest[DependencyIngestService] --> graph[DependencyGraphBuilder]
+  ingest[DependencyIngestService] --> depGraph[DependencyGraphBuilder]
   legal --> ingest
   contracts --> ingest
   actions --> ingest
   compliance --> ingest
 
-  graph --> rules[RulesAndScoringEngine]
-  graph --> ai[AIEnrichmentEngine]
+  depGraph --> rules[RulesAndScoringEngine]
+  depGraph --> ai[AIEnrichmentEngine]
   ai --> merge[EvidenceMergeAndConfidence]
   rules --> merge
 
-  merge --> api[DependencyIntelligenceAPI]
-  api --> exec[ManagementDashboardSummary]
-  api --> detail[DependencyIntelligencePage]
+  merge --> apiNode[DependencyIntelligenceAPI]
+  apiNode --> exec[ManagementDashboardSummary]
+  apiNode --> detail[DependencyIntelligencePage]
 ```
 
 
