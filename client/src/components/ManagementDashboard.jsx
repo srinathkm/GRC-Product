@@ -200,40 +200,6 @@ function ExpiryTable({ upcomingExpiry, onNavigate }) {
   );
 }
 
-// ── Quick actions ────────────────────────────────────────────────────────────
-const QUICK_ACTIONS = [
-  { icon: '🏢', label: 'Onboarding',          desc: 'Add new entities',               view: 'onboarding' },
-  { icon: '📋', label: 'Governance Framework', desc: 'Review regulatory changes',      view: 'governance-framework' },
-  { icon: '👁️', label: 'UBO Register',          desc: 'Beneficial ownership records',   view: 'ubo' },
-  { icon: '📄', label: 'POA Management',        desc: 'Power of attorney tracking',     view: 'poa-management' },
-  { icon: '⚖️', label: 'Litigations',           desc: 'Active cases overview',          view: 'litigations-management' },
-  { icon: '🌱', label: 'ESG Summary',           desc: 'Maturity assessment',            view: 'esg' },
-  { icon: '🛡️', label: 'Data Sovereignty',      desc: 'Localisation compliance',        view: 'data-sovereignty' },
-  { icon: '📊', label: 'Risk Predictor',        desc: 'AI-driven risk analysis',        view: 'analysis' },
-];
-
-function QuickActions({ onNavigate }) {
-  return (
-    <div className="mgmt-quick-grid">
-      {QUICK_ACTIONS.map(({ icon, label, desc, view }) => (
-        <button
-          key={view}
-          type="button"
-          className="mgmt-quick-tile"
-          onClick={() => onNavigate(view)}
-        >
-          <span className="mgmt-quick-icon">{icon}</span>
-          <div>
-            <div className="mgmt-quick-label">{label}</div>
-            <div className="mgmt-quick-desc">{desc}</div>
-          </div>
-          <span className="mgmt-quick-arrow">›</span>
-        </button>
-      ))}
-    </div>
-  );
-}
-
 // ── Main component ────────────────────────────────────────────────────────────
 export function ManagementDashboard({ onNavigateToView }) {
   const [data, setData] = useState(null);
@@ -284,7 +250,7 @@ export function ManagementDashboard({ onNavigateToView }) {
   if (!data)   return null;
 
   const { entities, regulatoryChanges, poa, licences, contracts, litigations, ip,
-          upcomingExpiry, topOpcoAlerts, feedStatus, complianceHealthScore, generatedAt, intelligence = {} } = data;
+          upcomingExpiry, topOpcoAlerts, feedStatus, complianceHealthScore, complianceHealthDetail = null, generatedAt, intelligence = {}, dependencyIntelligence = {} } = data;
 
   const lineageImpacts = Array.isArray(intelligence.lineageImpacts) ? intelligence.lineageImpacts : [];
   const dataComplianceInsights = Array.isArray(intelligence.dataComplianceInsights) ? intelligence.dataComplianceInsights : [];
@@ -293,6 +259,9 @@ export function ManagementDashboard({ onNavigateToView }) {
 
   const totalExpiring = (poa.expiringSoon || 0) + (licences.expiringSoon || 0) + (contracts.expiringSoon || 0);
   const totalExpired  = (poa.expired || 0) + (licences.expired || 0) + (contracts.expired || 0);
+  const topNegativeDrivers = Array.isArray(complianceHealthDetail?.topNegativeDrivers)
+    ? complianceHealthDetail.topNegativeDrivers
+    : [];
 
   return (
     <div className="mgmt-dash">
@@ -395,6 +364,33 @@ export function ManagementDashboard({ onNavigateToView }) {
             onClick={() => navigate('org-overview')}
           />
         </div>
+        {complianceHealthDetail && (
+          <div className="mgmt-health-explain-panel" role="status" aria-live="polite">
+            <div className="mgmt-health-explain-head">
+              <span className="mgmt-panel-title">Why this score</span>
+              <span className={`mgmt-health-confidence mgmt-health-confidence-${complianceHealthDetail.reliability || 'low'}`}>
+                Confidence: {complianceHealthDetail.confidence ?? 0}% ({complianceHealthDetail.reliability || 'low'})
+              </span>
+            </div>
+            {topNegativeDrivers.length > 0 ? (
+              <div className="mgmt-health-driver-list">
+                {topNegativeDrivers.map((driver) => (
+                  <button
+                    key={driver.factor}
+                    type="button"
+                    className="mgmt-health-driver-chip"
+                    onClick={() => navigate('dependency-intelligence')}
+                    title="Open Dependency Intelligence"
+                  >
+                    {driver.factor} ({driver.impact})
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <p className="mgmt-opco-empty">No significant negative drivers found.</p>
+            )}
+          </div>
+        )}
       </div>
 
       {/* ── SECONDARY KPIs (legal operations) ── */}
@@ -417,6 +413,54 @@ export function ManagementDashboard({ onNavigateToView }) {
           <KpiTile icon="💡" value={ip.total} label="IP Assets"
             sub="Registered &amp; active"
             accentColor="#34d399" onClick={() => navigate('ip-management')} />
+        </div>
+      </div>
+
+      <div>
+        <p className="mgmt-dash-section-title">Dependency Intelligence Snapshot</p>
+        <div className="mgmt-dash-kpi-row">
+          <KpiTile
+            icon="🧭"
+            value={dependencyIntelligence.totalClusters || 0}
+            label="Dependency Clusters"
+            sub={`${dependencyIntelligence.criticalClusters || 0} critical · ${dependencyIntelligence.highClusters || 0} high`}
+            accentColor={(dependencyIntelligence.criticalClusters || 0) > 0 ? '#ef4444' : '#3b82f6'}
+            onClick={() => navigate('dependency-intelligence')}
+            navHint="Investigate →"
+          />
+          <KpiTile
+            icon="💸"
+            value={`AED ${Number(dependencyIntelligence.totalExposureAed || 0).toLocaleString()}`}
+            label="Estimated Exposure"
+            sub="Litigation + contractual impact"
+            accentColor="#fbbf24"
+            onClick={() => navigate('dependency-intelligence')}
+            navHint="Review trace →"
+          />
+          <div className="mgmt-panel mgmt-kpi-inline-panel">
+            <div className="mgmt-panel-header">
+              <span className="mgmt-panel-title">Top Impact Clusters</span>
+              <button type="button" className="mgmt-panel-link" onClick={() => navigate('dependency-intelligence')}>
+                Open full view →
+              </button>
+            </div>
+            <div className="mgmt-intel-list">
+              {(dependencyIntelligence.topClusters || []).slice(0, 3).map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  className="mgmt-intel-item mgmt-intel-item-button"
+                  onClick={() => navigate('dependency-intelligence')}
+                >
+                  <div className="mgmt-intel-item-title">{c.opco} · {c.severity} · Score {c.impactScore}</div>
+                  <div className="mgmt-intel-item-sub">{c.unresolvedCount} unresolved · {(c.topFrameworks || []).slice(0, 2).map((f) => f.framework).join(', ') || 'No framework links'}</div>
+                </button>
+              ))}
+              {(!dependencyIntelligence.topClusters || dependencyIntelligence.topClusters.length === 0) && (
+                <p className="mgmt-opco-empty">No dependency clusters in the selected period.</p>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -449,27 +493,16 @@ export function ManagementDashboard({ onNavigateToView }) {
       </div>
 
       {/* ── BOTTOM ROW ── */}
-      <div className="mgmt-dash-bottom-row">
-        {/* Expiry tracker */}
-        <div className="mgmt-panel">
-          <div className="mgmt-panel-header">
-            <span className="mgmt-panel-title">Upcoming Expirations <span className="mgmt-panel-title-sub">(next 60 days)</span></span>
-            {totalExpired > 0 && (
-              <span className="mgmt-expired-count">
-                {totalExpired} already expired
-              </span>
-            )}
-          </div>
-          <ExpiryTable upcomingExpiry={upcomingExpiry} onNavigate={navigate} />
+      <div className="mgmt-panel">
+        <div className="mgmt-panel-header">
+          <span className="mgmt-panel-title">Upcoming Expirations <span className="mgmt-panel-title-sub">(next 60 days)</span></span>
+          {totalExpired > 0 && (
+            <span className="mgmt-expired-count">
+              {totalExpired} already expired
+            </span>
+          )}
         </div>
-
-        {/* Quick navigate */}
-        <div className="mgmt-panel">
-          <div className="mgmt-panel-header">
-            <span className="mgmt-panel-title">Quick Navigation</span>
-          </div>
-          <QuickActions onNavigate={navigate} />
-        </div>
+        <ExpiryTable upcomingExpiry={upcomingExpiry} onNavigate={navigate} />
       </div>
 
       {/* ── INTELLIGENCE PANELS ── */}

@@ -24,6 +24,7 @@ import { governanceRouter } from './routes/governance.js';
 import { defenderIntegrationRouter } from './routes/defenderIntegration.js';
 import { dataSovereigntyRouter } from './routes/dataSovereignty.js';
 import { dashboardRouter } from './routes/dashboard.js';
+import { dependencyIntelligenceRouter } from './routes/dependencyIntelligence.js';
 import { extractRouter } from './routes/extract.js';
 import { amlChecklistRouter } from './routes/amlChecklist.js';
 import { assistantRouter } from './routes/assistant.js';
@@ -58,6 +59,7 @@ app.use('/api/contracts', contractsRouter);
 app.use('/api/defender', defenderIntegrationRouter);
 app.use('/api/data-sovereignty', dataSovereigntyRouter);
 app.use('/api/dashboard', dashboardRouter);
+app.use('/api/dependency-intelligence', dependencyIntelligenceRouter);
 app.use('/api/extract', extractRouter);
 app.use('/api/aml-checklist', amlChecklistRouter);
 app.use('/api/assistant', assistantRouter);
@@ -78,7 +80,35 @@ app.get('*', (req, res, next) => {
 });
 
 const bind = process.env.BIND || '127.0.0.1';
-app.listen(PORT, bind, () => {
+let server;
+
+function shutdown(signal) {
+  console.log(`[Startup] ${signal} received. Shutting down gracefully...`);
+  if (!server) {
+    process.exit(0);
+    return;
+  }
+  server.close(() => process.exit(0));
+  setTimeout(() => process.exit(0), 1500).unref();
+}
+
+server = app.listen(PORT, bind, () => {
   console.log(`Server running at http://${bind}:${PORT}`);
   startFeedScheduler();
 });
+
+server.on('error', (err) => {
+  if (err && err.code === 'EADDRINUSE') {
+    console.warn(
+      `[Startup] Port ${PORT} is already in use on ${bind}. ` +
+      'Another server instance is already running; skipping duplicate start.'
+    );
+    process.exit(0);
+    return;
+  }
+  console.error('[Startup] Server failed to start:', err);
+  process.exit(1);
+});
+
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));

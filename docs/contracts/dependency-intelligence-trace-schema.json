@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://grc.local/contracts/dependency-intelligence-trace-schema.json",
+  "title": "Dependency Intelligence Trace",
+  "type": "object",
+  "required": [
+    "traceVersion",
+    "clusterId",
+    "category",
+    "score",
+    "scoreBand",
+    "computedAt",
+    "factors",
+    "deterministicEvidence",
+    "aiEvidence"
+  ],
+  "properties": {
+    "traceVersion": { "type": "string" },
+    "clusterId": { "type": "string" },
+    "category": { "type": "string" },
+    "score": { "type": "number", "minimum": 0, "maximum": 100 },
+    "scoreBand": {
+      "type": "string",
+      "enum": ["compliant", "largely_compliant", "partially_compliant", "non_compliant"]
+    },
+    "computedAt": { "type": "string" },
+    "factors": { "type": "object" },
+    "deterministicEvidence": {
+      "type": "object",
+      "required": ["sources", "decisionRules"],
+      "properties": {
+        "sources": { "type": "array", "items": { "type": "string" } },
+        "decisionRules": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "aiEvidence": {
+      "type": "object",
+      "required": ["mode", "precedence"],
+      "properties": {
+        "mode": { "type": "string" },
+        "precedence": { "type": "string" },
+        "status": { "type": "string" },
+        "reason": { "type": ["string", "null"] },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
+    }
+  }
+}
