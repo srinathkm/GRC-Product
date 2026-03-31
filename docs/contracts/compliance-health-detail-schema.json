@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://grc.local/contracts/compliance-health-detail-schema.json",
+  "title": "Compliance Health Detail",
+  "type": "object",
+  "required": [
+    "modelVersion",
+    "band",
+    "confidence",
+    "reliability",
+    "lastComputedAt",
+    "drivers",
+    "riskSignals",
+    "trace",
+    "aiAttribution"
+  ],
+  "properties": {
+    "modelVersion": { "type": "string" },
+    "band": { "type": "string" },
+    "confidence": { "type": "number", "minimum": 0, "maximum": 100 },
+    "reliability": { "type": "string", "enum": ["high", "medium", "low"] },
+    "lastComputedAt": { "type": "string" },
+    "drivers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["factor", "weight", "normalized", "impact"],
+        "properties": {
+          "factor": { "type": "string" },
+          "weight": { "type": "number" },
+          "normalized": { "type": "number" },
+          "impact": { "type": "number" }
+        }
+      }
+    },
+    "riskSignals": { "type": "object" },
+    "trace": { "type": "object" },
+    "aiAttribution": {
+      "type": "object",
+      "required": ["status", "confidence", "insights"],
+      "properties": {
+        "status": { "type": "string" },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+        "insights": { "type": "array", "items": { "type": "string" } },
+        "reason": { "type": ["string", "null"] }
+      }
+    }
+  }
+}
