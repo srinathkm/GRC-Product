@@ -20,6 +20,7 @@ const MODULES = [
       { id: 'onboarding', labelKey: 'navOnboarding' },
       { id: 'parent-overview', labelKey: 'navParentOverview' },
       { id: 'governance-framework', labelKey: 'navGovernanceFramework' },
+      { id: 'dependency-intelligence', labelKey: 'navDependencyIntelligence' },
     ],
   },
   {

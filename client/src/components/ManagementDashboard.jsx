@@ -284,7 +284,7 @@ export function ManagementDashboard({ onNavigateToView }) {
   if (!data)   return null;
 
   const { entities, regulatoryChanges, poa, licences, contracts, litigations, ip,
-          upcomingExpiry, topOpcoAlerts, feedStatus, complianceHealthScore, generatedAt, intelligence = {} } = data;
+          upcomingExpiry, topOpcoAlerts, feedStatus, complianceHealthScore, generatedAt, intelligence = {}, dependencyIntelligence = {} } = data;
 
   const lineageImpacts = Array.isArray(intelligence.lineageImpacts) ? intelligence.lineageImpacts : [];
   const dataComplianceInsights = Array.isArray(intelligence.dataComplianceInsights) ? intelligence.dataComplianceInsights : [];
@@ -417,6 +417,54 @@ export function ManagementDashboard({ onNavigateToView }) {
           <KpiTile icon="💡" value={ip.total} label="IP Assets"
             sub="Registered &amp; active"
             accentColor="#34d399" onClick={() => navigate('ip-management')} />
+        </div>
+      </div>
+
+      <div>
+        <p className="mgmt-dash-section-title">Dependency Intelligence Snapshot</p>
+        <div className="mgmt-dash-kpi-row">
+          <KpiTile
+            icon="🧭"
+            value={dependencyIntelligence.totalClusters || 0}
+            label="Dependency Clusters"
+            sub={`${dependencyIntelligence.criticalClusters || 0} critical · ${dependencyIntelligence.highClusters || 0} high`}
+            accentColor={(dependencyIntelligence.criticalClusters || 0) > 0 ? '#ef4444' : '#3b82f6'}
+            onClick={() => navigate('dependency-intelligence')}
+            navHint="Investigate →"
+          />
+          <KpiTile
+            icon="💸"
+            value={`AED ${Number(dependencyIntelligence.totalExposureAed || 0).toLocaleString()}`}
+            label="Estimated Exposure"
+            sub="Litigation + contractual impact"
+            accentColor="#fbbf24"
+            onClick={() => navigate('dependency-intelligence')}
+            navHint="Review trace →"
+          />
+          <div className="mgmt-panel mgmt-kpi-inline-panel">
+            <div className="mgmt-panel-header">
+              <span className="mgmt-panel-title">Top Impact Clusters</span>
+              <button type="button" className="mgmt-panel-link" onClick={() => navigate('dependency-intelligence')}>
+                Open full view →
+              </button>
+            </div>
+            <div className="mgmt-intel-list">
+              {(dependencyIntelligence.topClusters || []).slice(0, 3).map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  className="mgmt-intel-item mgmt-intel-item-button"
+                  onClick={() => navigate('dependency-intelligence')}
+                >
+                  <div className="mgmt-intel-item-title">{c.opco} · {c.severity} · Score {c.impactScore}</div>
+                  <div className="mgmt-intel-item-sub">{c.unresolvedCount} unresolved · {(c.topFrameworks || []).slice(0, 2).map((f) => f.framework).join(', ') || 'No framework links'}</div>
+                </button>
+              ))}
+              {(!dependencyIntelligence.topClusters || dependencyIntelligence.topClusters.length === 0) && (
+                <p className="mgmt-opco-empty">No dependency clusters in the selected period.</p>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 

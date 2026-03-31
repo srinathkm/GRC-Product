@@ -184,6 +184,18 @@
   opacity: 1;
 }
 
+.mgmt-kpi-inline-panel {
+  grid-column: span 3;
+}
+
+.mgmt-intel-item-button {
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: var(--surface-raised, #f9fbff);
+}
+
 .mgmt-kpi-accent-default { --kpi-accent: var(--accent); }
 .mgmt-kpi-accent-blue { --kpi-accent: #3b82f6; }
 .mgmt-kpi-accent-red { --kpi-accent: #ef4444; }
