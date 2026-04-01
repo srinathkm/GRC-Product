@@ -31,16 +31,16 @@ so executive narrative and numbers stay **auditable** end-to-end.
 
 ## Ticket index (GitHub)
 
-| ID | Title | Priority |
-|----|--------|----------|
-| EXEC-01 | Fix duplicate DependencyIntelligence mount in App | P0 |
-| EXEC-02 | Introduce shared ExecutiveContext in App shell | P0 |
-| EXEC-03 | Management Dashboard drill-through passes full context | P0 |
-| EXEC-04 | Dependency Intelligence: align API query params with dashboard | P1 |
-| EXEC-05 | Changes API: OpCo filter or explicit scope labeling vs dashboard | P1 |
-| EXEC-06 | Extract shared regulatory rollup helpers (dashboard + changes) | P2 |
-| EXEC-07 | Data Security: align or separate narratives; provenance labels | P1 |
-| EXEC-08 | Contract tests: dashboard vs dependency-intelligence parity | P2 |
+| ID | Issue | Title | Priority |
+|----|--------|--------|----------|
+| EXEC-01 | [#31](https://github.com/srinathkm/GRC-Product/issues/31) | Fix duplicate DependencyIntelligence mount in App | P0 |
+| EXEC-02 | [#32](https://github.com/srinathkm/GRC-Product/issues/32) | Introduce shared ExecutiveContext in App shell | P0 |
+| EXEC-03 | [#33](https://github.com/srinathkm/GRC-Product/issues/33) | Management Dashboard drill-through passes full context | P0 |
+| EXEC-04 | [#34](https://github.com/srinathkm/GRC-Product/issues/34) | Dependency Intelligence: align API query params with dashboard | P1 |
+| EXEC-05 | [#35](https://github.com/srinathkm/GRC-Product/issues/35) | Changes API: OpCo filter or explicit scope labeling vs dashboard | P1 |
+| EXEC-06 | [#36](https://github.com/srinathkm/GRC-Product/issues/36) | Extract shared regulatory rollup helpers (dashboard + changes) | P2 |
+| EXEC-07 | [#37](https://github.com/srinathkm/GRC-Product/issues/37) | Data Security: align or separate narratives; provenance labels | P1 |
+| EXEC-08 | [#38](https://github.com/srinathkm/GRC-Product/issues/38) | Contract tests: dashboard vs dependency-intelligence parity | P2 |
 
 **Creating issues in GitHub**
 
