@@ -26,6 +26,9 @@ coverage/
 # Local archives / images
 raqib-docker.tar.gz
 
+# Local runtime stores (governance tests / dev writes; not source of truth)
+server/data/runtime/
+
 # Defender data and samples can be regenerated
 server/data/defender-uploads.json
 server/data/defender-snapshots.json

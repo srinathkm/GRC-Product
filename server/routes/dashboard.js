@@ -14,6 +14,7 @@ import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { FRAMEWORKS } from '../constants.js';
 import { computeDependencyIntelligence } from '../services/dependencyIntelligence.js';
+import { computeDataComplianceDetail } from '../services/dataComplianceIntelligence.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -191,7 +192,10 @@ dashboardRouter.get('/summary', async (req, res) => {
 
     // Soonest expiring POA items (for expiry tracker)
     const upcomingPoa = activePoa
-      .filter((p) => daysUntil(p.validUntil) !== null && daysUntil(p.validUntil) >= 0)
+      .filter((p) => {
+        const left = daysUntil(p.validUntil);
+        return left !== null && left >= 0 && left <= 60;
+      })
       .sort((a, b) => new Date(a.validUntil) - new Date(b.validUntil))
       .slice(0, 5)
       .map((p) => ({
@@ -210,7 +214,10 @@ dashboardRouter.get('/summary', async (req, res) => {
     const expiredLicences = activeLicences.filter((l) => isExpired(l.expiryDate));
 
     const upcomingLicences = activeLicences
-      .filter((l) => daysUntil(l.expiryDate) !== null && daysUntil(l.expiryDate) >= 0)
+      .filter((l) => {
+        const left = daysUntil(l.expiryDate);
+        return left !== null && left >= 0 && left <= 60;
+      })
       .sort((a, b) => new Date(a.expiryDate) - new Date(b.expiryDate))
       .slice(0, 5)
       .map((l) => ({
@@ -229,7 +236,10 @@ dashboardRouter.get('/summary', async (req, res) => {
     const expiredContracts = activeContracts.filter((c) => isExpired(c.expiryDate));
 
     const upcomingContracts = activeContracts
-      .filter((c) => daysUntil(c.expiryDate) !== null && daysUntil(c.expiryDate) >= 0)
+      .filter((c) => {
+        const left = daysUntil(c.expiryDate);
+        return left !== null && left >= 0 && left <= 60;
+      })
       .sort((a, b) => new Date(a.expiryDate) - new Date(b.expiryDate))
       .slice(0, 5)
       .map((c) => ({
@@ -321,52 +331,15 @@ dashboardRouter.get('/summary', async (req, res) => {
     // ── Intelligence: data compliance / model egress risks ──────────────────
     const modelUsage = Array.isArray(aiModelUsage) ? aiModelUsage : [];
     const sovereigntyChecks = Array.isArray(dataSovereignty?.checks) ? dataSovereignty.checks : [];
-
-    const detectJurisdictionFromLocations = (locations = []) => {
-      const joined = locations.join(' ').toLowerCase();
-      if (joined.includes('saudi')) return 'KSA';
-      if (joined.includes('qatar')) return 'Qatar';
-      if (joined.includes('bahrain')) return 'Bahrain';
-      if (joined.includes('oman')) return 'Oman';
-      if (joined.includes('kuwait')) return 'Kuwait';
-      return 'UAE';
-    };
-
-    const defaultModelCatalog = [
-      { model: 'OpenAI GPT-4o', app: 'Global Assistant', hostRegion: 'US', dataLeavesJurisdiction: true },
-      { model: 'Azure OpenAI GPT-4', app: 'Document Intelligence', hostRegion: 'EU', dataLeavesJurisdiction: true },
-      { model: 'Local Llama 3', app: 'Internal Analytics', hostRegion: 'UAE', dataLeavesJurisdiction: false },
-    ];
-
-    const modelCatalog = modelUsage.length > 0 ? modelUsage : defaultModelCatalog;
     const opcoRows = Array.isArray(onboarding) ? onboarding : [];
-    const dataComplianceInsights = [];
-
-    for (const row of opcoRows) {
-      if (selectedOpco && norm(row.opco) !== norm(selectedOpco)) continue;
-      const jurisdiction = detectJurisdictionFromLocations(Array.isArray(row.locations) ? row.locations : []);
-      const sectorList = Array.isArray(row.sectorOfOperations) ? row.sectorOfOperations : [];
-      for (const model of modelCatalog) {
-        const leaves = !!model.dataLeavesJurisdiction;
-        if (!leaves) continue;
-        const matchingCheck = sovereigntyChecks.find((c) =>
-          includesAny(c.jurisdiction || '', [jurisdiction, 'GCC']) &&
-          includesAny(c.name || '', ['data', 'localisation', 'cross-border'])
-        );
-        dataComplianceInsights.push({
-          opco: row.opco,
-          parent: row.parent || '—',
-          jurisdiction,
-          sectors: sectorList,
-          model: model.model,
-          application: model.app,
-          hostRegion: model.hostRegion,
-          severity: matchingCheck?.severity || 'High',
-          regulation: matchingCheck?.regulation || 'Data residency requirements',
-          risk: `${model.model} for ${model.app} may transfer ${jurisdiction} operational data to ${model.hostRegion}.`,
-        });
-      }
-    }
+    const dataComplianceDetail = computeDataComplianceDetail({
+      onboardingRows: opcoRows,
+      aiModelUsage: modelUsage,
+      sovereigntyChecks,
+      tasks,
+      selectedOpco,
+    });
+    const dataComplianceInsights = dataComplianceDetail.aiTransferRisks || [];
 
     // ── Intelligence: litigation ↔ contractual/IP obligations ────────────────
     const litigationObligationInsights = [];
@@ -509,6 +482,7 @@ dashboardRouter.get('/summary', async (req, res) => {
         documentationGaps: documentationGaps.slice(0, 20),
       },
       dependencyIntelligence: dependencyIntelligence.summary,
+      dataComplianceDetail,
 
       feedStatus,
 
@@ -519,7 +493,11 @@ dashboardRouter.get('/summary', async (req, res) => {
         const expiryRisk = (expiringPoa.length + expiringLicences.length + expiringContracts.length);
         const expiryTotal = (activePoa.length + activeLicences.length + activeContracts.length) || 1;
         const expiryPct = expiryRisk / expiryTotal;
-        const score = Math.max(0, Math.min(100, Math.round(100 - critPct * 40 - expiryPct * 30 - (overdueChanges.length / total) * 30)));
+        const dataPressure = Math.max(0, Math.min(100, 100 - Number(dataComplianceDetail?.overallScore || 100)));
+        const score = Math.max(
+          0,
+          Math.min(100, Math.round(100 - critPct * 30 - expiryPct * 25 - (overdueChanges.length / total) * 25 - dataPressure * 0.2)),
+        );
         return score;
       })(),
     });

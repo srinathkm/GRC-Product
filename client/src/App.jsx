@@ -61,18 +61,18 @@ const PLACEHOLDER_VIEWS = {};
 // Role-based module visibility: which top-level module ids each role can see.
 const ROLE_MODULE_IDS = {
   'legal-team': ['org-overview-module', 'legal-module', 'contracts-module'],
-  'governance-team': ['org-overview-module', 'governance-module', 'ownership-module'],
+  'governance-team': ['org-overview-module', 'governance-module', 'ownership-module', 'data-module'],
   'data-security-team': ['org-overview-module', 'data-module'],
   'c-level': null, // null = all modules
-  board: ['org-overview-module', 'analysis-module'],
+  board: ['org-overview-module', 'analysis-module', 'data-module'],
 };
 
 // Views accessible per role (for redirect when switching roles)
 const ROLE_VIEW_IDS = {
   'legal-team': ['mgmt-dashboard', 'dependency-intelligence', 'org-overview', 'org-dashboard', 'poa-management', 'ip-management', 'licence-management', 'litigations-management', 'contracts-management', 'contracts-upload'],
-  'governance-team': ['mgmt-dashboard', 'dependency-intelligence', 'onboarding', 'org-overview', 'org-dashboard', 'parent-overview', 'governance-framework', 'multi-jurisdiction', 'ubo'],
-  'data-security-team': ['mgmt-dashboard', 'dependency-intelligence', 'org-overview', 'org-dashboard', 'data-sovereignty', 'data-security'],
-  board: ['mgmt-dashboard', 'dependency-intelligence', 'org-overview', 'org-dashboard', 'analysis', 'ma-simulator'],
+  'governance-team': ['mgmt-dashboard', 'dependency-intelligence', 'onboarding', 'org-overview', 'org-dashboard', 'parent-overview', 'governance-framework', 'multi-jurisdiction', 'ubo', 'data-sovereignty', 'data-security', 'task-tracker'],
+  'data-security-team': ['mgmt-dashboard', 'dependency-intelligence', 'org-overview', 'org-dashboard', 'data-sovereignty', 'data-security', 'task-tracker'],
+  board: ['mgmt-dashboard', 'dependency-intelligence', 'org-overview', 'org-dashboard', 'analysis', 'ma-simulator', 'data-sovereignty', 'data-security'],
 };
 
 const ROLE_OPTIONS = [
@@ -225,7 +225,15 @@ export default function App() {
     if (ids && !ids.includes(currentView)) {
       setCurrentView(ROLE_FIRST_VIEW[selectedRole] || ids[0]);
     }
-  }, [selectedRole]);
+  }, [selectedRole, currentView]);
+
+  const navigateWithContext = (view, context = {}) => {
+    if (context && typeof context === 'object') {
+      if (context.selectedParentHolding) setSelectedParentHolding(context.selectedParentHolding);
+      if (context.selectedOpco !== undefined) setSelectedOpco(context.selectedOpco);
+    }
+    setCurrentView(view);
+  };
 
   const isRtl = language === 'ar';
 
@@ -269,10 +277,10 @@ export default function App() {
         <MainNav language={language} currentView={currentView} onSelect={setCurrentView} allowedModuleIds={allowedModuleIds} />
         <div className="app-content">
           {currentView === 'mgmt-dashboard' && (
-            <ManagementDashboard onNavigateToView={setCurrentView} />
+            <ManagementDashboard onNavigateToView={navigateWithContext} />
           )}
           {currentView === 'dependency-intelligence' && (
-            <DependencyIntelligence onNavigateToView={setCurrentView} />
+            <DependencyIntelligence onNavigateToView={navigateWithContext} />
           )}
           {currentView === 'onboarding' && (
             <Onboarding

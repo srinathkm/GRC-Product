@@ -8,6 +8,7 @@
     "server": "cd server && npm run dev",
     "install:all": "npm install && cd client && npm install && cd ../server && npm install",
     "build": "cd client && npm run build",
+    "test": "cd server && npm test",
     "start": "cd server && npm start",
     "docker:build": "docker compose build",
     "docker:up": "docker compose up -d",

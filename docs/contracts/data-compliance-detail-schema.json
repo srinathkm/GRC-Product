@@ -1,0 +1,107 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/schemas/data-compliance-detail.json",
+  "title": "DataComplianceDetail",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "modelVersion",
+    "contractVersion",
+    "overallScore",
+    "band",
+    "confidence",
+    "reliability",
+    "trend",
+    "lastComputedAt",
+    "riskDrivers",
+    "aiTransferRisks",
+    "remediationQueue",
+    "sourceCoverage",
+    "governance"
+  ],
+  "properties": {
+    "modelVersion": { "type": "string", "minLength": 1 },
+    "contractVersion": { "type": "string", "minLength": 1 },
+    "overallScore": { "type": "integer", "minimum": 0, "maximum": 100 },
+    "band": { "type": "string", "enum": ["healthy", "compliant", "developing", "critical"] },
+    "confidence": { "type": "integer", "minimum": 0, "maximum": 100 },
+    "reliability": { "type": "string", "enum": ["high", "medium", "low"] },
+    "trend": { "type": "string" },
+    "lastComputedAt": { "type": "string", "format": "date-time" },
+    "riskDrivers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["factor", "jurisdiction", "severity", "count", "impact", "businessImpact", "deterministicEvidence"],
+        "properties": {
+          "factor": { "type": "string" },
+          "jurisdiction": { "type": "string" },
+          "severity": { "type": "string" },
+          "count": { "type": "integer", "minimum": 0 },
+          "impact": { "type": "integer", "minimum": 0, "maximum": 100 },
+          "businessImpact": {
+            "type": "object",
+            "required": [
+              "regulatoryPenaltyRisk",
+              "customerTrustRisk",
+              "contractRevenueRisk",
+              "operationalContinuityRisk"
+            ],
+            "properties": {
+              "regulatoryPenaltyRisk": { "type": "string" },
+              "customerTrustRisk": { "type": "string" },
+              "contractRevenueRisk": { "type": "string" },
+              "operationalContinuityRisk": { "type": "string" }
+            },
+            "additionalProperties": true
+          },
+          "deterministicEvidence": { "type": "object", "additionalProperties": true }
+        },
+        "additionalProperties": true
+      }
+    },
+    "aiTransferRisks": { "type": "array", "items": { "type": "object", "additionalProperties": true } },
+    "remediationQueue": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "opco", "owner", "accountableExecutive", "status", "slaHours", "severity", "escalation"],
+        "properties": {
+          "id": { "type": "string" },
+          "opco": { "type": "string" },
+          "owner": { "type": "string" },
+          "accountableExecutive": { "type": "string" },
+          "status": { "type": "string" },
+          "dueDate": { "type": ["string", "null"] },
+          "slaHours": { "type": "integer", "minimum": 0 },
+          "severity": { "type": "string" },
+          "risk": { "type": "string" },
+          "blocker": { "type": ["string", "null"] },
+          "exception": { "type": "object", "additionalProperties": true },
+          "escalation": { "type": "string" }
+        },
+        "additionalProperties": true
+      }
+    },
+    "sourceCoverage": {
+      "type": "object",
+      "required": ["ratio", "systems", "trusted"],
+      "properties": {
+        "ratio": { "type": "number", "minimum": 0, "maximum": 1 },
+        "systems": { "type": "object", "additionalProperties": true },
+        "trusted": { "type": "boolean" }
+      },
+      "additionalProperties": true
+    },
+    "governance": {
+      "type": "object",
+      "required": ["escalationRequired", "openExceptions", "raci"],
+      "properties": {
+        "escalationRequired": { "type": "integer", "minimum": 0 },
+        "openExceptions": { "type": "integer", "minimum": 0 },
+        "raci": { "type": "object", "additionalProperties": true }
+      },
+      "additionalProperties": true
+    }
+  }
+}

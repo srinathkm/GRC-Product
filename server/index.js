@@ -33,6 +33,7 @@ import { boardPackRouter } from './routes/boardpack.js';
 import { esgRouter } from './routes/esg.js';
 import { fieldMappingsRouter } from './routes/fieldMappings.js';
 import { tasksRouter } from './routes/tasks.js';
+import { dataComplianceGovernanceRouter } from './routes/dataComplianceGovernance.js';
 import { startFeedScheduler } from './services/regulatoryFeed.js';
 
 const app = express();
@@ -68,6 +69,7 @@ app.use('/api/boardpack', boardPackRouter);
 app.use('/api/esg', esgRouter);
 app.use('/api/field-mappings', fieldMappingsRouter);
 app.use('/api/tasks', tasksRouter);
+app.use('/api/data-compliance-governance', dataComplianceGovernanceRouter);
 
 app.get('/api/health', (_, res) => res.json({ status: 'ok' }));
 app.get('/api/frameworks', (_, res) => res.json({ frameworks: FRAMEWORKS, references: FRAMEWORK_REFERENCES }));

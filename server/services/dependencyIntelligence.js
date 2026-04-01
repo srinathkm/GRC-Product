@@ -174,10 +174,7 @@ export async function computeDependencyIntelligence({ days = 30, selectedOpco = 
 
   const modelCatalog = Array.isArray(aiModelUsage) && aiModelUsage.length > 0
     ? aiModelUsage
-    : [
-      { model: 'OpenAI GPT-4o', app: 'Global Assistant', hostRegion: 'US', dataLeavesJurisdiction: true },
-      { model: 'Azure OpenAI GPT-4', app: 'Document Intelligence', hostRegion: 'EU', dataLeavesJurisdiction: true },
-    ];
+    : [];
 
   const recentChanges = (changesRaw || []).filter((c) => isRecent(c.date, days));
   const selected = norm(selectedOpco);
@@ -283,6 +280,24 @@ export async function computeDependencyIntelligence({ days = 30, selectedOpco = 
   for (const row of onboarding || []) {
     if (!matchOpco(row.opco)) continue;
     const jurisdiction = detectJurisdictionFromLocations(Array.isArray(row.locations) ? row.locations : []);
+    if (modelCatalog.length === 0) {
+      const cluster = getOrCreateCluster(row.opco, row.parent);
+      cluster.unresolvedCount += 1;
+      cluster.impactScore += 20;
+      cluster.dependencies.push({
+        id: `data-unconfigured-${cluster.dependencies.length}`,
+        type: 'DataCompliance',
+        title: 'AI model inventory unconfigured',
+        status: 'unknown',
+        dueDate: null,
+        severity: 'High',
+        owner: 'Data Security team',
+        evidence: ['ai-model-usage.json (missing/unconfigured)'],
+        traceRef: 'deterministic.model_inventory_missing',
+      });
+      continue;
+    }
+
     for (const model of modelCatalog) {
       if (!model?.dataLeavesJurisdiction) continue;
       const matchingCheck = checks.find((c) =>

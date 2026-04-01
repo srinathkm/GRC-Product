@@ -57,6 +57,14 @@ function handleKeyboardActivate(event, callback) {
   }
 }
 
+function severityClass(severity = '') {
+  const value = String(severity || '').toLowerCase();
+  if (value === 'critical') return 'mgmt-sev-critical';
+  if (value === 'high') return 'mgmt-sev-high';
+  if (value === 'medium') return 'mgmt-sev-medium';
+  return 'mgmt-sev-low';
+}
+
 // ── Health score gauge (SVG semicircle) ──────────────────────────────────────
 function HealthGauge({ score }) {
   const r = 36;
@@ -200,36 +208,96 @@ function ExpiryTable({ upcomingExpiry, onNavigate }) {
   );
 }
 
-// ── Quick actions ────────────────────────────────────────────────────────────
-const QUICK_ACTIONS = [
-  { icon: '🏢', label: 'Onboarding',          desc: 'Add new entities',               view: 'onboarding' },
-  { icon: '📋', label: 'Governance Framework', desc: 'Review regulatory changes',      view: 'governance-framework' },
-  { icon: '👁️', label: 'UBO Register',          desc: 'Beneficial ownership records',   view: 'ubo' },
-  { icon: '📄', label: 'POA Management',        desc: 'Power of attorney tracking',     view: 'poa-management' },
-  { icon: '⚖️', label: 'Litigations',           desc: 'Active cases overview',          view: 'litigations-management' },
-  { icon: '🌱', label: 'ESG Summary',           desc: 'Maturity assessment',            view: 'esg' },
-  { icon: '🛡️', label: 'Data Sovereignty',      desc: 'Localisation compliance',        view: 'data-sovereignty' },
-  { icon: '📊', label: 'Risk Predictor',        desc: 'AI-driven risk analysis',        view: 'analysis' },
-];
+function DataComplianceCommandPane({ detail, onNavigate, selectedOpco }) {
+  if (!detail) {
+    return null;
+  }
+  const topDrivers = Array.isArray(detail.riskDrivers) ? detail.riskDrivers.slice(0, 4) : [];
+  const remediation = Array.isArray(detail.remediationQueue) ? detail.remediationQueue.slice(0, 4) : [];
+  const coverage = detail.sourceCoverage || {};
 
-function QuickActions({ onNavigate }) {
   return (
-    <div className="mgmt-quick-grid">
-      {QUICK_ACTIONS.map(({ icon, label, desc, view }) => (
-        <button
-          key={view}
-          type="button"
-          className="mgmt-quick-tile"
-          onClick={() => onNavigate(view)}
-        >
-          <span className="mgmt-quick-icon">{icon}</span>
-          <div>
-            <div className="mgmt-quick-label">{label}</div>
-            <div className="mgmt-quick-desc">{desc}</div>
-          </div>
-          <span className="mgmt-quick-arrow">›</span>
+    <div className="mgmt-panel">
+      <div className="mgmt-panel-header">
+        <span className="mgmt-panel-title">CISO/CDO Data Compliance Command Pane</span>
+        <button type="button" className="mgmt-panel-link" onClick={() => onNavigate('data-security')}>
+          Open module →
         </button>
-      ))}
+      </div>
+      <div className="mgmt-dc-kpi-row">
+        <div className="mgmt-dc-kpi">
+          <div className="mgmt-dc-kpi-label">Score</div>
+          <div className="mgmt-dc-kpi-value">{detail.overallScore ?? 0}</div>
+          <div className="mgmt-dc-kpi-sub">{detail.band || 'unknown'}</div>
+        </div>
+        <div className="mgmt-dc-kpi">
+          <div className="mgmt-dc-kpi-label">Confidence</div>
+          <div className="mgmt-dc-kpi-value">{detail.confidence ?? 0}%</div>
+          <div className="mgmt-dc-kpi-sub">{detail.reliability || 'low'} reliability</div>
+        </div>
+        <div className="mgmt-dc-kpi">
+          <div className="mgmt-dc-kpi-label">Coverage</div>
+          <div className="mgmt-dc-kpi-value">{Math.round((coverage.ratio || 0) * 100)}%</div>
+          <div className="mgmt-dc-kpi-sub">{coverage.trusted ? 'trusted' : 'untrusted'}</div>
+        </div>
+        <div className="mgmt-dc-kpi">
+          <div className="mgmt-dc-kpi-label">Escalations</div>
+          <div className="mgmt-dc-kpi-value">{detail.governance?.escalationRequired || 0}</div>
+          <div className="mgmt-dc-kpi-sub">critical overdue</div>
+        </div>
+      </div>
+      <div className="mgmt-dc-grid">
+        <div>
+          <div className="mgmt-dc-section-title">Top Risk Drivers</div>
+          <div className="mgmt-intel-list">
+            {topDrivers.length === 0 ? (
+              <p className="mgmt-opco-empty">No high-impact data drivers detected.</p>
+            ) : topDrivers.map((driver) => (
+              <button
+                type="button"
+                key={`${driver.factor}-${driver.severity}`}
+                className="mgmt-intel-item mgmt-intel-item-button"
+                onClick={() => onNavigate('data-sovereignty', { selectedOpco })}
+              >
+                <div className="mgmt-intel-item-title">
+                  {driver.factor} <span className={`mgmt-sev-badge ${severityClass(driver.severity)}`}>{driver.severity}</span>
+                </div>
+                <div className="mgmt-intel-item-sub">
+                  Impact {driver.impact} · Count {driver.count}
+                </div>
+                <div className="mgmt-intel-item-sub">
+                  Regulatory {driver.businessImpact?.regulatoryPenaltyRisk} · Trust {driver.businessImpact?.customerTrustRisk}
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+        <div>
+          <div className="mgmt-dc-section-title">Remediation Queue</div>
+          <div className="mgmt-intel-list">
+            {remediation.length === 0 ? (
+              <p className="mgmt-opco-empty">No remediation actions are open.</p>
+            ) : remediation.map((item) => (
+              <button
+                type="button"
+                key={item.id}
+                className="mgmt-intel-item mgmt-intel-item-button"
+                onClick={() => onNavigate('task-tracker')}
+              >
+                <div className="mgmt-intel-item-title">
+                  {item.opco} · {item.owner}
+                </div>
+                <div className="mgmt-intel-item-sub">
+                  Severity {item.severity} · SLA {item.slaHours}h · Status {item.status}
+                </div>
+                <div className="mgmt-intel-item-sub">
+                  Escalation: {item.escalation} · Due: {item.dueDate || 'unassigned'}
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -284,7 +352,7 @@ export function ManagementDashboard({ onNavigateToView }) {
   if (!data)   return null;
 
   const { entities, regulatoryChanges, poa, licences, contracts, litigations, ip,
-          upcomingExpiry, topOpcoAlerts, feedStatus, complianceHealthScore, generatedAt, intelligence = {}, dependencyIntelligence = {} } = data;
+          upcomingExpiry, topOpcoAlerts, feedStatus, complianceHealthScore, generatedAt, intelligence = {}, dependencyIntelligence = {}, dataComplianceDetail = null } = data;
 
   const lineageImpacts = Array.isArray(intelligence.lineageImpacts) ? intelligence.lineageImpacts : [];
   const dataComplianceInsights = Array.isArray(intelligence.dataComplianceInsights) ? intelligence.dataComplianceInsights : [];
@@ -497,28 +565,19 @@ export function ManagementDashboard({ onNavigateToView }) {
       </div>
 
       {/* ── BOTTOM ROW ── */}
-      <div className="mgmt-dash-bottom-row">
-        {/* Expiry tracker */}
-        <div className="mgmt-panel">
-          <div className="mgmt-panel-header">
-            <span className="mgmt-panel-title">Upcoming Expirations <span className="mgmt-panel-title-sub">(next 60 days)</span></span>
-            {totalExpired > 0 && (
-              <span className="mgmt-expired-count">
-                {totalExpired} already expired
-              </span>
-            )}
-          </div>
-          <ExpiryTable upcomingExpiry={upcomingExpiry} onNavigate={navigate} />
+      <div className="mgmt-panel">
+        <div className="mgmt-panel-header">
+          <span className="mgmt-panel-title">Upcoming Expirations <span className="mgmt-panel-title-sub">(next 60 days)</span></span>
+          {totalExpired > 0 && (
+            <span className="mgmt-expired-count">
+              {totalExpired} already expired
+            </span>
+          )}
         </div>
-
-        {/* Quick navigate */}
-        <div className="mgmt-panel">
-          <div className="mgmt-panel-header">
-            <span className="mgmt-panel-title">Quick Navigation</span>
-          </div>
-          <QuickActions onNavigate={navigate} />
-        </div>
+        <ExpiryTable upcomingExpiry={upcomingExpiry} onNavigate={navigate} />
       </div>
+
+      <DataComplianceCommandPane detail={dataComplianceDetail} onNavigate={navigate} selectedOpco={selectedOpco} />
 
       {/* ── INTELLIGENCE PANELS ── */}
       <div>
@@ -558,11 +617,16 @@ export function ManagementDashboard({ onNavigateToView }) {
             ) : (
               <div className="mgmt-intel-list">
                 {dataComplianceInsights.slice(0, 6).map((row, idx) => (
-                  <div key={`${row.opco}-${row.model}-${idx}`} className="mgmt-intel-item">
+                  <button
+                    type="button"
+                    key={`${row.opco}-${row.model}-${idx}`}
+                    className="mgmt-intel-item mgmt-intel-item-button"
+                    onClick={() => navigate('data-security', { selectedOpco: row.opco })}
+                  >
                     <div className="mgmt-intel-item-title">{row.opco} · {row.model} · {row.hostRegion}</div>
                     <div className="mgmt-intel-item-sub">{row.risk}</div>
                     <div className="mgmt-intel-item-sub">Regulation: {row.regulation} · Severity: {row.severity}</div>
-                  </div>
+                  </button>
                 ))}
               </div>
             )}

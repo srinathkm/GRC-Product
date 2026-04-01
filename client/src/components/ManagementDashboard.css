@@ -637,3 +637,75 @@
   border-radius: 999px;
   padding: 2px 7px;
 }
+
+/* Data Compliance command pane */
+.mgmt-dc-kpi-row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.55rem;
+  margin-bottom: 0.75rem;
+}
+
+.mgmt-dc-kpi {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.5rem 0.6rem;
+  background: var(--surface-raised, #f9fbff);
+}
+
+.mgmt-dc-kpi-label {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.mgmt-dc-kpi-value {
+  font-size: 1.2rem;
+  font-weight: 800;
+  font-family: var(--font-mono), monospace;
+  color: var(--text);
+}
+
+.mgmt-dc-kpi-sub {
+  font-size: 0.67rem;
+  color: var(--text-muted);
+}
+
+.mgmt-dc-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.mgmt-dc-section-title {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  margin: 0 0 0.45rem 0;
+}
+
+.mgmt-sev-badge {
+  display: inline-block;
+  margin-left: 0.35rem;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 0.62rem;
+  font-weight: 700;
+}
+
+.mgmt-sev-critical { background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid #ef444455; }
+.mgmt-sev-high { background: rgba(245, 158, 11, 0.14); color: #f59e0b; border: 1px solid #f59e0b55; }
+.mgmt-sev-medium { background: rgba(59, 130, 246, 0.14); color: #3b82f6; border: 1px solid #3b82f655; }
+.mgmt-sev-low { background: rgba(34, 197, 94, 0.14); color: #22c55e; border: 1px solid #22c55e55; }
+
+@media (max-width: 1024px) {
+  .mgmt-dc-kpi-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .mgmt-dc-grid {
+    grid-template-columns: 1fr;
+  }
+}
