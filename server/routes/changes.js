@@ -6,6 +6,10 @@ import { FRAMEWORKS } from '../constants.js';
 import { lookupChangesForFramework } from '../services/ai.js';
 import { createChatCompletion, isLlmConfigured } from '../services/llm.js';
 import { runFeed, getFeedMeta } from '../services/regulatoryFeed.js';
+import {
+  normalizeRegulatoryChangeDatesForDemo,
+  filterChangesByOpco,
+} from '../services/regulatoryMetrics.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const dataPath = join(__dirname, '../data/changes.json');
@@ -180,22 +184,6 @@ function enrichChangesWithAffectedParents(data, companyToParentByFramework, onbo
   });
 }
 
-/** Shift mock data so all dates fall within the last 365 days (so period filter returns results). */
-function normalizeDatesForDemo(data) {
-  if (!Array.isArray(data) || data.length === 0) return data;
-  const now = new Date();
-  const latest = new Date(Math.max(...data.map((c) => new Date(c.date).getTime())));
-  const oneDayMs = 24 * 60 * 60 * 1000;
-  const daysAgo = (now.getTime() - latest.getTime()) / oneDayMs;
-  if (daysAgo <= 1) return data;
-  const shiftDays = Math.min(Math.floor(daysAgo) - 1, 365);
-  return data.map((c) => {
-    const d = new Date(c.date);
-    d.setDate(d.getDate() + shiftDays);
-    return { ...c, date: d.toISOString().slice(0, 10) };
-  });
-}
-
 function parseQueryDate(str) {
   if (!str) return null;
   const d = new Date(str);
@@ -223,9 +211,10 @@ export const changesRouter = Router();
 changesRouter.get('/', async (req, res) => {
   try {
     const raw = await readFile(dataPath, 'utf-8');
-    let data = normalizeDatesForDemo(JSON.parse(raw));
+    let data = normalizeRegulatoryChangeDatesForDemo(JSON.parse(raw));
     const framework = req.query.framework;
     const days = parseDays(req.query.days);
+    const scopeOpco = String(req.query.opco || '').trim();
     const useLookup = req.query.lookup === '1' || req.query.lookup === 'true';
     const from = parseQueryDate(req.query.from);
     const to = parseQueryDate(req.query.to);
@@ -305,6 +294,8 @@ changesRouter.get('/', async (req, res) => {
 
     data = enrichChangesWithAffectedParents(data, companyToParentByFramework, onboardingOpcosByFramework);
 
+    data = filterChangesByOpco(data, scopeOpco);
+
     res.json(data);
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -319,7 +310,7 @@ changesRouter.get('/', async (req, res) => {
 changesRouter.get('/opco-alerts', async (req, res) => {
   try {
     const raw = await readFile(dataPath, 'utf-8');
-    let data = normalizeDatesForDemo(JSON.parse(raw));
+    let data = normalizeRegulatoryChangeDatesForDemo(JSON.parse(raw));
     const days = parseDays(req.query.days);
     const useLookup = req.query.lookup === '1' || req.query.lookup === 'true';
 
@@ -462,9 +453,11 @@ changesRouter.get('/opco-alerts', async (req, res) => {
 changesRouter.get('/summary', async (req, res) => {
   try {
     const raw = await readFile(dataPath, 'utf-8');
-    let data = normalizeDatesForDemo(JSON.parse(raw));
+    let data = normalizeRegulatoryChangeDatesForDemo(JSON.parse(raw));
     const days = parseDays(req.query.days) || 30;
+    const scopeOpco = String(req.query.opco || '').trim();
     data = data.filter((c) => isWithinLastNDays(c.date, days));
+    data = filterChangesByOpco(data, scopeOpco);
     const summary = {};
     const today = new Date();
     today.setHours(0, 0, 0, 0);

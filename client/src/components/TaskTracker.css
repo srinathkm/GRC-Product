@@ -32,6 +32,17 @@
   margin-top: 0.15rem;
 }
 
+.task-exec-context {
+  margin-top: 0.5rem;
+  font-size: 0.8rem;
+  color: var(--text);
+  max-width: 42rem;
+  padding: 0.45rem 0.6rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--primary, #3b82f6) 10%, var(--surface));
+}
+
 .task-header-actions {
   display: flex;
   gap: 0.5rem;

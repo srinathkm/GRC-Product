@@ -30,6 +30,31 @@
   color: var(--accent);
 }
 
+.data-security-provenance-banner {
+  margin-bottom: 1rem;
+  padding: 0.65rem 0.85rem;
+  font-size: 0.85rem;
+  line-height: 1.45;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--accent) 8%, var(--surface));
+}
+
+.data-security-provenance-banner code {
+  font-size: 0.8em;
+}
+
+.data-security-exec-focus {
+  margin: 0 0 1rem 0;
+  font-size: 0.9rem;
+}
+
+.data-security-opco-executive-focus {
+  outline: 2px solid var(--primary, #3b82f6);
+  outline-offset: 2px;
+}
+
 .data-security-empty-prompt {
   margin-top: 1rem;
 }

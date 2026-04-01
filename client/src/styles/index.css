@@ -191,6 +191,16 @@ a:hover {
   min-height: 0;
 }
 
+.dashboard-regulatory-scope-banner {
+  margin-bottom: 1rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--primary, #3b82f6) 12%, var(--surface));
+  font-size: 0.9rem;
+  color: var(--text);
+}
+
 /* Governance Framework Summary — applicable frameworks in card format */
 .governance-framework-summary {
   margin-bottom: 1.5rem;

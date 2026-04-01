@@ -148,11 +148,11 @@ function OpcoHeatMap({ topOpcoAlerts, onNavigate }) {
         <div
           key={opco}
           className={`mgmt-opco-cell ${heatClass(changeCount, max)}`}
-          onClick={() => onNavigate('org-dashboard')}
+          onClick={() => onNavigate('org-dashboard', { selectedOpco: opco })}
           title={`${opco}: ${changeCount} regulatory changes — click to view dashboard`}
           role="button"
           tabIndex={0}
-          onKeyDown={(e) => handleKeyboardActivate(e, () => onNavigate('org-dashboard'))}
+          onKeyDown={(e) => handleKeyboardActivate(e, () => onNavigate('org-dashboard', { selectedOpco: opco }))}
         >
           <div className="mgmt-opco-cell-name" title={opco}>{opco}</div>
           <div className="mgmt-opco-cell-count">{changeCount}</div>
@@ -186,7 +186,7 @@ function ExpiryTable({ upcomingExpiry, onNavigate }) {
             <tr
               key={i}
               className="mgmt-expiry-row"
-              onClick={() => onNavigate(row.module)}
+              onClick={() => onNavigate(row.module, { selectedOpco: row.opco, selectedParentHolding: row.parent })}
               title={`Go to ${row.module}`}
             >
               <td>
@@ -208,7 +208,7 @@ function ExpiryTable({ upcomingExpiry, onNavigate }) {
   );
 }
 
-function DataComplianceCommandPane({ detail, onNavigate, selectedOpco }) {
+function DataComplianceCommandPane({ detail, onNavigate, selectedOpco, selectedParentHolding }) {
   if (!detail) {
     return null;
   }
@@ -220,7 +220,11 @@ function DataComplianceCommandPane({ detail, onNavigate, selectedOpco }) {
     <div className="mgmt-panel">
       <div className="mgmt-panel-header">
         <span className="mgmt-panel-title">CISO/CDO Data Compliance Command Pane</span>
-        <button type="button" className="mgmt-panel-link" onClick={() => onNavigate('data-security')}>
+        <button
+          type="button"
+          className="mgmt-panel-link"
+          onClick={() => onNavigate('data-security', { selectedOpco, selectedParentHolding })}
+        >
           Open module →
         </button>
       </div>
@@ -282,7 +286,7 @@ function DataComplianceCommandPane({ detail, onNavigate, selectedOpco }) {
                 type="button"
                 key={item.id}
                 className="mgmt-intel-item mgmt-intel-item-button"
-                onClick={() => onNavigate('task-tracker')}
+                onClick={() => onNavigate('task-tracker', { selectedOpco, selectedParentHolding })}
               >
                 <div className="mgmt-intel-item-title">
                   {item.opco} · {item.owner}
@@ -303,13 +307,18 @@ function DataComplianceCommandPane({ detail, onNavigate, selectedOpco }) {
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
-export function ManagementDashboard({ onNavigateToView }) {
+export function ManagementDashboard({
+  onNavigateToView,
+  selectedDays,
+  selectedOpco,
+  onSelectedDaysChange,
+  onSelectedOpcoChange,
+  selectedParentHolding = '',
+}) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [days, setDays] = useState(30);
   const [refreshing, setRefreshing] = useState(false);
-  const [selectedOpco, setSelectedOpco] = useState('');
   const [opcoList, setOpcoList] = useState([]);
 
   // Load OpCo list once on mount
@@ -339,12 +348,18 @@ export function ManagementDashboard({ onNavigateToView }) {
       .finally(() => { setLoading(false); setRefreshing(false); });
   }, []);
 
-  useEffect(() => { load(days, selectedOpco); }, [days, selectedOpco, load]);
+  useEffect(() => { load(selectedDays, selectedOpco); }, [selectedDays, selectedOpco, load]);
 
-  const handleRefresh = () => load(days, selectedOpco, true);
+  const handleRefresh = () => load(selectedDays, selectedOpco, true);
 
-  const navigate = (view, context) => {
-    if (onNavigateToView) onNavigateToView(view, context);
+  const navigate = (view, extra = {}) => {
+    if (!onNavigateToView) return;
+    onNavigateToView(view, {
+      selectedOpco,
+      selectedDays,
+      selectedParentHolding,
+      ...extra,
+    });
   };
 
   if (loading) return <div className="mgmt-dash"><div className="mgmt-dash-loading">Loading dashboard…</div></div>;
@@ -390,7 +405,7 @@ export function ManagementDashboard({ onNavigateToView }) {
           <select
             className="mgmt-dash-period-select"
             value={selectedOpco}
-            onChange={(e) => setSelectedOpco(e.target.value)}
+            onChange={(e) => onSelectedOpcoChange?.(e.target.value)}
             aria-label="Select OpCo"
           >
             <option value="">All OpCos</option>
@@ -400,8 +415,8 @@ export function ManagementDashboard({ onNavigateToView }) {
           </select>
           <select
             className="mgmt-dash-period-select"
-            value={days}
-            onChange={(e) => setDays(Number(e.target.value))}
+            value={selectedDays}
+            onChange={(e) => onSelectedDaysChange?.(Number(e.target.value))}
             aria-label="Select time period"
           >
             <option value={30}>Last 30 days</option>
@@ -607,7 +622,12 @@ export function ManagementDashboard({ onNavigateToView }) {
         <ExpiryTable upcomingExpiry={upcomingExpiry} onNavigate={navigate} />
       </div>
 
-      <DataComplianceCommandPane detail={dataComplianceDetail} onNavigate={navigate} selectedOpco={selectedOpco} />
+      <DataComplianceCommandPane
+        detail={dataComplianceDetail}
+        onNavigate={navigate}
+        selectedOpco={selectedOpco}
+        selectedParentHolding={selectedParentHolding}
+      />
 
       {/* ── INTELLIGENCE PANELS ── */}
       <div>

@@ -20,6 +20,8 @@ export function Dashboard({
   onPeriodChange,
   selectedParentHolding = '',
   onParentHoldingChange,
+  /** When set (e.g. from Management Dashboard OpCo filter), regulatory APIs scope to this OpCo. */
+  regulatoryOpcoFilter = '',
 }) {
   const [changes, setChanges] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -42,11 +44,13 @@ export function Dashboard({
   // Only frameworks with at least one change in the selected period will be shown.
   useEffect(() => {
     if (frameworks.length === 0) return;
-    fetch(`${API}/changes/summary?days=${selectedDays}`)
+    const q = new URLSearchParams({ days: String(selectedDays) });
+    if (regulatoryOpcoFilter) q.set('opco', regulatoryOpcoFilter);
+    fetch(`${API}/changes/summary?${q}`)
       .then((r) => r.json())
       .then((data) => setSummaryCounts(typeof data === 'object' && data !== null ? data : {}))
       .catch(() => setSummaryCounts({}));
-  }, [frameworks.length, selectedDays]);
+  }, [frameworks.length, selectedDays, regulatoryOpcoFilter]);
 
   const loadChanges = () => {
     if (!selectedFramework) return;
@@ -55,6 +59,7 @@ export function Dashboard({
     const q = new URLSearchParams();
     if (isFilteredByFramework) q.set('framework', selectedFramework);
     q.set('days', String(selectedDays));
+    if (regulatoryOpcoFilter) q.set('opco', regulatoryOpcoFilter);
     q.set('lookup', '1');
     fetch(`${API}/changes?${q}`)
       .then((r) => r.json())
@@ -70,7 +75,7 @@ export function Dashboard({
       return;
     }
     loadChanges();
-  }, [selectedFramework, selectedDays, selectedParentHolding]);
+  }, [selectedFramework, selectedDays, selectedParentHolding, regulatoryOpcoFilter]);
 
   // Load OpCo → framework alerts using the same period as the Dashboard.
   useEffect(() => {
@@ -84,6 +89,7 @@ export function Dashboard({
     setOpcoAlertsError(null);
     const q = new URLSearchParams();
     q.set('days', String(selectedDays));
+    if (regulatoryOpcoFilter) q.set('opco', regulatoryOpcoFilter);
     q.set('lookup', '1');
     fetch(`${API}/changes/opco-alerts?${q}`)
       .then((r) => r.json())
@@ -103,7 +109,7 @@ export function Dashboard({
         setOpcoAlertsError(e.message || 'Failed to load OpCo alerts');
       })
       .finally(() => setOpcoAlertsLoading(false));
-  }, [frameworks.length, selectedDays]);
+  }, [frameworks.length, selectedDays, regulatoryOpcoFilter]);
 
   const selectedOpcoAlertEntry =
     selectedOpCo && opcoAlerts[selectedOpCo] ? opcoAlerts[selectedOpCo] : null;
@@ -184,6 +190,11 @@ export function Dashboard({
 
   return (
     <>
+      {regulatoryOpcoFilter && (
+        <div className="dashboard-regulatory-scope-banner" role="status">
+          Regulatory data in this view is filtered to OpCo <strong>{regulatoryOpcoFilter}</strong> (aligned with Management Dashboard). Clear the OpCo selection in the shell to see portfolio-wide changes.
+        </div>
+      )}
       {frameworks.length > 0 && (
         <section className="governance-framework-summary" aria-labelledby="governance-summary-heading">
           <h2 id="governance-summary-heading" className="governance-summary-title">Governance Framework Summary</h2>

@@ -371,7 +371,12 @@ function defenderBandToStatus(band, score) {
   return null;
 }
 
-export function DataSecurityCompliance({ language = 'en', selectedParentHolding, companiesRefreshKey = 0 }) {
+export function DataSecurityCompliance({
+  language = 'en',
+  selectedParentHolding,
+  companiesRefreshKey = 0,
+  executiveOpco = '',
+}) {
   const [opcos, setOpcos] = useState([]);
   const [loading, setLoading] = useState(false);
   const [defenderGroupSummary, setDefenderGroupSummary] = useState([]);
@@ -502,6 +507,18 @@ export function DataSecurityCompliance({ language = 'en', selectedParentHolding,
         Parent Holding: <strong>{selectedParentHolding}</strong>
       </div>
 
+      <div className="data-security-provenance-banner" role="note">
+        <strong>Data provenance:</strong>{' '}
+        Deterministic CISO/CDO metrics (model inventory, egress, remediation queue) are built on the Management Dashboard from server JSON as{' '}
+        <code>dataComplianceDetail</code> in <code>/api/dashboard/summary</code>. This module combines{' '}
+        <strong>Azure Defender</strong> group summaries when uploads exist with <strong>illustrative in-app mock payloads</strong> for control-gap examples—they are not interchangeable scores.
+      </div>
+      {executiveOpco && (
+        <p className="data-security-exec-focus" role="status">
+          Executive focus OpCo: <strong>{executiveOpco}</strong> (highlighted in the list below).
+        </p>
+      )}
+
       <div className="data-security-defender-tabs">
         {Object.entries(DEFENDER_TABS).map(([key, label]) => (
           <button
@@ -624,7 +641,7 @@ export function DataSecurityCompliance({ language = 'en', selectedParentHolding,
             {filteredList.map((item) => (
               <li
                 key={item.opcoName}
-                className={`data-security-opco-card ${item.overallStatus === 'failing' ? 'data-security-opco-failing' : ''}`}
+                className={`data-security-opco-card ${item.overallStatus === 'failing' ? 'data-security-opco-failing' : ''}${executiveOpco && item.opcoName === executiveOpco ? ' data-security-opco-executive-focus' : ''}`}
               >
                 <div className="data-security-opco-header">
                   <strong className="data-security-opco-name">{item.opcoName}</strong>

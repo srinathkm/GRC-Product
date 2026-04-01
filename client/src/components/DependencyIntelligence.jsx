@@ -7,7 +7,11 @@ function currency(value) {
   return `AED ${Number(value || 0).toLocaleString()}`;
 }
 
-export function DependencyIntelligence({ onNavigateToView }) {
+export function DependencyIntelligence({
+  onNavigateToView,
+  executiveDays = 30,
+  executiveOpco = '',
+}) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [summary, setSummary] = useState(null);
@@ -24,6 +28,8 @@ export function DependencyIntelligence({ onNavigateToView }) {
       setError('');
       try {
         const params = new URLSearchParams();
+        params.set('days', String(executiveDays));
+        if (executiveOpco) params.set('opco', executiveOpco);
         if (severity) params.set('severity', severity);
         if (includeAi) params.set('includeAi', 'true');
         const [sRes, cRes] = await Promise.all([
@@ -36,8 +42,12 @@ export function DependencyIntelligence({ onNavigateToView }) {
         if (!cRes.ok) throw new Error(cJson?.error || 'Failed to load clusters');
         if (!mounted) return;
         setSummary(sJson);
-        setClusters(Array.isArray(cJson.items) ? cJson.items : []);
-        if (!selectedId && cJson.items?.[0]?.id) setSelectedId(cJson.items[0].id);
+        const items = Array.isArray(cJson.items) ? cJson.items : [];
+        setClusters(items);
+        setSelectedId((prev) => {
+          if (prev && items.some((x) => x.id === prev)) return prev;
+          return items[0]?.id || '';
+        });
       } catch (e) {
         if (mounted) setError(e.message || 'Unknown error');
       } finally {
@@ -46,7 +56,7 @@ export function DependencyIntelligence({ onNavigateToView }) {
     }
     load();
     return () => { mounted = false; };
-  }, [severity, includeAi, selectedId]);
+  }, [severity, includeAi, executiveDays, executiveOpco]);
 
   useEffect(() => {
     if (!selectedId) {
@@ -57,6 +67,8 @@ export function DependencyIntelligence({ onNavigateToView }) {
     async function loadDetail() {
       try {
         const params = new URLSearchParams();
+        params.set('days', String(executiveDays));
+        if (executiveOpco) params.set('opco', executiveOpco);
         if (includeAi) params.set('includeAi', 'true');
         const r = await fetch(`${API}/${encodeURIComponent(selectedId)}?${params.toString()}`);
         const json = await r.json();
@@ -68,7 +80,7 @@ export function DependencyIntelligence({ onNavigateToView }) {
     }
     loadDetail();
     return () => { mounted = false; };
-  }, [selectedId, includeAi]);
+  }, [selectedId, includeAi, executiveDays, executiveOpco]);
 
   const clusterRows = useMemo(() => {
     return [...clusters].sort((a, b) => (b.impactScore || 0) - (a.impactScore || 0));
@@ -83,6 +95,10 @@ export function DependencyIntelligence({ onNavigateToView }) {
         <div>
           <h2 className="dep-title">Dependency Intelligence</h2>
           <p className="dep-subtitle">Deterministic lineage and score explainability across legal, compliance, data, and litigation operations.</p>
+          <p className="dep-scope-line">
+            Scope: {executiveOpco ? <strong>{executiveOpco}</strong> : 'All OpCos'} · Last {executiveDays} days
+            {includeAi ? ' · AI enrichment on (totals may differ from Management Dashboard card)' : ''}
+          </p>
         </div>
         <div className="dep-actions">
           <select className="dep-select" value={severity} onChange={(e) => setSeverity(e.target.value)}>

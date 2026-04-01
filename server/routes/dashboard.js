@@ -16,6 +16,7 @@ import { FRAMEWORKS } from '../constants.js';
 import { computeDependencyIntelligence } from '../services/dependencyIntelligence.js';
 import { computeComplianceHealth, deriveFreshness, deriveScoringContext } from '../services/complianceHealthScoring.js';
 import { computeDataComplianceDetail } from '../services/dataComplianceIntelligence.js';
+import { normalizeRegulatoryChangeDatesForDemo } from '../services/regulatoryMetrics.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -42,20 +43,6 @@ async function safeRead(path, fallback) {
   } catch {
     return fallback;
   }
-}
-
-function normalizeDates(data) {
-  if (!Array.isArray(data) || data.length === 0) return data;
-  const now = new Date();
-  const latest = new Date(Math.max(...data.map((c) => new Date(c.date || 0).getTime())));
-  const daysAgo = (now - latest) / 86400000;
-  if (daysAgo <= 1) return data;
-  const shift = Math.min(Math.floor(daysAgo) - 1, 365);
-  return data.map((c) => {
-    const d = new Date(c.date);
-    d.setDate(d.getDate() + shift);
-    return { ...c, date: d.toISOString().slice(0, 10) };
-  });
 }
 
 function isWithinDays(dateStr, days) {
@@ -121,7 +108,7 @@ dashboardRouter.get('/summary', async (req, res) => {
     // ── OpCo filter helper ─────────────────────────────────────────────────
     const matchOpco = (val) => !selectedOpco || (val || '').toLowerCase() === selectedOpco.toLowerCase();
 
-    const changes = normalizeDates(changesRaw);
+    const changes = normalizeRegulatoryChangeDatesForDemo(changesRaw);
 
     // ── Entity counts ──────────────────────────────────────────────────────
     const parentSet = new Set();

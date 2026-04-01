@@ -231,6 +231,7 @@ export default function App() {
     if (context && typeof context === 'object') {
       if (context.selectedParentHolding) setSelectedParentHolding(context.selectedParentHolding);
       if (context.selectedOpco !== undefined) setSelectedOpco(context.selectedOpco);
+      if (context.selectedDays !== undefined) setSelectedDays(context.selectedDays);
     }
     setCurrentView(view);
   };
@@ -277,13 +278,21 @@ export default function App() {
         <MainNav language={language} currentView={currentView} onSelect={setCurrentView} allowedModuleIds={allowedModuleIds} />
         <div className="app-content">
           {currentView === 'mgmt-dashboard' && (
-            <ManagementDashboard onNavigateToView={navigateWithContext} />
+            <ManagementDashboard
+              onNavigateToView={navigateWithContext}
+              selectedDays={selectedDays}
+              selectedOpco={selectedOpco}
+              onSelectedDaysChange={setSelectedDays}
+              onSelectedOpcoChange={setSelectedOpco}
+              selectedParentHolding={selectedParentHolding}
+            />
           )}
           {currentView === 'dependency-intelligence' && (
-            <DependencyIntelligence onNavigateToView={navigateWithContext} />
-          )}
-          {currentView === 'dependency-intelligence' && (
-            <DependencyIntelligence onNavigateToView={setCurrentView} />
+            <DependencyIntelligence
+              onNavigateToView={navigateWithContext}
+              executiveDays={selectedDays}
+              executiveOpco={selectedOpco}
+            />
           )}
           {currentView === 'onboarding' && (
             <Onboarding
@@ -389,7 +398,12 @@ export default function App() {
             <DataSovereignty language={language} selectedParentHolding={selectedParentHolding} companiesRefreshKey={companiesRefreshKey} />
           )}
           {currentView === 'data-security' && (
-            <DataSecurityCompliance language={language} selectedParentHolding={selectedParentHolding} companiesRefreshKey={companiesRefreshKey} />
+            <DataSecurityCompliance
+              language={language}
+              selectedParentHolding={selectedParentHolding}
+              companiesRefreshKey={companiesRefreshKey}
+              executiveOpco={selectedOpco}
+            />
           )}
           <div
             className="governance-layout"
@@ -408,10 +422,13 @@ export default function App() {
                 onPeriodChange={setSelectedDays}
                 selectedParentHolding={selectedParentHolding}
                 onParentHoldingChange={setSelectedParentHolding}
+                regulatoryOpcoFilter={selectedOpco}
               />
             </main>
           </div>
-          {currentView === 'task-tracker' && <TaskTracker />}
+          {currentView === 'task-tracker' && (
+            <TaskTracker executiveOpco={selectedOpco} executiveDays={selectedDays} />
+          )}
           {PLACEHOLDER_VIEWS[currentView] && (
             <PlaceholderView
               language={language}

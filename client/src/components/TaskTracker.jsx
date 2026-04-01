@@ -298,7 +298,7 @@ function TaskDetail({ task, onClose, onUpdate, onDelete, onEscalate, auditLog })
 }
 
 /* ── Main component ── */
-export function TaskTracker() {
+export function TaskTracker({ executiveOpco = '', executiveDays: _executiveDays = 30 }) {
   const [tasks, setTasks]         = useState([]);
   const [auditEntries, setAudit]  = useState([]);
   const [loading, setLoading]     = useState(true);
@@ -378,6 +378,11 @@ export function TaskTracker() {
 
   const displayed = tasks.filter((t) => {
     if (filterStale && !isStale(t)) return false;
+    if (executiveOpco) {
+      const o = executiveOpco.toLowerCase();
+      const hay = `${t.title} ${t.description} ${t.assignee} ${t.entityName || ''} ${(t.tags || []).join(' ')}`.toLowerCase();
+      if (!hay.includes(o)) return false;
+    }
     if (!search) return true;
     const q = search.toLowerCase();
     return (t.title + t.description + t.assignee + t.module).toLowerCase().includes(q);
@@ -398,6 +403,11 @@ export function TaskTracker() {
         <div>
           <h2 className="task-title">Action Tracker</h2>
           <div className="task-subtitle">Compliance tasks, remediation items, and follow-up actions</div>
+          {executiveOpco && (
+            <div className="task-exec-context" role="status">
+              Showing tasks that mention <strong>{executiveOpco}</strong> (from executive context). Adjust filters or clear OpCo in the Management Dashboard to see all tasks.
+            </div>
+          )}
         </div>
         <div className="task-header-actions">
           <button className="btn-primary" onClick={() => setShowNew(true)}>+ New Task</button>
