@@ -343,8 +343,8 @@ export function ManagementDashboard({ onNavigateToView }) {
 
   const handleRefresh = () => load(days, selectedOpco, true);
 
-  const navigate = (view) => {
-    if (onNavigateToView) onNavigateToView(view);
+  const navigate = (view, context) => {
+    if (onNavigateToView) onNavigateToView(view, context);
   };
 
   if (loading) return <div className="mgmt-dash"><div className="mgmt-dash-loading">Loading dashboard…</div></div>;
@@ -352,7 +352,7 @@ export function ManagementDashboard({ onNavigateToView }) {
   if (!data)   return null;
 
   const { entities, regulatoryChanges, poa, licences, contracts, litigations, ip,
-          upcomingExpiry, topOpcoAlerts, feedStatus, complianceHealthScore, generatedAt, intelligence = {}, dependencyIntelligence = {}, dataComplianceDetail = null } = data;
+          upcomingExpiry, topOpcoAlerts, feedStatus, complianceHealthScore, complianceHealthDetail = null, generatedAt, intelligence = {}, dependencyIntelligence = {}, dataComplianceDetail = null } = data;
 
   const lineageImpacts = Array.isArray(intelligence.lineageImpacts) ? intelligence.lineageImpacts : [];
   const dataComplianceInsights = Array.isArray(intelligence.dataComplianceInsights) ? intelligence.dataComplianceInsights : [];
@@ -361,6 +361,9 @@ export function ManagementDashboard({ onNavigateToView }) {
 
   const totalExpiring = (poa.expiringSoon || 0) + (licences.expiringSoon || 0) + (contracts.expiringSoon || 0);
   const totalExpired  = (poa.expired || 0) + (licences.expired || 0) + (contracts.expired || 0);
+  const topNegativeDrivers = Array.isArray(complianceHealthDetail?.topNegativeDrivers)
+    ? complianceHealthDetail.topNegativeDrivers
+    : [];
 
   return (
     <div className="mgmt-dash">
@@ -463,6 +466,33 @@ export function ManagementDashboard({ onNavigateToView }) {
             onClick={() => navigate('org-overview')}
           />
         </div>
+        {complianceHealthDetail && (
+          <div className="mgmt-health-explain-panel" role="status" aria-live="polite">
+            <div className="mgmt-health-explain-head">
+              <span className="mgmt-panel-title">Why this score</span>
+              <span className={`mgmt-health-confidence mgmt-health-confidence-${complianceHealthDetail.reliability || 'low'}`}>
+                Confidence: {complianceHealthDetail.confidence ?? 0}% ({complianceHealthDetail.reliability || 'low'})
+              </span>
+            </div>
+            {topNegativeDrivers.length > 0 ? (
+              <div className="mgmt-health-driver-list">
+                {topNegativeDrivers.map((driver) => (
+                  <button
+                    key={driver.factor}
+                    type="button"
+                    className="mgmt-health-driver-chip"
+                    onClick={() => navigate('dependency-intelligence')}
+                    title="Open Dependency Intelligence"
+                  >
+                    {driver.factor} ({driver.impact})
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <p className="mgmt-opco-empty">No significant negative drivers found.</p>
+            )}
+          </div>
+        )}
       </div>
 
       {/* ── SECONDARY KPIs (legal operations) ── */}

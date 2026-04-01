@@ -282,6 +282,9 @@ export default function App() {
           {currentView === 'dependency-intelligence' && (
             <DependencyIntelligence onNavigateToView={navigateWithContext} />
           )}
+          {currentView === 'dependency-intelligence' && (
+            <DependencyIntelligence onNavigateToView={setCurrentView} />
+          )}
           {currentView === 'onboarding' && (
             <Onboarding
               language={language}

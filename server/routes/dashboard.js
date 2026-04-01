@@ -14,6 +14,7 @@ import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { FRAMEWORKS } from '../constants.js';
 import { computeDependencyIntelligence } from '../services/dependencyIntelligence.js';
+import { computeComplianceHealth, deriveFreshness, deriveScoringContext } from '../services/complianceHealthScoring.js';
 import { computeDataComplianceDetail } from '../services/dataComplianceIntelligence.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -424,6 +425,59 @@ dashboardRouter.get('/summary', async (req, res) => {
       includeAi: false,
     });
 
+    const taskRows = Array.isArray(tasks) ? tasks : [];
+    const openTasks = taskRows.filter((t) => !includesAny(t?.status || '', ['done', 'closed', 'cancelled']));
+    const overdueTasks = openTasks.filter((t) => {
+      const due = t?.dueDate || t?.due || null;
+      return due ? isExpired(due) : false;
+    });
+    const dueSoonTasks = openTasks.filter((t) => {
+      const due = t?.dueDate || t?.due || null;
+      return due ? isExpiringWithin(due, 14) : false;
+    });
+
+    const scopeCoverage = {
+      regulatory: recentChanges.length > 0,
+      legal: (activePoa.length + activeLicences.length + activeContracts.length) > 0,
+      dependency: (dependencyIntelligence?.summary?.totalClusters || 0) >= 0,
+      dataCompliance: dataComplianceInsights.length > 0,
+      litigation: activeLitigations.length > 0,
+      documentation: documentationGaps.length > 0,
+      tasks: taskRows.length > 0,
+      feed: !!feedStatus?.lastRun,
+    };
+
+    const complianceHealth = await computeComplianceHealth({
+      regulatory: {
+        total: recentChanges.length,
+        critical: criticalChanges.length,
+        overdue: overdueChanges.length,
+      },
+      legal: {
+        totalActive: activePoa.length + activeLicences.length + activeContracts.length,
+        expiringSoon: expiringPoa.length + expiringLicences.length + expiringContracts.length,
+        expired: expiredPoa.length + expiredLicences.length + expiredContracts.length,
+      },
+      dependency: dependencyIntelligence.summary,
+      dataComplianceInsights,
+      litigation: {
+        total: activeLitigations.length,
+        highRisk: highRiskLitigations.length,
+      },
+      litigationObligationInsights,
+      documentationGaps,
+      tasks: {
+        open: openTasks.length,
+        overdue: overdueTasks.length,
+        dueSoon: dueSoonTasks.length,
+      },
+      freshness: deriveFreshness(feedStatus),
+      coverage: scopeCoverage,
+    }, {
+      context: deriveScoringContext({ selectedOpco, onboarding }),
+      includeAiAttribution: String(req.query.includeAiHealth || '').toLowerCase() === 'true',
+    });
+
     // ── Assemble response ──────────────────────────────────────────────────
     res.json({
       generatedAt: now.toISOString(),
@@ -483,23 +537,11 @@ dashboardRouter.get('/summary', async (req, res) => {
       },
       dependencyIntelligence: dependencyIntelligence.summary,
       dataComplianceDetail,
+      complianceHealthDetail: complianceHealth.complianceHealthDetail,
 
       feedStatus,
 
-      // Summary score (0-100) — weighted mix of green metrics
-      complianceHealthScore: (() => {
-        const total = recentChanges.length || 1;
-        const critPct = criticalChanges.length / total;
-        const expiryRisk = (expiringPoa.length + expiringLicences.length + expiringContracts.length);
-        const expiryTotal = (activePoa.length + activeLicences.length + activeContracts.length) || 1;
-        const expiryPct = expiryRisk / expiryTotal;
-        const dataPressure = Math.max(0, Math.min(100, 100 - Number(dataComplianceDetail?.overallScore || 100)));
-        const score = Math.max(
-          0,
-          Math.min(100, Math.round(100 - critPct * 30 - expiryPct * 25 - (overdueChanges.length / total) * 25 - dataPressure * 0.2)),
-        );
-        return score;
-      })(),
+      complianceHealthScore: complianceHealth.complianceHealthScore,
     });
   } catch (e) {
     res.status(500).json({ error: e.message });
