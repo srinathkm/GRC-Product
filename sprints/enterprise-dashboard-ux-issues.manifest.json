@@ -1,0 +1,70 @@
+{
+  "repository": "srinathkm/GRC-Product",
+  "labels": [
+    "enhancement",
+    "dashboard"
+  ],
+  "issues": [
+    {
+      "id": "UX-01",
+      "title": "[UX-01][P0] Management Dashboard IA: posture, attention, activity, detail bands",
+      "labels": [
+        "enhancement",
+        "dashboard",
+        "frontend"
+      ],
+      "body": "## Metadata\n| Field | Value |\n|-------|--------|\n| **Sprint** | Enterprise Management Dashboard UX |\n| **Priority** | P0 |\n| **Type** | UX / Information architecture |\n| **Component** | `client/src/components/ManagementDashboard.jsx` |\n\n## Summary\nRestructure the Management Dashboard into clear vertical **bands**: (1) executive posture + few summary metrics, (2) **items requiring attention** (consolidated or tabbed), (3) portfolio activity (framework bars + heat map), (4) registers + intelligence with **progressive disclosure** (accordions / collapsed by default on narrow viewports).\n\n## Acceptance criteria\n- [ ] Visual order matches: summary \u2192 attention \u2192 activity \u2192 detail.\n- [ ] Lower-priority intelligence blocks are collapsible or de-emphasized without losing navigation targets.\n- [ ] No change to API contracts or `onNavigate` behaviour.\n\n## Test plan\n\n### Automated\n- `cd client && npm run build` \u2014 zero compile errors.\n\n### Functional\n1. Load Management Dashboard with data; confirm each band is visually distinct (heading or spacing).\n2. Resize to 768px width: accordions/collapsed sections still expose primary actions (links to modules).\n3. Tab through the page: focus order follows band order; no focus traps inside accordions.\n4. Change OpCo and period: all bands still render; no layout collapse.\n\n### Regression\n- Every existing drill-through (KPI, heat map cell, expiry row, dependency, data compliance) still navigates to the correct view with context.\n\n### Sign-off\n- Product/UX review: \"attention\" band is identifiable within 5 seconds for a new user."
+    },
+    {
+      "id": "UX-02",
+      "title": "[UX-02][P1] Enterprise typography for Management Dashboard",
+      "labels": [
+        "enhancement",
+        "dashboard",
+        "frontend"
+      ],
+      "body": "## Metadata\n| Field | Value |\n|-------|--------|\n| **Sprint** | Enterprise Management Dashboard UX |\n| **Priority** | P1 |\n| **Type** | UX / Typography |\n| **Component** | `client/index.html`, `ManagementDashboard.css`, optional scoped import |\n\n## Summary\nIntroduce or scope **enterprise-grade** sans (e.g. Source Sans 3, IBM Plex Sans) for `.mgmt-dash` only (or product-wide if approved). Apply **tabular numerals** (`font-variant-numeric: tabular-nums`) to KPI values and tables. Reduce **font-weight: 800** display usage to 600\u2013700 for headline numbers.\n\n## Acceptance criteria\n- [ ] `.mgmt-dash` uses the chosen stack; fallback to system UI fonts if font fails to load.\n- [ ] Metric columns align visually when numbers change (tabular figures).\n- [ ] No CLS > 0.1 on dashboard load from font swap (use `font-display: swap` and size-adjust if needed).\n\n## Test plan\n\n### Automated\n- `cd client && npm run build`.\n\n### Visual\n1. Compare KPI row digits before/after: widths should not jump when counts update (refresh).\n2. macOS Safari + Chrome: font loads; no FOUT breaking layout.\n\n### Accessibility\n1. Zoom 200%: text remains readable; no clipping in KPI tiles.\n2. Windows **High Contrast** mode: metrics and labels remain distinguishable.\n\n### Cross-browser\n- Chrome, Firefox, Safari (latest): dashboard renders; monospace only where specified (e.g. timestamps).\n\n### Performance\n- Lighthouse performance: no regression > 5 points on Management Dashboard route vs baseline (manual run)."
+    },
+    {
+      "id": "UX-03",
+      "title": "[UX-03][P1] KPI tiles: replace emoji with SVG; semantic color only",
+      "labels": [
+        "enhancement",
+        "dashboard",
+        "frontend"
+      ],
+      "body": "## Metadata\n| Field | Value |\n|-------|--------|\n| **Sprint** | Enterprise Management Dashboard UX |\n| **Priority** | P1 |\n| **Type** | UX / Component |\n| **Component** | `ManagementDashboard.jsx`, `KpiTile` |\n\n## Summary\nRemove **emoji** from KPI tiles. Use **small stroke SVG icons** (monochrome) or text-only. Remove **rainbow** `accentColor` / `kpiAccentClass` map; use neutral cards plus **semantic** border or badge only when state is risk-critical.\n\n## Acceptance criteria\n- [ ] Zero emoji characters in Management Dashboard render output.\n- [ ] No more than **two** non-neutral semantic hues in the KPI band (e.g. danger + warning), plus brand accent for links.\n- [ ] Hover/focus states remain visible.\n\n## Test plan\n\n### Automated\n- Search `ManagementDashboard.jsx` for emoji usage; none in user-visible strings.\n- `npm run build`.\n\n### Visual\n1. All KPI tiles share the same base chrome; only risk tiles show accent.\n2. Icons 16\u201320px, 1.5px stroke, aligned to label baseline.\n\n### Accessibility\n1. Icons have `aria-hidden=\"true\"` if decorative; tile `aria-label` or visible label sufficient.\n2. Color is not the only differentiator: critical tiles include text or icon shape difference.\n\n### Regression\n- Click each tile type: navigation unchanged."
+    },
+    {
+      "id": "UX-04",
+      "title": "[UX-04][P1] ManagementDashboard.css enterprise visual system",
+      "labels": [
+        "enhancement",
+        "dashboard",
+        "frontend"
+      ],
+      "body": "## Metadata\n| Field | Value |\n|-------|--------|\n| **Sprint** | Enterprise Management Dashboard UX |\n| **Priority** | P1 |\n| **Type** | UX / CSS |\n| **Component** | `ManagementDashboard.css` |\n\n## Summary\nScoped tokens under `.mgmt-dash` (`--mgmt-*`): neutral surfaces, single border style, **subtle** hover (border/background only). Remove `translateY` lift and heavy tinted shadows. **Desaturate** heat map and framework bar fills. Add `@media (prefers-reduced-motion: reduce)` to disable non-essential transitions.\n\n## Acceptance criteria\n- [ ] No `transform: translateY` on KPI hover.\n- [ ] Heat map cells readable in both light theme and with slight desaturation.\n- [ ] Reduced-motion: no animated gauge stroke if it is decorative (or instant).\n\n## Test plan\n\n### Automated\n- `npm run build`.\n- Confirm no `translateY` in `ManagementDashboard.css` for `.mgmt-kpi-tile:hover`.\n\n### Visual\n1. Side-by-side screenshot before/after at 1440px.\n2. Heat map: legend or caption still explains intensity.\n\n### Accessibility\n1. `prefers-reduced-motion: reduce` enabled in OS: verify transitions disabled or minimal.\n2. Focus ring 2px visible on all interactive tiles and panel links.\n\n### Performance\n- Optional `content-visibility` on off-screen bands if implemented."
+    },
+    {
+      "id": "UX-05",
+      "title": "[UX-05][P2] Attention queues: tables and scannable lists",
+      "labels": [
+        "enhancement",
+        "dashboard",
+        "frontend"
+      ],
+      "body": "## Metadata\n| Field | Value |\n|-------|--------|\n| **Sprint** | Enterprise Management Dashboard UX |\n| **Priority** | P2 |\n| **Type** | UX / Content design |\n| **Component** | Expiry table, health drivers, dependency top clusters, intel lists |\n\n## Summary\nRefactor dense chip stacks into **table or definition-list** patterns where appropriate: columns for **Item**, **Entity/OpCo**, **Severity or due**, **Action** (link). Keep one-line secondary detail; truncate with tooltip for long framework names.\n\n## Acceptance criteria\n- [ ] Expiry table has aligned columns; header row styled consistently.\n- [ ] \"Why this score\" drivers are scannable in <=3 seconds per row.\n- [ ] Mobile: horizontal scroll OR stacked cards with same field order.\n\n## Test plan\n\n### Automated\n- `npm run build`.\n- Table uses `th scope=\"col\"` where applicable.\n\n### Functional\n1. Stable order: expiring soonest first (if not already).\n2. Long OpCo / framework names: ellipsis + `title` tooltip.\n\n### Accessibility\n1. Screen reader: table headers announced when navigating cells.\n2. Keyboard: row actions reachable without mouse.\n\n### Responsive\n- 320px min width sanity: table wrapper scrolls horizontally if needed.\n\n### Content\n- Empty states: single sentence + suggested action (e.g. change period)."
+    },
+    {
+      "id": "UX-06",
+      "title": "[UX-06][P0] QA gate: accessibility, build, regression checklist",
+      "labels": [
+        "enhancement",
+        "dashboard",
+        "frontend",
+        "testing"
+      ],
+      "body": "## Metadata\n| Field | Value |\n|-------|--------|\n| **Sprint** | Enterprise Management Dashboard UX |\n| **Priority** | P0 |\n| **Type** | QA |\n| **Component** | Management Dashboard (release gate) |\n\n## Summary\nFormal **release checklist** after UX-01\u2013UX-05 land. Blocks merge to main if failed items are not waived.\n\n## Acceptance criteria\n- [ ] Checklist attached in PR description with all items checked or waived with owner.\n- [ ] No open **critical** a11y violations on this view.\n\n## Test plan (exhaustive checklist)\n\n### Build and lint\n- [ ] `cd client && npm run build`\n- [ ] `cd server && npm test` (ensure no accidental API drift)\n\n### Keyboard\n- [ ] Tab order: header controls to KPIs to panels to footer links\n- [ ] Enter/Space activates tiles and accordion headers\n- [ ] Escape closes any new modal/popover if introduced\n- [ ] Visible focus on every interactive element\n\n### Screen reader (VoiceOver or NVDA sample pass)\n- [ ] Page has logical landmark (`main` or region) for dashboard content\n- [ ] KPI values read with labels (not numbers alone)\n- [ ] Status of health score communicated (text, not color alone)\n\n### Visual / contrast\n- [ ] Body text vs background meets WCAG AA (4.5:1)\n- [ ] Muted secondary text meets 4.5:1 on surface\n- [ ] Critical/warning badges meet contrast on their backgrounds\n\n### Motion\n- [ ] `prefers-reduced-motion` respected globally on this page\n\n### Data scenarios\n- [ ] Empty portfolio (no changes): empty states render; no broken grids\n- [ ] Single OpCo selected: layout holds; banners if any remain correct\n- [ ] Long framework names: no layout explosion\n\n### Cross-browser smoke\n- [ ] Chrome, Safari, Firefox latest\n\n### Regression\n- [ ] All drill-throughs from Dashboard\u2013Module Consistency sprint still work (context preserved)\n\n### Sign-off\n- [ ] UX stakeholder approval recorded in PR or issue comment"
+    }
+  ]
+}
