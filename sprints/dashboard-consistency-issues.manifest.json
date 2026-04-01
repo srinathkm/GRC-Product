@@ -1,0 +1,82 @@
+{
+  "repository": "srinathkm/GRC-Product",
+  "labels": [
+    "enhancement",
+    "tech-debt",
+    "dashboard"
+  ],
+  "issues": [
+    {
+      "id": "EXEC-01",
+      "title": "[EXEC-01] Fix duplicate DependencyIntelligence mount in App.jsx",
+      "labels": [
+        "bug",
+        "dashboard"
+      ],
+      "body": "## Summary\n`App.jsx` renders `<DependencyIntelligence />` twice when `currentView === 'dependency-intelligence'` (different `onNavigateToView` props). This duplicates network calls and is confusing for debugging.\n\n## Scope\n- File: `client/src/App.jsx`\n- Keep **one** mount; use `navigateWithContext` consistently.\n\n## Acceptance criteria\n- [ ] Only one `DependencyIntelligence` component in the tree for that view\n- [ ] Back navigation uses context-aware navigation where applicable\n- [ ] Manual check: Network tab shows single parallel batch to `/api/dependency-intelligence/summary` and `/clusters` on load\n\n## Sprint\nDashboard\u2013Module Consistency \u2014 Phase A\n\n## Related\n`sprints/Dashboard-Module-Consistency-Sprint.md`"
+    },
+    {
+      "id": "EXEC-02",
+      "title": "[EXEC-02] Introduce shared ExecutiveContext (days, opco, parent, flags)",
+      "labels": [
+        "enhancement",
+        "dashboard"
+      ],
+      "body": "## Problem\nManagement Dashboard keeps **local** `days` and `selectedOpco` while `App` owns `selectedDays`, `selectedOpco`, and `selectedParentHolding`. Executive drill-down loses scope.\n\n## Proposed approach\n- Add React context (or lift state in `App.jsx`) for: `executiveDays`, `executiveOpco`, optional `executiveParent`, `includeAiDependency` (default false to match dashboard).\n- Pass controlled props into `ManagementDashboard` OR consume context inside it.\n\n## Acceptance criteria\n- [ ] Single source of truth for period + OpCo used by Management Dashboard\n- [ ] `navigateWithContext` continues to work; no regression for org/parent flows\n- [ ] Document context fields in a short comment block or README snippet\n\n## Sprint\nDashboard\u2013Module Consistency \u2014 Phase A/B\n\n## Related\n`client/src/App.jsx`, `client/src/components/ManagementDashboard.jsx`"
+    },
+    {
+      "id": "EXEC-03",
+      "title": "[EXEC-03] Management Dashboard: pass full context on all drill-throughs",
+      "labels": [
+        "enhancement",
+        "dashboard"
+      ],
+      "body": "## Problem\nSeveral `onNavigate` calls omit `selectedOpco` / period / parent, e.g. data compliance \"Open module\" \u2192 `data-security`, remediation \u2192 `task-tracker`, shortcuts to governance / org dashboard.\n\n## Scope\n- File: `client/src/components/ManagementDashboard.jsx`\n- Resolve parent via existing `/api/companies/by-opco` when needed before navigation (pattern already in `App.jsx`).\n\n## Acceptance criteria\n- [ ] Every intentional drill-through passes `selectedOpco` when user had filtered by OpCo\n- [ ] Governance / org navigations sync period from executive context (see sprint Phase B)\n- [ ] QA checklist in PR description\n\n## Sprint\nDashboard\u2013Module Consistency \u2014 Phase A\n\n## Depends on\nEXEC-02 (preferred) or minimal prop drilling from App"
+    },
+    {
+      "id": "EXEC-04",
+      "title": "[EXEC-04] Dependency Intelligence: pass days, opco, includeAi to API",
+      "labels": [
+        "enhancement",
+        "dashboard"
+      ],
+      "body": "## Problem\n`/api/dashboard/summary` calls `computeDependencyIntelligence({ days, selectedOpco, includeAi: false })` but `DependencyIntelligence.jsx` calls REST endpoints **without** `days`/`opco`, so totals diverge from Management Dashboard.\n\n## Scope\n- `client/src/components/DependencyIntelligence.jsx`\n- Append query params: `days`, `opco`, `includeAi` aligned with executive context.\n\n## Acceptance criteria\n- [ ] With same `days`, `opco`, `includeAi=false`, summary matches dashboard embedded `dependencyIntelligence`\n- [ ] When user enables AI in module, UI states enrichment may differ from dashboard card\n\n## Sprint\nDashboard\u2013Module Consistency \u2014 Phase B\n\n## Depends on\nEXEC-02"
+    },
+    {
+      "id": "EXEC-05",
+      "title": "[EXEC-05] Changes API: optional OpCo filter OR explicit scope labeling vs dashboard",
+      "labels": [
+        "enhancement",
+        "dashboard"
+      ],
+      "body": "## Problem\nManagement Dashboard filters regulatory changes by OpCo when `opco` is set; `/api/changes` and `/api/changes/summary` are portfolio-wide. Execs comparing numbers see different universes.\n\n## Options\n- **A:** Add optional `opco` to `GET /api/changes` and `GET /api/changes/summary` (filter `affectedCompanies`).\n- **B:** Add prominent UI labels: portfolio vs OpCo-scoped metrics.\n\n## Acceptance criteria\n- [ ] Decision recorded in PR (A or B or hybrid)\n- [ ] If A: contract documented; Governance `Dashboard.jsx` passes `opco` when in executive mode\n- [ ] If B: copy reviewed for C-level clarity\n\n## Sprint\nDashboard\u2013Module Consistency \u2014 Phase B\n\n## Related\n`server/routes/changes.js`, `server/routes/dashboard.js`, `client/src/components/Dashboard.jsx`"
+    },
+    {
+      "id": "EXEC-06",
+      "title": "[EXEC-06] Extract shared regulatory rollup helpers for dashboard + changes routes",
+      "labels": [
+        "tech-debt",
+        "dashboard"
+      ],
+      "body": "## Problem\n`normalizeDates` / `normalizeDatesForDemo` and critical/overdue logic exist in parallel in `dashboard.js` and `changes.js`, increasing drift risk.\n\n## Approach\n- New module e.g. `server/services/regulatoryMetrics.js` with pure functions + tests.\n- Refactor both routes to call shared helpers.\n\n## Acceptance criteria\n- [ ] Unit tests cover empty data, missing deadlines, date shift behaviour\n- [ ] No behaviour change for default portfolio requests (regression tests / snapshot)\n\n## Sprint\nDashboard\u2013Module Consistency \u2014 Phase C\n\n## Depends on\nEXEC-05 if OpCo filtering changes inputs"
+    },
+    {
+      "id": "EXEC-07",
+      "title": "[EXEC-07] Data Security: align mock vs dataComplianceDetail + provenance labels",
+      "labels": [
+        "enhancement",
+        "dashboard"
+      ],
+      "body": "## Problem\n`DataSecurityCompliance.jsx` uses large in-file mocks and parent-scoped Defender APIs; Management Dashboard exposes `dataComplianceDetail` from `dataComplianceIntelligence.js`. Different semantics and scores.\n\n## Approach (pick in PR)\n- Integrate evidence-based strip from API, **or** split IA (separate labels: demo vs production signals).\n- Add provenance banners.\n\n## Acceptance criteria\n- [ ] No silent equivalence between mock scores and deterministic compliance score\n- [ ] Product copy approved for exec-facing honesty\n\n## Sprint\nDashboard\u2013Module Consistency \u2014 Phase D\n\n## Related\n`client/src/components/DataSecurityCompliance.jsx`, `server/services/dataComplianceIntelligence.js`"
+    },
+    {
+      "id": "EXEC-08",
+      "title": "[EXEC-08] Contract tests: dashboard summary vs dependency-intelligence summary",
+      "labels": [
+        "tech-debt",
+        "testing"
+      ],
+      "body": "## Goal\nPrevent regression: under identical `days`, `opco`, `includeAi=false`, embedded dependency summary matches `/api/dependency-intelligence/summary`.\n\n## Scope\n- Node test under `server/tests/` (spin router or call handlers if needed, or HTTP against test server)\n- Document any intentional allowed deltas\n\n## Acceptance criteria\n- [ ] CI runs new test\n- [ ] Fails on known key field mismatch (define list in test: e.g. totalClusters, totalExposureAed \u2014 align with actual schema)\n\n## Sprint\nDashboard\u2013Module Consistency \u2014 Phase E\n\n## Depends on\nEXEC-04"
+    }
+  ]
+}
