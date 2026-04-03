@@ -46,7 +46,7 @@ Switch to **`GRC_DEVELOPER`** or **`GRC_ADMIN`**, then:
 | Step | Action |
 |------|--------|
 | P2.1 | **PUT** JSON files to `@GRC_DEMO_DB.RAW.INTERNAL_GRC_STAGE/legacy_json/` (see [MIGRATION_RUNBOOK.md](MIGRATION_RUNBOOK.md)). |
-| P2.2 | **COPY** into `RAW.*_RAW` using [scripts/03_load_demo_put_copy.sql](../scripts/03_load_demo_put_copy.sql) (adjust `FILE_FORMAT` / array vs NDJSON). |
+| P2.2 | **COPY** into `RAW.*_RAW`: run [scripts/08_copy_into_all_json.sql](../scripts/08_copy_into_all_json.sql) for **all** mappings from [JSON_TO_TABLE_MAP.md](JSON_TO_TABLE_MAP.md) (after PUT). For ad-hoc examples see [scripts/03_load_demo_put_copy.sql](../scripts/03_load_demo_put_copy.sql). |
 | P2.3 | Use [JSON_TO_TABLE_MAP.md](JSON_TO_TABLE_MAP.md) so each file targets the correct `*_RAW` table. |
 | P2.4 | **Merge** `VARIANT` → `CURATED` (SQL or Snowpark). Start from [scripts/05_merge_curated_template.sql](../scripts/05_merge_curated_template.sql). |
 

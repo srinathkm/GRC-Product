@@ -28,4 +28,10 @@ Source directory: [server/data/](../../server/data/). Each legacy file lands in 
 
 **Server code references:** [server/routes/dashboard.js](../../server/routes/dashboard.js), [server/services/dependencyIntelligence.js](../../server/services/dependencyIntelligence.js), [server/services/ai.js](../../server/services/ai.js).
 
-After mapping is verified against live JSON samples, add concrete `MERGE` SQL under `snowflake/scripts/` (e.g. `06_merge_from_raw.sql`).
+## COPY INTO (RAW load)
+
+Ready-made `COPY INTO` for **every row in the table above** (stage path `legacy_json/`, `source_file` + `payload` columns):
+
+- [scripts/08_copy_into_all_json.sql](../scripts/08_copy_into_all_json.sql)
+
+After RAW load, implement `MERGE` from `VARIANT` → CURATED using [scripts/05_merge_curated_template.sql](../scripts/05_merge_curated_template.sql) (or Snowpark).
