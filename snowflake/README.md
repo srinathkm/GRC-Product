@@ -32,7 +32,7 @@ This folder implements the blueprint from the Cursor plan **Snowflake migration 
 9. `schemas/06_app_config.sql`
 10. `scripts/03_load_demo_put_copy.sql` (after uploading JSON to stage)
 11. `scripts/04_seed_minimal_demo.sql` (optional empty-demo smoke)
-12. `scripts/05_merge_curated_template.sql` (implement team-specific `MERGE` from RAW)
+12. `scripts/05_merge_curated_template.sql` (MERGE RAW VARIANT → CURATED — run after RAW load)
 13. `scripts/08_copy_into_all_json.sql` (COPY every `server/data/*.json` into matching `RAW.*_RAW` — after PUT)
 14. `scripts/validate_row_counts.sql` (smoke validation; optional after RAW load use `08` post-check instead)
 15. `scripts/07_streamlit_grants.sql` (before deploying Streamlit; edit app owner role)
