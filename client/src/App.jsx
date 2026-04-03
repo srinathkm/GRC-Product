@@ -69,7 +69,7 @@ const ROLE_MODULE_IDS = {
 
 // Views accessible per role (for redirect when switching roles)
 const ROLE_VIEW_IDS = {
-  'legal-team': ['mgmt-dashboard', 'dependency-intelligence', 'org-overview', 'org-dashboard', 'poa-management', 'ip-management', 'licence-management', 'litigations-management', 'contracts-management', 'contracts-upload'],
+  'legal-team': ['mgmt-dashboard', 'dependency-intelligence', 'org-overview', 'org-dashboard', 'legal-onboarding', 'poa-management', 'ip-management', 'licence-management', 'litigations-management', 'contracts-management', 'contracts-upload'],
   'governance-team': ['mgmt-dashboard', 'dependency-intelligence', 'onboarding', 'org-overview', 'org-dashboard', 'parent-overview', 'governance-framework', 'multi-jurisdiction', 'ubo', 'data-sovereignty', 'data-security', 'task-tracker'],
   'data-security-team': ['mgmt-dashboard', 'dependency-intelligence', 'org-overview', 'org-dashboard', 'data-sovereignty', 'data-security', 'task-tracker'],
   board: ['mgmt-dashboard', 'dependency-intelligence', 'org-overview', 'org-dashboard', 'analysis', 'ma-simulator', 'data-sovereignty', 'data-security'],

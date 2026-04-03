@@ -5,6 +5,7 @@ import {
   listGovernanceRecords,
   updateGovernanceStatus,
 } from '../services/dataComplianceGovernance.js';
+import { triggerComplianceDeltaEvent } from '../services/complianceDeltaWorkflow.js';
 
 export const dataComplianceGovernanceRouter = Router();
 
@@ -21,7 +22,22 @@ dataComplianceGovernanceRouter.get('/records', async (_req, res) => {
 dataComplianceGovernanceRouter.post('/records', async (req, res) => {
   const actor = req.headers['x-actor'] || 'system';
   const record = await createGovernanceRecord(req.body || {}, actor);
-  res.status(201).json({ record });
+  const deltaPayload = {
+    sourceType: 'manual_verification',
+    module: 'data-sovereignty',
+    framework: record.controlFamily || 'Data compliance governance',
+    severity: record.severity || 'high',
+    opco: record.opco,
+    parent: req.body?.parent || '',
+    summary: `Governance record created: ${record.controlFamily || 'Data compliance'} (${record.opco || 'Unknown OpCo'})`,
+    description: record.notes || 'New governance compliance delta captured from manual verification.',
+    beforeValue: null,
+    afterValue: { status: record.status, ownerRole: record.ownerRole },
+    entityId: record.id,
+    entityName: record.opco,
+  };
+  const automation = await triggerComplianceDeltaEvent(deltaPayload, actor);
+  res.status(201).json({ record, automation });
 });
 
 dataComplianceGovernanceRouter.patch('/records/:id/status', async (req, res) => {

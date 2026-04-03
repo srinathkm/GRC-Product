@@ -310,6 +310,16 @@ export function TaskTracker({ executiveOpco = '', executiveDays: _executiveDays 
   const [showNew, setShowNew]     = useState(false);
   const [selected, setSelected]   = useState(null);
   const [selectedAudit, setSelAudit] = useState([]);
+  const [deltas, setDeltas] = useState([]);
+  const [deltaLoading, setDeltaLoading] = useState(false);
+  const [deltaForm, setDeltaForm] = useState({
+    sourceType: 'manual_verification',
+    module: 'data-sovereignty',
+    severity: 'high',
+    summary: '',
+    framework: '',
+    opco: executiveOpco || '',
+  });
 
   const fetchTasks = useCallback(async () => {
     setLoading(true);
@@ -329,6 +339,22 @@ export function TaskTracker({ executiveOpco = '', executiveDays: _executiveDays 
   }, [filterStatus, filterPriority, filterModule]);
 
   useEffect(() => { fetchTasks(); }, [fetchTasks]);
+
+  const fetchDeltas = useCallback(async () => {
+    setDeltaLoading(true);
+    try {
+      const r = await fetch('/api/compliance-deltas');
+      const d = await r.json();
+      setDeltas(d.records || []);
+    } catch (e) {
+      console.error(e);
+      setDeltas([]);
+    } finally {
+      setDeltaLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchDeltas(); }, [fetchDeltas]);
 
   async function fetchAuditForTask(taskId) {
     try {
@@ -374,6 +400,32 @@ export function TaskTracker({ executiveOpco = '', executiveDays: _executiveDays 
   async function openTask(task) {
     setSelected(task);
     await fetchAuditForTask(task.id);
+  }
+
+  async function openActionFromDelta(delta) {
+    if (!delta?.actionId) return;
+    try {
+      const r = await fetch(`/api/tasks/${delta.actionId}`);
+      if (!r.ok) return;
+      const task = await r.json();
+      await openTask(task);
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  async function createActionFromDelta(e) {
+    e.preventDefault();
+    if (!deltaForm.summary.trim()) return;
+    const payload = { ...deltaForm, opco: deltaForm.opco || executiveOpco || '' };
+    const r = await fetch('/api/compliance-deltas/events', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!r.ok) return;
+    setDeltaForm((f) => ({ ...f, summary: '' }));
+    await Promise.all([fetchDeltas(), fetchTasks()]);
   }
 
   const displayed = tasks.filter((t) => {
@@ -451,6 +503,59 @@ export function TaskTracker({ executiveOpco = '', executiveDays: _executiveDays 
           {filterStale ? '⚠ Not Actioned' : 'Not Actioned'}
         </button>
         <button className="btn-secondary" style={{ marginLeft: 'auto' }} onClick={() => { setFS(''); setFP(''); setFM(''); setSearch(''); setFilterStale(false); }}>Clear</button>
+      </div>
+
+      <div className="task-section" style={{ marginTop: '1rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.6rem' }}>
+          <div>
+            <h3 style={{ margin: 0, fontSize: '1rem', color: 'var(--text)' }}>Delta Monitor</h3>
+            <div style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>Automatic workflow trigger for manual and system deltas</div>
+          </div>
+        </div>
+
+        <form onSubmit={createActionFromDelta} style={{ display: 'grid', gap: '0.5rem', gridTemplateColumns: '1fr 120px 140px 150px auto', marginBottom: '0.65rem' }}>
+          <input
+            value={deltaForm.summary}
+            onChange={(e) => setDeltaForm((f) => ({ ...f, summary: e.target.value }))}
+            placeholder="Describe delta and trigger action automatically…"
+            maxLength={260}
+          />
+          <select value={deltaForm.severity} onChange={(e) => setDeltaForm((f) => ({ ...f, severity: e.target.value }))}>
+            <option value="critical">Critical</option>
+            <option value="high">High</option>
+            <option value="medium">Medium</option>
+            <option value="low">Low</option>
+          </select>
+          <select value={deltaForm.sourceType} onChange={(e) => setDeltaForm((f) => ({ ...f, sourceType: e.target.value }))}>
+            <option value="manual_verification">Manual Verification</option>
+            <option value="system_delta">System Delta</option>
+          </select>
+          <select value={deltaForm.module} onChange={(e) => setDeltaForm((f) => ({ ...f, module: e.target.value }))}>
+            {MODULES.filter(Boolean).map((m) => <option key={m} value={m}>{m}</option>)}
+          </select>
+          <button type="submit" className="btn-primary">Create Action</button>
+        </form>
+
+        <div style={{ border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1.6fr 110px 160px 140px 150px', gap: '0.5rem', background: 'var(--bg-subtle)', padding: '0.5rem 0.7rem', fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>
+            <span>Delta</span><span>Severity</span><span>Source</span><span>Team</span><span>Action Status</span>
+          </div>
+          {deltaLoading ? (
+            <div style={{ padding: '0.8rem', color: 'var(--text-muted)' }}>Loading deltas…</div>
+          ) : deltas.length === 0 ? (
+            <div style={{ padding: '0.8rem', color: 'var(--text-muted)' }}>No deltas captured yet.</div>
+          ) : (
+            deltas.slice(0, 8).map((d) => (
+              <div key={d.id} style={{ display: 'grid', gridTemplateColumns: '1.6fr 110px 160px 140px 150px', gap: '0.5rem', padding: '0.62rem 0.7rem', borderTop: '1px solid var(--border)', alignItems: 'center' }}>
+                <span style={{ color: 'var(--text)', fontSize: '0.8rem' }}>{d.summary}</span>
+                <span className={`task-badge badge-${d.severity || 'medium'}`}>{d.severity || 'medium'}</span>
+                <span style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>{(d.sourceType || '').replace('_', ' ')}</span>
+                <span style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>{d.routingTeam || '—'}</span>
+                <button className="btn-secondary" onClick={() => openActionFromDelta(d)} disabled={!d.actionId}>{d.actionStatusLabel || 'Pending'}</button>
+              </div>
+            ))
+          )}
+        </div>
       </div>
 
       {/* List */}
