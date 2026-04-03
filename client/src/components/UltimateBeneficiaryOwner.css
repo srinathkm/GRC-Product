@@ -458,18 +458,27 @@
   padding: 0.75rem 1rem;
 }
 
+.ubo-register-entity-card-header-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0.35rem;
+  margin-bottom: 0.25rem;
+}
+
 .ubo-register-entity-card-header {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 0.25rem 0.5rem;
-  width: 100%;
+  flex: 1;
+  min-width: 0;
   margin: 0;
-  margin-bottom: 0;
   padding: 0.35rem 0;
-  padding-bottom: 0.35rem;
   border: none;
-  border-bottom: 1px solid var(--border);
   background: transparent;
   font: inherit;
   color: inherit;
@@ -485,6 +494,12 @@
   margin-right: 0;
 }
 
+.ubo-register-entity-ubo-btn {
+  flex-shrink: 0;
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
 .ubo-register-entity-card-chevron {
   flex-shrink: 0;
   font-size: 0.65rem;
@@ -493,8 +508,10 @@
   display: inline-block;
 }
 
-.ubo-register-entity-card-collapsed .ubo-register-entity-card-header {
+.ubo-register-entity-card-collapsed .ubo-register-entity-card-header-row {
   border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
 }
 
 .ubo-register-entity-card .ubo-register-details-grid-inner {
@@ -518,8 +535,22 @@
 /* % Holding by Parent: all entities with color-coded pills */
 .ubo-holding-pills {
   display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.35rem;
+}
+
+.ubo-holding-pill-row {
+  display: flex;
   flex-wrap: wrap;
-  gap: 0.35rem 0.5rem;
+  align-items: center;
+  gap: 0.35rem 0.75rem;
+  width: 100%;
+}
+
+.ubo-holding-pill-ubo-btn {
+  font-size: 0.78rem;
+  white-space: nowrap;
 }
 
 .ubo-holding-pill {
@@ -1069,14 +1100,20 @@
 
 .ubo-structure-viz-parent {
   display: inline-flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 0.4rem;
+  gap: 0.25rem 0.5rem;
   padding: 0.35rem 0.6rem;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 6px;
   font-size: 0.85rem;
   color: var(--text-muted);
+}
+
+.ubo-structure-viz-ubo-btn {
+  font-size: 0.78rem;
+  margin-left: 0.15rem;
 }
 
 .ubo-structure-viz-parent.ubo-structure-viz-highlight {
@@ -1640,6 +1677,11 @@
   background: rgba(255,255,255,0.04);
   border-bottom: 1px solid var(--border);
   flex-wrap: wrap;
+}
+
+.ubo-owner-card-actions {
+  margin-left: auto;
+  flex-shrink: 0;
 }
 .ubo-owner-card-rank {
   font-size: 0.75rem;

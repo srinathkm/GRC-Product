@@ -170,6 +170,8 @@ export function UltimateBeneficiaryOwner({ language = 'en', selectedParentHoldin
   const [uboData, setUboData] = useState(loadUboRegister);
   const [statusFilter, setStatusFilter] = useState('all');
   const [editingOpco, setEditingOpco] = useState(null);
+  /** Parent / shareholder key for the record being edited (`parent::opco` in storage). */
+  const [editingParent, setEditingParent] = useState(null);
   const [viewingOpco, setViewingOpco] = useState(null);
   const [activeTab, setActiveTab] = useState('register');
   const [opcoLookupQuery, setOpcoLookupQuery] = useState('');
@@ -414,8 +416,9 @@ export function UltimateBeneficiaryOwner({ language = 'en', selectedParentHoldin
   };
 
   const saveRecord = (opco, record) => {
-    const key = getUboKey(selectedParentHolding, opco);
-    const prev = getRecord(opco);
+    const parentKey = editingParent ?? selectedParentHolding;
+    const key = getUboKey(parentKey, opco);
+    const prev = getRecordFor(parentKey, opco);
     const next = {
       ...uboData,
       [key]: {
@@ -430,6 +433,7 @@ export function UltimateBeneficiaryOwner({ language = 'en', selectedParentHoldin
     setUboData(next);
     saveUboRegister(next);
     setEditingOpco(null);
+    setEditingParent(null);
     setForm({
       percentage: 100,
       status: 'Not updated',
@@ -440,8 +444,12 @@ export function UltimateBeneficiaryOwner({ language = 'en', selectedParentHoldin
     });
   };
 
-  const openEdit = (opco) => {
-    const r = getRecord(opco);
+  /** @param {string} opco
+   *  @param {string} [parentForShareholder] — when set, edits that parent–OpCo row (same as View details cards). */
+  const openEdit = (opco, parentForShareholder = null) => {
+    const parentKey = parentForShareholder ?? selectedParentHolding;
+    setEditingParent(parentKey);
+    const r = getRecordFor(parentKey, opco);
     setForm({
       percentage: r.percentage ?? 100,
       status: r.status || 'Not updated',
@@ -607,6 +615,7 @@ export function UltimateBeneficiaryOwner({ language = 'en', selectedParentHoldin
             rec.documents.some((d) => d.id === 'ubo_declaration' && (d.uploaded || d.completed)));
 
         shareholdersRaw.push({
+          parentRaw,
           parent,
           percentage: rec.percentage ?? 100,
           status: rec.status || 'Not updated',
@@ -619,7 +628,7 @@ export function UltimateBeneficiaryOwner({ language = 'en', selectedParentHoldin
       // "Alpha Holdings Limited Cayman Islands" collapse into one).
       const dedupMap = new Map();
       shareholdersRaw.forEach((s) => {
-        dedupMap.set(s.parent, s);
+        if (!dedupMap.has(s.parent)) dedupMap.set(s.parent, s);
       });
       let shareholders = Array.from(dedupMap.values());
 
@@ -919,6 +928,16 @@ export function UltimateBeneficiaryOwner({ language = 'en', selectedParentHoldin
                               <span className="ubo-structure-viz-parent-name">{parent}</span>
                               <span className="ubo-structure-viz-pct">{record.percentage}%</span>
                               <span className={`ubo-status ubo-status-${(record.status || '').replace(/\s+/g, '-').toLowerCase()}`}>{record.status}</span>
+                              <button
+                                type="button"
+                                className="ubo-link ubo-structure-viz-ubo-btn"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openEdit(opco, parent);
+                                }}
+                              >
+                                Enter / Update UBO
+                              </button>
                             </div>
                           ))}
                         </div>
@@ -1009,6 +1028,16 @@ export function UltimateBeneficiaryOwner({ language = 'en', selectedParentHoldin
                               <span className="ubo-structure-viz-parent-name">{parent}</span>
                               <span className="ubo-structure-viz-pct">{record.percentage}%</span>
                               <span className={`ubo-status ubo-status-${(record.status || '').replace(/\s+/g, '-').toLowerCase()}`}>{record.status}</span>
+                              <button
+                                type="button"
+                                className="ubo-link ubo-structure-viz-ubo-btn"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openEdit(opco, parent);
+                                }}
+                              >
+                                Enter / Update UBO
+                              </button>
                             </div>
                           ))}
                         </div>
@@ -1094,6 +1123,16 @@ export function UltimateBeneficiaryOwner({ language = 'en', selectedParentHoldin
                             <span className="ubo-structure-viz-parent-name">{parent}</span>
                             <span className="ubo-structure-viz-pct">{record.percentage}%</span>
                             <span className={`ubo-status ubo-status-${(record.status || '').replace(/\s+/g, '-').toLowerCase()}`}>{record.status}</span>
+                            <button
+                              type="button"
+                              className="ubo-link ubo-structure-viz-ubo-btn"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openEdit(opco, parent);
+                              }}
+                            >
+                              Enter / Update UBO
+                            </button>
                           </div>
                         ))}
                       </div>
@@ -1238,14 +1277,22 @@ export function UltimateBeneficiaryOwner({ language = 'en', selectedParentHoldin
                                 : (rec.details?.fullName || parent);
                               const typeLabel = isCorporate ? '(Corporate)' : '(Member)';
                               return (
-                                <span
-                                  key={parent}
-                                  className={`ubo-holding-pill ubo-holding-pill-${i % 6}`}
-                                  title={`${displayName}: ${pctLabel} ${typeLabel}`}
-                                >
-                                  <span className="ubo-holding-pill-name">{displayName}</span>
-                                  <span className="ubo-holding-pill-pct">{pctLabel} {typeLabel}</span>
-                                </span>
+                                <div key={parent} className="ubo-holding-pill-row">
+                                  <span
+                                    className={`ubo-holding-pill ubo-holding-pill-${i % 6}`}
+                                    title={`${displayName}: ${pctLabel} ${typeLabel}`}
+                                  >
+                                    <span className="ubo-holding-pill-name">{displayName}</span>
+                                    <span className="ubo-holding-pill-pct">{pctLabel} {typeLabel}</span>
+                                  </span>
+                                  <button
+                                    type="button"
+                                    className="ubo-link ubo-holding-pill-ubo-btn"
+                                    onClick={() => openEdit(opco, parent)}
+                                  >
+                                    Enter / Update UBO
+                                  </button>
+                                </div>
                               );
                             })}
                           </div>
@@ -1327,16 +1374,28 @@ export function UltimateBeneficiaryOwner({ language = 'en', selectedParentHoldin
                                     };
                                     return (
                                       <div key={parent} className={`ubo-register-entity-card ${!isExpanded ? 'ubo-register-entity-card-collapsed' : ''}`}>
-                                        <button
-                                          type="button"
-                                          className="ubo-register-entity-card-header"
-                                          onClick={toggleExpanded}
-                                          aria-expanded={isExpanded}
-                                        >
-                                          <span className="ubo-register-entity-card-chevron" aria-hidden>{isExpanded ? '▼' : '▶'}</span>
-                                          <strong>{rec.details?.relationshipType === 'corporate' ? (rec.details?.corporateName || parent) : (rec.details?.fullName || parent)}</strong>
-                                          <span className="ubo-register-entity-badge">{rec.details?.relationshipType === 'corporate' ? 'Corporate' : 'Member'}</span>
-                                        </button>
+                                        <div className="ubo-register-entity-card-header-row">
+                                          <button
+                                            type="button"
+                                            className="ubo-register-entity-card-header"
+                                            onClick={toggleExpanded}
+                                            aria-expanded={isExpanded}
+                                          >
+                                            <span className="ubo-register-entity-card-chevron" aria-hidden>{isExpanded ? '▼' : '▶'}</span>
+                                            <strong>{rec.details?.relationshipType === 'corporate' ? (rec.details?.corporateName || parent) : (rec.details?.fullName || parent)}</strong>
+                                            <span className="ubo-register-entity-badge">{rec.details?.relationshipType === 'corporate' ? 'Corporate' : 'Member'}</span>
+                                          </button>
+                                          <button
+                                            type="button"
+                                            className="ubo-link ubo-register-entity-ubo-btn"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              openEdit(opco, parent);
+                                            }}
+                                          >
+                                            Enter / Update UBO
+                                          </button>
+                                        </div>
                                         {isExpanded && (
                                           <div className="ubo-register-details-grid-inner">
                                             {rec.details?.relationshipType === 'corporate' ? (
@@ -1502,6 +1561,16 @@ export function UltimateBeneficiaryOwner({ language = 'en', selectedParentHoldin
                               <span className="ubo-structure-viz-parent-name">{sh.parent}</span>
                               <span className="ubo-structure-viz-pct">{sh.percentage}%</span>
                               <span className={`ubo-status ubo-status-${(sh.status || '').replace(/\s+/g, '-').toLowerCase()}`}>{sh.status}</span>
+                              <button
+                                type="button"
+                                className="ubo-link ubo-structure-viz-ubo-btn"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openEdit(child.name, sh.parentRaw || sh.parent);
+                                }}
+                              >
+                                Enter / Update UBO
+                              </button>
                             </div>
                           ))}
                         </div>
@@ -1648,11 +1717,15 @@ export function UltimateBeneficiaryOwner({ language = 'en', selectedParentHoldin
 
       {/* Modal: Enter / Update UBO (full form + upload + extract) */}
       {editingOpco && (
-        <div className="ubo-modal-overlay" onClick={() => setEditingOpco(null)}>
+        <div className="ubo-modal-overlay" onClick={() => { setEditingOpco(null); setEditingParent(null); }}>
           <div className="ubo-modal ubo-modal-large" onClick={(e) => e.stopPropagation()}>
-            <button type="button" className="ubo-modal-close" onClick={() => setEditingOpco(null)} aria-label="Close" title="Close">×</button>
+            <button type="button" className="ubo-modal-close" onClick={() => { setEditingOpco(null); setEditingParent(null); }} aria-label="Close" title="Close">×</button>
             <h3 className="ubo-modal-title">Enter / Update UBO — {editingOpco}</h3>
-            <p className="ubo-modal-subtitle">Complete mandatory fields as per UAE Cabinet Decision No. 58 of 2020 and GCC UBO register requirements.</p>
+            <p className="ubo-modal-subtitle">
+              Shareholder / parent entity: <strong>{editingParent || selectedParentHolding}</strong>
+              {' · '}
+              Complete mandatory fields as per UAE Cabinet Decision No. 58 of 2020 and GCC UBO register requirements.
+            </p>
 
             <div className="ubo-upload-block">
               <input
@@ -1677,6 +1750,7 @@ export function UltimateBeneficiaryOwner({ language = 'en', selectedParentHoldin
               className="ubo-form"
               onSubmit={(e) => {
                 e.preventDefault();
+                const pk = editingParent ?? selectedParentHolding;
                 saveRecord(editingOpco, {
                   percentage: form.percentage,
                   status: form.status,
@@ -1685,7 +1759,7 @@ export function UltimateBeneficiaryOwner({ language = 'en', selectedParentHoldin
                   details: form.details,
                   documents: form.documents,
                 });
-                addUboChange(selectedParentHolding, editingOpco, `UBO details updated for ${editingOpco}`);
+                addUboChange(pk, editingOpco, `UBO details updated for ${editingOpco} (${pk})`);
                 setUboChanges(loadUboChanges());
               }}
             >
@@ -1887,7 +1961,7 @@ export function UltimateBeneficiaryOwner({ language = 'en', selectedParentHoldin
               </div>
 
               <div className="ubo-form-actions">
-                <button type="button" className="ubo-btn ubo-btn-secondary" onClick={() => setEditingOpco(null)}>Cancel</button>
+                <button type="button" className="ubo-btn ubo-btn-secondary" onClick={() => { setEditingOpco(null); setEditingParent(null); }}>Cancel</button>
                 <button type="submit" className="ubo-btn ubo-btn-primary">Save UBO Record</button>
               </div>
             </form>
@@ -1944,6 +2018,18 @@ export function UltimateBeneficiaryOwner({ language = 'en', selectedParentHoldin
                             {isCorporate ? 'Corporate' : 'Individual'}
                           </span>
                           <span className={`ubo-status ubo-status-${(rec.status || '').replace(/\s+/g, '-').toLowerCase()}`}>{rec.status || '—'}</span>
+                          <div className="ubo-owner-card-actions">
+                            <button
+                              type="button"
+                              className="ubo-btn ubo-btn-primary ubo-btn-sm"
+                              onClick={() => {
+                                setViewingOpco(null);
+                                openEdit(viewingOpco, parent);
+                              }}
+                            >
+                              Enter / Update UBO
+                            </button>
+                          </div>
                         </div>
 
                         {isCorporate ? (
@@ -2024,7 +2110,6 @@ export function UltimateBeneficiaryOwner({ language = 'en', selectedParentHoldin
             <div className="ubo-form-actions">
               <button type="button" className="ubo-btn ubo-btn-secondary" onClick={() => { setViewingOpco(null); openDownloadModal(viewingOpco); }}>Download UBO Record</button>
               <button type="button" className="ubo-btn ubo-btn-secondary" onClick={() => setViewingOpco(null)}>Close</button>
-              <button type="button" className="ubo-btn ubo-btn-primary" onClick={() => { setViewingOpco(null); openEdit(viewingOpco); }}>Edit</button>
             </div>
           </div>
         </div>
