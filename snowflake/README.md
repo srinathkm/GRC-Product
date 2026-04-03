@@ -7,6 +7,7 @@ This folder implements the blueprint from the Cursor plan **Snowflake migration 
 | Path | Purpose |
 |------|---------|
 | [docs/ARCHITECTURE_END_TO_END.md](docs/ARCHITECTURE_END_TO_END.md) | **Master document**: segregated sections for DB, Streamlit UI, intelligence orchestration, AI/ML, predictions |
+| [docs/QUICKSTART.md](docs/QUICKSTART.md) | **Phased checklist** — what to run first, then data, Streamlit, AI/ML |
 | [docs/MIGRATION_RUNBOOK.md](docs/MIGRATION_RUNBOOK.md) | Step-by-step provisioning (warehouse, roles, DDL order, load, verify) |
 | [docs/JSON_TO_TABLE_MAP.md](docs/JSON_TO_TABLE_MAP.md) | Every `server/data/*.json` file mapped to RAW and CURATED objects |
 | [docs/ERD.md](docs/ERD.md) | Entity relationship overview (Mermaid) |
