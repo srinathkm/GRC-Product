@@ -6,6 +6,7 @@ import { CompaniesByFramework } from './CompaniesByFramework';
 import { ChangesTree } from './ChangesTree';
 import { AssignTaskModal } from './AssignTaskModal';
 import AmlCftChecklist from './AmlCftChecklist';
+import { AML_CFT_CHECKLISTS } from '../data/amlCftChecklistData.js';
 
 const API = '/api';
 
@@ -36,6 +37,15 @@ export function Dashboard({
   const [opcoAlertsError, setOpcoAlertsError] = useState(null);
   const selectedParent = selectedParentHolding;
   const setSelectedParent = onParentHoldingChange || (() => {});
+
+  const checklistEntityKey =
+    regulatoryOpcoFilter || selectedOpCo || selectedParent || 'global';
+
+  const frameworksWithInternalChecklist = frameworks.filter((fw) => fw && AML_CFT_CHECKLISTS[fw]);
+
+  /** Only the framework chosen in the Framework selector (must have checklist data). */
+  const selectedFrameworkHasInternalChecklist =
+    Boolean(selectedFramework && AML_CFT_CHECKLISTS[selectedFramework]);
 
   const hasFrameworkSelection = !!selectedFramework;
   const isFilteredByFramework = !!selectedFramework;
@@ -274,6 +284,45 @@ export function Dashboard({
         </button>
       </div>
 
+      {frameworks.length > 0 && frameworksWithInternalChecklist.length > 0 && (
+        <div className="governance-internal-checklists" aria-labelledby="governance-internal-checklists-heading">
+          <h3 id="governance-internal-checklists-heading" className="governance-internal-checklists-title">
+            Internal compliance checklist
+          </h3>
+          {selectedFrameworkHasInternalChecklist ? (
+            <>
+              <p className="governance-internal-checklists-hint">
+                {regulatoryOpcoFilter || selectedOpCo ? (
+                  <>
+                    For <strong>{regulatoryOpcoFilter || selectedOpCo}</strong>, complete the checklist for <strong>{selectedFramework}</strong>. Progress is saved for this organisation.
+                  </>
+                ) : selectedParent ? (
+                  <>
+                    Organisations under <strong>{selectedParent}</strong>: checklist for <strong>{selectedFramework}</strong>. Select an OpCo in the filters above to scope progress to one entity.
+                  </>
+                ) : (
+                  <>Checklist for <strong>{selectedFramework}</strong>. Select a parent holding and OpCo to scope progress to one organisation, or continue at portfolio level.</>
+                )}
+              </p>
+              <div className="governance-internal-checklists-grid">
+                <AmlCftChecklist
+                  key={selectedFramework}
+                  opco={checklistEntityKey}
+                  language={language}
+                  selectedFramework={selectedFramework}
+                />
+              </div>
+            </>
+          ) : (
+            <p className="governance-internal-checklists-hint">
+              {selectedFramework
+                ? 'No internal compliance checklist is available for the selected framework. Choose a framework that includes a checklist (e.g. AML/CFT regimes in the list), or pick another from the Framework dropdown.'
+                : 'Select a framework in the Framework dropdown above to view its internal compliance checklist. Other regimes stay hidden until you choose one.'}
+            </p>
+          )}
+        </div>
+      )}
+
       {frameworks.length === 0 ? (
         <div className="dashboard-no-framework">
           <p className="dashboard-no-framework-msg">No frameworks loaded. Go to <strong>Onboarding</strong>, set <strong>Sector of Operations</strong> and <strong>Licencing Authorities</strong>, then use &quot;View applicable frameworks&quot; or confirm an organization to load the frameworks that apply. The Framework dropdown will then list only those.</p>
@@ -407,13 +456,6 @@ export function Dashboard({
         />
       )}
 
-      {selectedFramework && (
-        <AmlCftChecklist
-          opco={selectedOpCo || selectedParent || 'global'}
-          language={language}
-          selectedFramework={selectedFramework}
-        />
-      )}
     </>
   );
 }

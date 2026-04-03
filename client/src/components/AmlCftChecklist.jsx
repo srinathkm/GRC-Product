@@ -85,10 +85,18 @@ export default function AmlCftChecklist({ opco, language, selectedFramework }) {
     setExpandedDomains((prev) => ({ ...prev, [domainId]: !prev[domainId] }));
   }, []);
 
-  // ── overall progress ──────────────────────────────────────────────────────
-  const totalItems = checklist.domains.reduce((s, d) => s + d.items.length, 0);
-  const answeredItems = Object.values(itemState).filter((v) => v && v.status).length;
-  const compliantItems = Object.values(itemState).filter((v) => v && v.status === 'yes').length;
+  // ── overall progress (scoped to this checklist's item IDs when multiple frameworks share one entity store) ──
+  const itemIdsForChecklist = new Set((checklist.allItems || []).map((it) => it.id));
+  const totalItems =
+    itemIdsForChecklist.size > 0
+      ? itemIdsForChecklist.size
+      : checklist.domains.reduce((s, d) => s + d.items.length, 0);
+  const answeredItems = Object.entries(itemState).filter(
+    ([id, v]) => (itemIdsForChecklist.size === 0 || itemIdsForChecklist.has(id)) && v && v.status
+  ).length;
+  const compliantItems = Object.entries(itemState).filter(
+    ([id, v]) => (itemIdsForChecklist.size === 0 || itemIdsForChecklist.has(id)) && v && v.status === 'yes'
+  ).length;
   const pct = totalItems > 0 ? Math.round((answeredItems / totalItems) * 100) : 0;
 
   // ── save ──────────────────────────────────────────────────────────────────
