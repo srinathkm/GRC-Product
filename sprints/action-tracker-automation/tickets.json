@@ -1,0 +1,37 @@
+[
+  {
+    "number": 46,
+    "title": "AT-1: Canonical Delta Event Model and Action Schema Extension",
+    "url": "https://github.com/srinathkm/GRC-Product/issues/46"
+  },
+  {
+    "number": 47,
+    "title": "AT-2: Internal Workflow Orchestrator with Idempotent Trigger Handling",
+    "url": "https://github.com/srinathkm/GRC-Product/issues/47"
+  },
+  {
+    "number": 48,
+    "title": "AT-3: Severity-First Routing and SLA Policy Engine",
+    "url": "https://github.com/srinathkm/GRC-Product/issues/48"
+  },
+  {
+    "number": 49,
+    "title": "AT-4: Notification Fanout Adapters (In-App, Email, Teams/Slack)",
+    "url": "https://github.com/srinathkm/GRC-Product/issues/49"
+  },
+  {
+    "number": 50,
+    "title": "AT-5: UX Redesign for Delta Action Status and Detailed Drill-Through",
+    "url": "https://github.com/srinathkm/GRC-Product/issues/50"
+  },
+  {
+    "number": 51,
+    "title": "AT-6: Delta Ingestion APIs and Enriched Action Detail Endpoints",
+    "url": "https://github.com/srinathkm/GRC-Product/issues/51"
+  },
+  {
+    "number": 52,
+    "title": "AT-7: QA, UAT, Rollout, and Release Gate for Action Automation",
+    "url": "https://github.com/srinathkm/GRC-Product/issues/52"
+  }
+]
