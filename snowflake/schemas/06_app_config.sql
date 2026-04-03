@@ -1,0 +1,17 @@
+USE DATABASE GRC_DEMO_DB;
+USE SCHEMA APP;
+
+-- Map Snowflake roles to Streamlit pages (optional RBAC for SiS)
+CREATE OR REPLACE TABLE STREAMLIT_ROLE_PAGE (
+  snowflake_role VARCHAR(256) NOT NULL,
+  page_id VARCHAR(64) NOT NULL,
+  allowed BOOLEAN DEFAULT TRUE,
+  updated_at TIMESTAMP_LTZ DEFAULT CURRENT_TIMESTAMP(),
+  PRIMARY KEY (snowflake_role, page_id)
+);
+
+CREATE OR REPLACE TABLE FEATURE_FLAG (
+  flag_key VARCHAR(128) PRIMARY KEY,
+  flag_value VARIANT,
+  updated_at TIMESTAMP_LTZ DEFAULT CURRENT_TIMESTAMP()
+);

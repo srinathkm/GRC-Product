@@ -1,0 +1,34 @@
+USE DATABASE GRC_DEMO_DB;
+USE SCHEMA CURATED;
+
+INSERT INTO DIM_PARENT_HOLDING (parent_holding_id, name)
+SELECT UUID_STRING(), 'Demo Parent Holding'
+WHERE NOT EXISTS (SELECT 1 FROM DIM_PARENT_HOLDING LIMIT 1);
+
+INSERT INTO DIM_OPCO (opco_id, parent_holding_id, name)
+SELECT UUID_STRING(), (SELECT parent_holding_id FROM DIM_PARENT_HOLDING LIMIT 1), 'Demo OpCo 1'
+WHERE NOT EXISTS (SELECT 1 FROM DIM_OPCO LIMIT 1);
+
+INSERT INTO DIM_FRAMEWORK (framework_id, name, jurisdiction)
+SELECT UUID_STRING(), 'DFSA Rulebook', 'UAE'
+WHERE NOT EXISTS (SELECT 1 FROM DIM_FRAMEWORK LIMIT 1);
+
+INSERT INTO FACT_REGULATORY_CHANGE (change_id, framework_id, title, change_date, deadline)
+SELECT
+  UUID_STRING(),
+  (SELECT framework_id FROM DIM_FRAMEWORK LIMIT 1),
+  'Demo regulatory change',
+  CURRENT_DATE(),
+  DATEADD(day, 14, CURRENT_DATE())
+WHERE NOT EXISTS (SELECT 1 FROM FACT_REGULATORY_CHANGE LIMIT 1);
+
+INSERT INTO GRC_DEMO_DB.ML.ML_PREDICTION_RISK_SCORE (as_of_date, opco_id, model_name, model_version, score, band, explanation_variant)
+SELECT
+  CURRENT_DATE(),
+  (SELECT opco_id FROM DIM_OPCO LIMIT 1),
+  'RULE_BASED_V1',
+  '1.0',
+  72.5,
+  'Developing',
+  PARSE_JSON('{"drivers":["demo seed"]}')
+WHERE NOT EXISTS (SELECT 1 FROM GRC_DEMO_DB.ML.ML_PREDICTION_RISK_SCORE LIMIT 1);
