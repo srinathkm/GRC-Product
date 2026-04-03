@@ -13,9 +13,11 @@ This folder implements the blueprint from the Cursor plan **Snowflake migration 
 | [docs/ERD.md](docs/ERD.md) | Entity relationship overview (Mermaid) |
 | [docs/INTELLIGENCE_AI_ML.md](docs/INTELLIGENCE_AI_ML.md) | Cortex, RAG, Snowflake ML, prediction outputs, audit logging |
 | [docs/VIEW_TO_UI_MAP.md](docs/VIEW_TO_UI_MAP.md) | React view IDs to Snowflake views / Streamlit pages |
+| [docs/ARCHITECTURE_STREAMLIT_E2E.md](docs/ARCHITECTURE_STREAMLIT_E2E.md) | **E2E architecture** (Mermaid): Streamlit, analytics, curated, RAW, ML/Cortex |
 | [schemas/](schemas/) | Ordered DDL: database, RAW, CURATED, ANALYTICS views, ML |
-| [scripts/](scripts/) | Roles, stages, PUT/COPY examples, optional seed |
-| [streamlit/](streamlit/) | Streamlit in Snowflake app structure and RBAC notes |
+| [scripts/](scripts/) | Roles, stages, PUT/COPY, seed, **Streamlit grants** (`07`) |
+| [streamlit_app/](streamlit_app/) | **Pre-built Streamlit in Snowflake app** (`app.py`, `grc_common.py`, `pages/`) |
+| [streamlit/](streamlit/) | Short notes; see `streamlit_app/` for the runnable bundle |
 
 ## Execution order (DDL)
 
@@ -32,6 +34,8 @@ This folder implements the blueprint from the Cursor plan **Snowflake migration 
 11. `scripts/04_seed_minimal_demo.sql` (optional empty-demo smoke)
 12. `scripts/05_merge_curated_template.sql` (implement team-specific `MERGE` from RAW)
 13. `scripts/validate_row_counts.sql` (smoke validation)
+14. `scripts/07_streamlit_grants.sql` (before deploying Streamlit; edit app owner role)
+15. Deploy **[`streamlit_app/`](streamlit_app/)** per [`docs/QUICKSTART.md`](docs/QUICKSTART.md) Phase 3
 
 ## Security
 

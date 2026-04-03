@@ -1,43 +1,43 @@
-# Quickstart: phased checklist (Snowflake GRC demo)
+# Quickstart: phased checklist (Snowflake GRC demo — Streamlit UI)
 
-Use this checklist with the [`snowflake/`](../README.md) pack. Filenames are relative to the repo `snowflake/` folder unless noted.
+This checklist assumes the **Streamlit in Snowflake** path (`streamlit_app/`) as the primary front end (replacing React for Snowflake-only demos). Paths are relative to the repo **`snowflake/`** folder.
+
+**Architecture (diagram + layers):** [ARCHITECTURE_STREAMLIT_E2E.md](ARCHITECTURE_STREAMLIT_E2E.md)
 
 ---
 
 ## Phase 0 — Before Snowflake
 
-1. Read [`ARCHITECTURE_END_TO_END.md`](ARCHITECTURE_END_TO_END.md) once (DB, Streamlit, intelligence, AI/ML, predictions).
-2. **Choose UI path:**
-   - **Streamlit in Snowflake (SiS)** — fully Snowflake-hosted UI (typical for a pure Snowflake demo).
-   - **Keep React + Node** — Snowflake is the database; Express reads views later (not scripted in this pack).
-3. Locate app JSON under [`server/data/`](../../server/data/) in the repo; use [`server/data/_backups/`](../../server/data/_backups/) if live files are empty.
+| Step | Action |
+|------|--------|
+| P0.1 | Read [ARCHITECTURE_END_TO_END.md](ARCHITECTURE_END_TO_END.md) and [ARCHITECTURE_STREAMLIT_E2E.md](ARCHITECTURE_STREAMLIT_E2E.md). |
+| P0.2 | Clone the repo; locate JSON under [`server/data/`](../server/data/) (or [`server/data/_backups/`](../server/data/_backups/) if empty). |
+| P0.3 | Decide the **Snowflake role** that will **own** the Streamlit app (e.g. `GRC_STREAMLIT_APP` or a named user role). |
 
 ---
 
-## Phase 1 — Run first in Snowflake (warehouse, DB, stage, DDL)
+## Phase 1 — Snowflake platform + DDL (run in order)
 
-Use **Snowsight Worksheets** or **SnowSQL**. Step 1 often needs `ACCOUNTADMIN` (or equivalent).
+Use **Snowsight Worksheets** or **SnowSQL**. Use a role that can create warehouse/database (often `ACCOUNTADMIN` for P1.1 only).
 
 | Step | Run | Purpose |
 |------|-----|--------|
-| 1 | [`scripts/01_roles_warehouse_grants.sql`](../scripts/01_roles_warehouse_grants.sql) | `GRC_WH`, roles (`GRC_ADMIN`, `GRC_DEVELOPER`, …). Edit warehouse size / names if needed. |
-| 2 | [`schemas/00_database_and_schemas.sql`](../schemas/00_database_and_schemas.sql) | `GRC_DEMO_DB` + schemas `RAW`, `CURATED`, `ANALYTICS`, `ML`, `APP`. |
-| 3 | [`scripts/02_stages_and_file_formats.sql`](../scripts/02_stages_and_file_formats.sql) | File formats + `@GRC_DEMO_DB.RAW.INTERNAL_GRC_STAGE` (**after** DB exists). |
+| P1.1 | [scripts/01_roles_warehouse_grants.sql](../scripts/01_roles_warehouse_grants.sql) | Warehouse `GRC_WH`, roles. Uncomment **GRANT** block after DB exists. |
+| P1.2 | [schemas/00_database_and_schemas.sql](../schemas/00_database_and_schemas.sql) | Database `GRC_DEMO_DB`, schemas `RAW`, `CURATED`, `ANALYTICS`, `ML`, `APP`. |
+| P1.3 | [scripts/02_stages_and_file_formats.sql](../scripts/02_stages_and_file_formats.sql) | File formats + `@GRC_DEMO_DB.RAW.INTERNAL_GRC_STAGE`. |
 
-Switch to **`GRC_DEVELOPER`** or **`GRC_ADMIN`**, then run **in order**:
+Switch to **`GRC_DEVELOPER`** or **`GRC_ADMIN`**, then:
 
 | Step | Run |
 |------|-----|
-| 4 | [`schemas/01_raw_landing.sql`](../schemas/01_raw_landing.sql) |
-| 5 | [`schemas/02_curated_dimensions.sql`](../schemas/02_curated_dimensions.sql) |
-| 6 | [`schemas/03_curated_facts.sql`](../schemas/03_curated_facts.sql) |
-| 7 | [`schemas/04_analytics_views.sql`](../schemas/04_analytics_views.sql) |
-| 8 | [`schemas/05_ml_and_intelligence.sql`](../schemas/05_ml_and_intelligence.sql) |
-| 9 | [`schemas/06_app_config.sql`](../schemas/06_app_config.sql) |
+| P1.4 | [schemas/01_raw_landing.sql](../schemas/01_raw_landing.sql) |
+| P1.5 | [schemas/02_curated_dimensions.sql](../schemas/02_curated_dimensions.sql) |
+| P1.6 | [schemas/03_curated_facts.sql](../schemas/03_curated_facts.sql) |
+| P1.7 | [schemas/04_analytics_views.sql](../schemas/04_analytics_views.sql) |
+| P1.8 | [schemas/05_ml_and_intelligence.sql](../schemas/05_ml_and_intelligence.sql) |
+| P1.9 | [schemas/06_app_config.sql](../schemas/06_app_config.sql) |
 
-**Grants:** Uncomment and run the `GRANT` block in `01_roles_warehouse_grants.sql` so analysts / Streamlit roles can use the warehouse and read `ANALYTICS` (see [`MIGRATION_RUNBOOK.md`](MIGRATION_RUNBOOK.md)).
-
-The same DDL order is listed in [`../README.md`](../README.md).
+**Verify:** `SHOW TABLES IN SCHEMA GRC_DEMO_DB.CURATED;` and `SHOW VIEWS IN SCHEMA GRC_DEMO_DB.ANALYTICS;`
 
 ---
 
@@ -45,56 +45,98 @@ The same DDL order is listed in [`../README.md`](../README.md).
 
 | Step | Action |
 |------|--------|
-| 10 | **PUT** JSON from `server/data/*.json` onto the stage (example in [`MIGRATION_RUNBOOK.md`](MIGRATION_RUNBOOK.md)). |
-| 11 | **COPY** into `RAW.*_RAW` tables; follow [`scripts/03_load_demo_put_copy.sql`](../scripts/03_load_demo_put_copy.sql). Adjust `FILE_FORMAT` and `STRIP_OUTER_ARRAY` per file (JSON array vs NDJSON). |
-| 12 | Map each file to a RAW table using [`JSON_TO_TABLE_MAP.md`](JSON_TO_TABLE_MAP.md). |
-| 13 | **Transform** RAW → CURATED: implement `MERGE`/`INSERT` from `payload` VARIANT (SQL and/or Snowpark). Start from [`scripts/05_merge_curated_template.sql`](../scripts/05_merge_curated_template.sql). |
+| P2.1 | **PUT** JSON files to `@GRC_DEMO_DB.RAW.INTERNAL_GRC_STAGE/legacy_json/` (see [MIGRATION_RUNBOOK.md](MIGRATION_RUNBOOK.md)). |
+| P2.2 | **COPY** into `RAW.*_RAW` using [scripts/03_load_demo_put_copy.sql](../scripts/03_load_demo_put_copy.sql) (adjust `FILE_FORMAT` / array vs NDJSON). |
+| P2.3 | Use [JSON_TO_TABLE_MAP.md](JSON_TO_TABLE_MAP.md) so each file targets the correct `*_RAW` table. |
+| P2.4 | **Merge** `VARIANT` → `CURATED` (SQL or Snowpark). Start from [scripts/05_merge_curated_template.sql](../scripts/05_merge_curated_template.sql). |
 
-**No JSON yet?** Run [`scripts/04_seed_minimal_demo.sql`](../scripts/04_seed_minimal_demo.sql) to smoke-test views and Streamlit.
-
-| Step | Run |
-|------|-----|
-| 14 | [`scripts/validate_row_counts.sql`](../scripts/validate_row_counts.sql) + checks in [`MIGRATION_RUNBOOK.md`](MIGRATION_RUNBOOK.md). |
-
----
-
-## Phase 3 — Front end (Streamlit in Snowflake)
-
-**After** `ANALYTICS` views return rows (or after seed).
+**No source JSON yet:** run [scripts/04_seed_minimal_demo.sql](../scripts/04_seed_minimal_demo.sql).
 
 | Step | Action |
 |------|--------|
-| 15 | In Snowflake **Streamlit**, create an app with a role that can `SELECT` from `GRC_DEMO_DB.ANALYTICS` (and `CURATED` if needed). |
-| 16 | Structure pages per [`../streamlit/README.md`](../streamlit/README.md) (e.g. `Home.py`, `pages/` for Governance, Legal, Data, Tasks, Intelligence). |
-| 17 | Query **`GRC_DEMO_DB.ANALYTICS.VW_*`** from the UI; map screens using [`VIEW_TO_UI_MAP.md`](VIEW_TO_UI_MAP.md). |
-| 18 | **Session state:** `parent_holding_id`, `opco_id`, `period_days`; dropdowns from `DIM_PARENT_HOLDING` / `DIM_OPCO` (see Streamlit README). |
-| 19 | **RBAC:** `APP.STREAMLIT_ROLE_PAGE` + `CURRENT_ROLE()` (from [`06_app_config.sql`](../schemas/06_app_config.sql)). |
-
-This pack does not ship generated `.py` files; implement the app in SiS or add Python to the repo later.
+| P2.5 | Run [scripts/validate_row_counts.sql](../scripts/validate_row_counts.sql) and spot-check [MIGRATION_RUNBOOK.md](MIGRATION_RUNBOOK.md) queries. |
 
 ---
 
-## Phase 4 — Intelligence / AI / ML
+## Phase 3 — Streamlit app (exact steps + pre-built Python)
+
+**Prerequisites:** P1 and P2 complete; at least seed data so `DIM_PARENT_HOLDING` / `DIM_OPCO` are non-empty.
+
+### P3.A — Grants for the app owner role
 
 | Step | Action |
 |------|--------|
-| 20 | Read [`INTELLIGENCE_AI_ML.md`](INTELLIGENCE_AI_ML.md). |
-| 21 | Build/refresh **`ML.ML_FEATURE_REGULATORY_OPCO`** (task or procedure). |
-| 22 | Train/register models → **`ML.ML_PREDICTION_RISK_SCORE`** (seed shows rule-based pattern). |
-| 23 | If Cortex is enabled: call from Snowpark in Streamlit; log to **`ML.ML_CORTEX_RUN_LOG`**; context from **`ANALYTICS.VW_OPCO_INTELLIGENCE_CONTEXT`**. |
+| P3.1 | Edit [scripts/07_streamlit_grants.sql](../scripts/07_streamlit_grants.sql): set the role name to the role that **owns** the Streamlit app. |
+| P3.2 | Run the script as `SECURITYADMIN` / `ACCOUNTADMIN` (or your governance equivalent). |
+
+This grants `SELECT` on `ANALYTICS` views, `CURATED` tables, `ML` tables, and `INSERT` on `ML.ML_CORTEX_RUN_LOG`.
+
+### P3.B — Create the Streamlit app in Snowsight
+
+| Step | Action |
+|------|--------|
+| P3.3 | Open **Snowsight** → **Streamlit** (or **Apps** → **Streamlit**, depending on edition). |
+| P3.4 | **Create** / **+ Streamlit app**. Name e.g. `GRC_INTELLIGENCE_APP`. |
+| P3.5 | **Warehouse:** `GRC_WH` (or your demo warehouse). |
+| P3.6 | **Database / schema:** e.g. `GRC_DEMO_DB.APP` (app object storage location). |
+| P3.7 | Set **Main file / Root file** to **`app.py`**. |
+
+### P3.C — Upload application files (must match repo layout)
+
+Copy the contents of **[`streamlit_app/`](../streamlit_app/)** into the Snowflake editor (or connect Git to this repo path `snowflake/streamlit_app/`).
+
+| Order | File | Purpose |
+|-------|------|--------|
+| 1 | `app.py` | Home + KPI preview |
+| 2 | `grc_common.py` | Snowpark session, sidebar Parent/OpCo/period |
+| 3 | `pages/01_Management.py` | Management dashboard |
+| 4 | `pages/02_Governance.py` | Regulatory changes |
+| 5 | `pages/03_Legal.py` | Legal registers |
+| 6 | `pages/04_Data_Compliance.py` | Sovereignty + Defender |
+| 7 | `pages/05_Tasks.py` | Tasks |
+| 8 | `pages/06_Intelligence.py` | ML + Cortex + run log |
+
+Details: [streamlit_app/README.md](../streamlit_app/README.md).
+
+| Step | Action |
+|------|--------|
+| P3.8 | **Save** all files, then **Run** the app. |
+| P3.9 | In the sidebar, select **Parent** and **OpCo**; open each **page** from the left nav and confirm tables load. |
+
+### P3.D — Intelligence page (Cortex)
+
+| Step | Action |
+|------|--------|
+| P3.10 | Open **Intelligence**. If **Generate summary** errors, confirm Cortex is enabled and adjust **Cortex model id** (account-specific). |
+| P3.11 | Confirm new rows appear in `GRC_DEMO_DB.ML.ML_CORTEX_RUN_LOG` after a successful run. |
+
+### P3.E — Optional RBAC for pages
+
+| Step | Action |
+|------|--------|
+| P3.12 | Populate `GRC_DEMO_DB.APP.STREAMLIT_ROLE_PAGE` and gate `st.sidebar` / pages using `SELECT CURRENT_ROLE()` (pattern in [streamlit/README.md](../streamlit/README.md)). |
 
 ---
 
-## Phase 5 — Optional: keep React + Express
+## Phase 4 — Intelligence jobs (batch / tasks)
 
-1. Complete Phase 1–2 (data in Snowflake).
-2. Replace file reads in the Node server with queries to `ANALYTICS.VW_*` (shape JSON like current APIs).
-3. Use [`VIEW_TO_UI_MAP.md`](VIEW_TO_UI_MAP.md) as the contract per screen.
+| Step | Action |
+|------|--------|
+| P4.1 | Read [INTELLIGENCE_AI_ML.md](INTELLIGENCE_AI_ML.md). |
+| P4.2 | Schedule refresh of `ML.ML_FEATURE_REGULATORY_OPCO` (Task or procedure). |
+| P4.3 | Register models in `ML.ML_MODEL_REGISTRY`; write `ML.ML_PREDICTION_RISK_SCORE`. |
+| P4.4 | Streamlit **Intelligence** page reads predictions; Cortex remains on-demand from the UI. |
 
 ---
 
-## What to run first (one line)
+## Phase 5 — Legacy React + Node (optional)
 
-**First:** [`scripts/01_roles_warehouse_grants.sql`](../scripts/01_roles_warehouse_grants.sql) → [`schemas/00_database_and_schemas.sql`](../schemas/00_database_and_schemas.sql) → [`scripts/02_stages_and_file_formats.sql`](../scripts/02_stages_and_file_formats.sql) → [`schemas/01`–`06`](../schemas/) in order → data (PUT/COPY + merge) or seed → Streamlit querying **`ANALYTICS.VW_*`**.
+Only if you must keep the existing SPA: point Express at `ANALYTICS.VW_*` instead of JSON files ([VIEW_TO_UI_MAP.md](VIEW_TO_UI_MAP.md)). The Streamlit app can coexist for demos.
 
-Longer narrative: [`MIGRATION_RUNBOOK.md`](MIGRATION_RUNBOOK.md).
+---
+
+## Single-line order
+
+`01_roles` → `00_database` → `02_stages` → schemas `01`–`06` → **data** (PUT/COPY/merge) or **seed** → **`07_streamlit_grants`** → **create SiS app** → upload **`streamlit_app/*`** → **Run** → optional **Phase 4** tasks.
+
+Extended narrative: [MIGRATION_RUNBOOK.md](MIGRATION_RUNBOOK.md).

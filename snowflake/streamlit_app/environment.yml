@@ -1,0 +1,11 @@
+# Optional: local conda env only. Streamlit in Snowflake provides runtime.
+name: grc_streamlit_local
+channels:
+  - conda-forge
+dependencies:
+  - python=3.10
+  - pip
+  - pip:
+    - streamlit>=1.28
+    - snowflake-snowpark-python>=1.11
+    - pandas
