@@ -8,7 +8,7 @@
 
 <br/>
 
-<img src="docs/images/readme-product-hero.svg" alt="Raqib - Compliance Intelligence Platform - representative UI preview showing navigation, executive KPIs, and portfolio activity" width="100%" />
+<img src="docs/images/readme-product-hero.png" alt="Raqib - Compliance Intelligence Platform - home screen (Management Dashboard) from the running app" width="100%" />
 
 <br/>
 
@@ -155,6 +155,7 @@ Defender integration details and UI behaviour are documented in **[docs/PRODUCT_
 | `npm run start` | Start API (production; serve built client from `server/public` when present) |
 | `npm test` | Server unit tests |
 | `npm run test:e2e` | Playwright E2E tests |
+| `npm run capture:readme-screenshot` | Regenerate `docs/images/readme-product-hero.png` (requires `npm run dev` / Vite on port 5173) |
 
 ---
 
@@ -165,5 +166,5 @@ Use issues and pull requests on the hosting repository. Keep **secrets and custo
 ---
 
 <p align="center">
-  <sub>Representative UI graphic above is a stylized preview for documentation—not a live screenshot.</sub>
+  <sub>Screenshot captured from the dev app at <code>http://localhost:5173</code> (default view). Re-run <code>npm run capture:readme-screenshot</code> with the client running to refresh this image.</sub>
 </p>

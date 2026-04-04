@@ -11,6 +11,7 @@
     "test": "cd server && npm test",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
+    "capture:readme-screenshot": "playwright screenshot --viewport-size=1440,900 --wait-for-timeout=5000 http://127.0.0.1:5173/ docs/images/readme-product-hero.png",
     "start": "cd server && npm start",
     "docker:build": "docker compose build",
     "docker:up": "docker compose up -d",
