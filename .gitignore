@@ -28,6 +28,9 @@ yarn-error.log*
 *.swp
 *.swo
 
+# GitHub issue snapshots (Cursor / IDE tooling — not part of the app)
+.gh_issue_*.json
+
 # Build artifacts
 client/dist/
 server/public/
