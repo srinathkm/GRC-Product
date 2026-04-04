@@ -245,13 +245,134 @@ flowchart TB
   D --> A
 ```
 
-**Raster mock**: For a PNG marketing/stakeholder slide, export from Figma using the **color table** and **wireframe** above, or generate a static image in the implementation phase matching these tokens.
+### Figma mock (yes — add it here)
+
+A **Figma** (or FigJam) mock fits this document well: it is the usual source of truth for **layout, spacing, and pixel-level color** before engineering. Use one or more of the following so the sprint doc stays useful in GitHub and offline:
+
+| Approach | When to use | What to put in this doc |
+| -------- | ----------- | ------------------------ |
+| **A. Link** | File is in team Figma; everyone has access | A short subsection with **[View Figma mock](https://www.figma.com/file/REPLACE_ME/ownership-graph)** (replace `REPLACE_ME` with your file key). Add password note only if the file is prototype-protected (prefer view link + team access instead). |
+| **B. Exported image in repo** | PR reviewers must see the UI without Figma | Export **PNG** (2× for retina) or **SVG** from Figma, commit under `sprints/ownership-graph-from-documents/assets/` (e.g. `ownership-graph-desktop.png`), then embed in this markdown: `![Ownership graph desktop mock](./assets/ownership-graph-desktop.png)`. |
+| **C. Snapshot + link** | Best of both | One hero image in-repo (B) **plus** the canonical Figma link (A) for iteration. |
+
+**What to include in the Figma frame** (align with sections above): canvas + nodes/edges using the **color and pattern system** table; **selected** node state; **detail pane** at 360px width; top bar with legend; optional **mobile** frame (bottom sheet instead of side pane).
+
+**Placeholder** (delete after adding real assets):
+
+- Figma file URL: `_Paste Figma file link here_`
+- Exported image: add files under `./assets/` and reference them above.
+
+**Raster-only alternative**: For a PNG stakeholder slide, export from Figma using the **color table** and **wireframe** sections in this document, or generate a static image in implementation matching those tokens.
+
+---
+
+## UX deep dive (reviewer lens — user-centricity, navigability, function)
+
+This section records what must be addressed for the experience to feel **exceptionally user-centric**: clarity of purpose, low cognitive load, confident navigation in a complex visual, and functional completeness from the user’s point of view (not only engineering). It complements Phase 3 visuals with **jobs-to-be-done**, **wayfinding**, **states**, **trust**, and **accessibility**.
+
+### Personas and jobs-to-be-done (why navigability matters)
+
+| Persona | Primary job | UX risk if ignored |
+| -------- | ----------- | ------------------ |
+| **Corp dev / PMO** | Answer “who ultimately owns or controls this target?” quickly | Gets lost after zoom/pan; no focal entity; no path highlight |
+| **GRC / compliance** | Prove **evidence** for each link (audit narrative) | Citations buried; unclear confidence; cannot trace edge → document |
+| **Legal / external counsel** | Validate structure against a schedule; export for board pack | No print/PDF; illegible labels at zoom; no list view |
+| **Casual reviewer (exec)** | Glance at structure without training | Too dense; no summary strip; jargon-only labels |
+
+**Design implication**: The UI must support **three speeds** — glance (summary + focal node), navigate (orientation + search/focus), defend (evidence + confidence per edge/node).
+
+### User-centric principles (must-haves)
+
+1. **Orientation always visible** — After any pan/zoom, the user must know **which entity is the subject OpCo** (focal badge, persistent label in top bar, or “Reset to subject” control). Without this, the graph feels like a map without “you are here.”
+2. **Progressive disclosure** — Default view: **readable node count** (collapse subsidiaries behind “+ N” or level-of-detail); advanced: full expansion. Avoid showing 80 nodes at once without grouping or filters.
+3. **Plain language** — Pair internal types (`corporate`, `trust`) with **short labels users recognize** (“Company”, “Trust”, “Person”). Tooltips expand with legal nuance; pane uses sentences, not only field keys.
+4. **Trust and uncertainty** — Any **inferred**, **low-confidence**, or **conflict** (two percentages for same edge) must be **visible in the pane and on the graph** (icon, stripe, or chip), with a one-line explanation and link to evidence. Silence reads as certainty.
+5. **Recoverability** — Errors (extraction failed, partial graph, LLM down) need **actionable** copy: what still works, what to retry, whether manual entry is possible later—not only error codes.
+
+### Navigability (information architecture and wayfinding)
+
+| Topic | What to add | Rationale |
+| ----- | ----------- | --------- |
+| **Entry from UBO** | Clear **tab/section label** (“Ownership graph”) + one-line **subtitle** (“From your uploaded document — decision support, not legal advice”) | Sets mental model before the canvas loads |
+| **Within-graph orientation** | **Minimap** (React Flow) or **breadcrumb trail** of selected path (e.g. `Target ← SPV ← HoldCo`) | Reduces “where am I?” after zoom |
+| **Focal entity** | **Pin / “Focus on subject”** button resets viewport and selection to subject OpCo | Primary task is trace from target |
+| **Path tracing** | **“Highlight path to…”** control: pick a node (e.g. individual UBO) and highlight directed path; optional **shortest path** vs **all paths** | Core GRC job; not obvious from click-only |
+| **Search** | **Filter or search box** for entity name (filters nodes/labels; scroll-into-view) | Large graphs; matches legal mental model (“find X Ltd”) |
+| **Layout direction** | Persist user’s **up/down** preference in **localStorage** | Avoids re-learning on every visit |
+| **Deep linking (Phase 2)** | URL query `?node=id` opens tab with node selected | Shareable for review threads |
+| **Cross-link to register** | From pane, **“Open in UBO register”** when entity exists in table | Continuity across tabs; reduces duplicate data entry anxiety |
+
+### Detail pane: content hierarchy (scannable in under 10 seconds)
+
+Order sections **fixed** for muscle memory:
+
+1. **Title row** — Entity name + type badge + optional status (warning / complete).
+2. **One-line summary** — “Holds 45% of [Target] via ordinary shares” (templated from graph math).
+3. **Upstream / downstream** — Collapsible if long; **percent always adjacent** to counterparty name.
+4. **Evidence** — Page/quote; **empty state** explains “No citation extracted for this relationship” (honest).
+5. **Data quality** — Only if issues (inferred, conflict, stale doc date).
+6. **Actions** — Secondary: “Copy summary”, “Export this node” (future).
+
+**Pane ergonomics**: Sticky section headers on scroll; **line length** capped (~65ch) for readability.
+
+### Functional UX (beyond click/hover — system behavior)
+
+| State | User need | UX treatment |
+| ----- | --------- | -------------- |
+| **First visit** | What is this? | Optional **dismissible coach mark** (3 bullets: select node, read pane, use search) or link “How to read this chart” |
+| **Loading** | System not frozen | **Skeleton** for pane + canvas placeholder; indeterminate progress if extraction &gt;2s |
+| **Empty (no upload)** | What to do | Illustration + **primary CTA** “Upload document” + accepted formats |
+| **Partial extraction** | Can I trust it? | **Banner**: “Showing 4 of 7 relationships; see warnings” + list in pane |
+| **Extraction failure** | Next step | Message + **retry** + **fallback**: “View table view only” if list view exists |
+| **Very large graph** | Performance + clarity | **Cluster** or **level-of-detail**; warn before render (“200 nodes — simplify layout?”) |
+| **Edge selected (v1.1)** | Consistency | Pane title switches to “Relationship: A → B” so users don’t think node context vanished |
+| **Print / board pack** | Offline | **Print stylesheet** or **Export PNG/PDF of canvas + pane summary** (Phase 2) |
+
+### Accessibility (WCAG-minded, beyond Tab-through nodes)
+
+- **Screen readers**: Announce **selection changes** (`aria-live="polite"` on pane); nodes as **buttons** or **treeitems** with **accessible name** = entity name + role + key %.
+- **Contrast**: Edge labels and minimap meet **4.5:1** on background; focus ring **never** color-only.
+- **Motion**: Respect **`prefers-reduced-motion`** (disable zoom animations; instant fit).
+- **Touch**: **44px min** hit targets on nodes or a **larger “tap target”** invisible buffer on mobile.
+
+### Mobile and narrow viewports
+
+- **Bottom sheet** for pane (per Figma note) with **drag handle** and **half/full height** snap.
+- **Toolbar** collapses to overflow menu (Fit, Search, Focus subject).
+- Consider **list-first** variant on very narrow screens (graph secondary) for usability.
+
+### Trust, compliance, and copy
+
+- **Persistent disclaimer** (short) near chart or in pane footer: decision-support; verify against source documents.
+- **Document date** and **extraction timestamp** in top bar (already in wireframe) — critical for audit comparability.
+- **Version** of extraction schema (`schemaVersion`) surfaced in **About this chart** popover for support tickets.
+
+### UX acceptance criteria (add to QA)
+
+- [ ] New user completes **one successful path trace** (subject → UBO) in under **2 minutes** without docs (usability test).
+- [ ] With **50+ nodes**, user can **find named entity** via search in under **30 seconds**.
+- [ ] **Keyboard-only** user can select node, read pane, clear selection, and use Focus subject.
+- [ ] **Screen reader** announces selection and pane update (smoke test).
+- [ ] All **error/partial** states use **human sentences**, not raw API errors.
+
+### Prioritized UX backlog (suggested order)
+
+| Priority | Item | Notes |
+| -------- | ---- | ----- |
+| P0 | Focal subject + Focus subject + orientation | Core navigability |
+| P0 | Loading / empty / partial / error states | Trust and recovery |
+| P0 | Pane hierarchy + confidence / inference | GRC credibility |
+| P1 | Search/filter + minimap | Large graphs |
+| P1 | Path highlight (to UBO or selected node) | Core job |
+| P2 | Deep link + print/export | Collaboration |
+| P2 | Coach marks / onboarding | Adoption |
 
 ---
 
 ## Verification
 
 - **Functional**: Upload fixture docs → graph node count and edges match expected; selection updates pane; keyboard navigation works.
+- **UX / navigability**: Meet the **UX acceptance criteria** listed under *UX deep dive* in this document (path trace task, search on large graph, keyboard-only, screen reader smoke, human-readable errors).
 - **Regression**: Existing UBO table/register flows unchanged when graph extraction fails (graceful degrade).
 - **Security**: No document secrets in console; audit log optional `ownership_graph_viewed` if required by GRC.
 
@@ -263,9 +384,11 @@ flowchart TB
 
 ## Implementation checklist
 
+- [ ] Figma (or FigJam) mock linked and/or exported PNG/SVG under `sprints/ownership-graph-from-documents/assets/` (optional but recommended for sign-off)
 - [ ] Write ADR-301..303 and align API errors with ADR-103
 - [ ] Define OwnershipGraphV1 JSON Schema + extraction service + validation
 - [ ] Add POST extract (+ optional GET persist) in ubo routes
 - [ ] OwnershipGraphView with React Flow + ELK/dagre + detail pane
 - [ ] Wire new tab/section in UltimateBeneficiaryOwner.jsx
+- [ ] UX: focal subject, Focus subject, loading/empty/partial/error states, pane hierarchy, search (or defer with explicit Phase-2 note), minimap or path breadcrumb (P0/P1 per UX backlog)
 - [ ] Unit tests for graph build, cycles, fixtures; client smoke
