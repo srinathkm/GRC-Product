@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 520" width="920" height="520">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0f172a"/>
+      <stop offset="100%" style="stop-color:#1e293b"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="2" stdDeviation="4" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+  <rect width="920" height="520" fill="url(#bg)"/>
+  <text x="32" y="42" fill="#f8fafc" font-family="system-ui,Segoe UI,sans-serif" font-size="20" font-weight="600">Cross-holdings — Owner profile</text>
+  <text x="32" y="64" fill="#94a3b8" font-family="system-ui,sans-serif" font-size="12">Use case B: “Where else does this beneficial owner appear?”</text>
+  <rect x="24" y="88" width="200" height="400" rx="10" fill="#1e293b" stroke="#334155" filter="url(#shadow)"/>
+  <text x="40" y="118" fill="#94a3b8" font-size="11" font-family="system-ui,sans-serif">Portfolio</text>
+  <rect x="36" y="128" width="176" height="32" rx="6" fill="#334155"/>
+  <text x="48" y="148" fill="#e2e8f0" font-size="12" font-family="system-ui,sans-serif">Search owner…</text>
+  <text x="40" y="188" fill="#64748b" font-size="10" font-family="system-ui,sans-serif">RESOLVED ENTITIES</text>
+  <rect x="36" y="198" width="176" height="28" rx="4" fill="#0ea5e9" fill-opacity="0.2" stroke="#38bdf8"/>
+  <text x="48" y="216" fill="#38bdf8" font-size="11" font-family="system-ui,sans-serif">Jane Doe (UBO)</text>
+  <text x="40" y="252" fill="#64748b" font-size="10" font-family="system-ui,sans-serif">OTHER MATCHES</text>
+  <rect x="36" y="260" width="176" height="24" rx="4" fill="#334155"/>
+  <text x="48" y="276" fill="#cbd5e1" font-size="10" font-family="system-ui,sans-serif">J. Doe Holdings Ltd</text>
+  <rect x="240" y="88" width="656" height="180" rx="10" fill="#1e293b" stroke="#334155" filter="url(#shadow)"/>
+  <text x="260" y="118" fill="#f8fafc" font-size="14" font-family="system-ui,sans-serif" font-weight="600">Owner summary</text>
+  <text x="260" y="142" fill="#94a3b8" font-size="11" font-family="system-ui,sans-serif">Entity resolution: 2 registry rows merged · Source: UBO + ownership graph</text>
+  <rect x="260" y="152" width="120" height="22" rx="4" fill="#22c55e" fill-opacity="0.15" stroke="#4ade80"/>
+  <text x="272" y="167" fill="#86efac" font-size="10" font-family="system-ui,sans-serif">Evidence-linked</text>
+  <text x="260" y="200" fill="#cbd5e1" font-size="12" font-family="system-ui,sans-serif">Total indirect stakes: 4 OpCos · 2 intermediate vehicles</text>
+  <text x="260" y="222" fill="#64748b" font-size="10" font-family="system-ui,sans-serif">Mini-graph (portfolio KG) — illustrative</text>
+  <circle cx="320" cy="252" r="18" fill="#0ea5e9" fill-opacity="0.3" stroke="#38bdf8"/>
+  <text x="308" y="256" fill="#e0f2fe" font-size="9" font-family="system-ui,sans-serif">Owner</text>
+  <line x1="338" y1="252" x2="400" y2="220" stroke="#475569" stroke-width="2"/>
+  <line x1="338" y1="252" x2="400" y2="252" stroke="#475569" stroke-width="2"/>
+  <line x1="338" y1="252" x2="400" y2="284" stroke="#475569" stroke-width="2"/>
+  <rect x="400" y="200" width="72" height="40" rx="6" fill="#334155" stroke="#64748b"/>
+  <text x="412" y="224" fill="#e2e8f0" font-size="9" font-family="system-ui,sans-serif">OpCo A</text>
+  <rect x="400" y="232" width="72" height="40" rx="6" fill="#334155" stroke="#64748b"/>
+  <text x="412" y="256" fill="#e2e8f0" font-size="9" font-family="system-ui,sans-serif">Vehicle 1</text>
+  <rect x="400" y="264" width="72" height="40" rx="6" fill="#334155" stroke="#64748b"/>
+  <text x="412" y="288" fill="#e2e8f0" font-size="9" font-family="system-ui,sans-serif">OpCo B</text>
+  <text x="520" y="256" fill="#64748b" font-size="10" font-family="system-ui,sans-serif">+ export to audit trail</text>
+  <rect x="240" y="288" width="656" height="200" rx="10" fill="#1e293b" stroke="#334155" filter="url(#shadow)"/>
+  <text x="260" y="318" fill="#f8fafc" font-size="14" font-family="system-ui,sans-serif" font-weight="600">All other stakes in portfolio</text>
+  <line x1="260" y1="330" x2="880" y2="330" stroke="#334155"/>
+  <text x="268" y="352" fill="#94a3b8" font-size="10" font-family="system-ui,sans-serif" font-weight="600">OpCo</text>
+  <text x="400" y="352" fill="#94a3b8" font-size="10" font-family="system-ui,sans-serif" font-weight="600">Vehicle</text>
+  <text x="520" y="352" fill="#94a3b8" font-size="10" font-family="system-ui,sans-serif" font-weight="600">%</text>
+  <text x="600" y="352" fill="#94a3b8" font-size="10" font-family="system-ui,sans-serif" font-weight="600">Source row</text>
+  <line x1="260" y1="362" x2="880" y2="362" stroke="#334155"/>
+  <text x="268" y="384" fill="#e2e8f0" font-size="11" font-family="system-ui,sans-serif">Alpha Retail GmbH</text>
+  <text x="400" y="384" fill="#e2e8f0" font-size="11" font-family="system-ui,sans-serif">—</text>
+  <text x="520" y="384" fill="#e2e8f0" font-size="11" font-family="system-ui,sans-serif">12%</text>
+  <text x="600" y="384" fill="#64748b" font-size="10" font-family="system-ui,sans-serif">ubo.json #4412</text>
+  <text x="268" y="412" fill="#e2e8f0" font-size="11" font-family="system-ui,sans-serif">Beta Logistics SA</text>
+  <text x="400" y="412" fill="#e2e8f0" font-size="11" font-family="system-ui,sans-serif">HoldCo EU</text>
+  <text x="520" y="412" fill="#e2e8f0" font-size="11" font-family="system-ui,sans-serif">indirect 8%</text>
+  <text x="600" y="412" fill="#64748b" font-size="10" font-family="system-ui,sans-serif">graph edge e-902</text>
+  <text x="268" y="440" fill="#e2e8f0" font-size="11" font-family="system-ui,sans-serif">Gamma Tech Ltd</text>
+  <text x="400" y="440" fill="#e2e8f0" font-size="11" font-family="system-ui,sans-serif">—</text>
+  <text x="520" y="440" fill="#e2e8f0" font-size="11" font-family="system-ui,sans-serif">5%</text>
+  <text x="600" y="440" fill="#64748b" font-size="10" font-family="system-ui,sans-serif">ubo.json #4412</text>
+  <text x="260" y="472" fill="#64748b" font-size="9" font-family="system-ui,sans-serif">Wireframe mockup — Raqib AI intelligence vision sprint</text>
+</svg>

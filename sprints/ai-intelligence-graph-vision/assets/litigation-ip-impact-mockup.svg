@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 540" width="920" height="540">
+  <defs>
+    <linearGradient id="bg2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0f172a"/>
+      <stop offset="100%" style="stop-color:#1e293b"/>
+    </linearGradient>
+    <filter id="sh" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="2" stdDeviation="4" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+  <rect width="920" height="540" fill="url(#bg2)"/>
+  <text x="32" y="40" fill="#f8fafc" font-family="system-ui,Segoe UI,sans-serif" font-size="20" font-weight="600">Litigation ↔ IP impact</text>
+  <text x="32" y="62" fill="#94a3b8" font-family="system-ui,sans-serif" font-size="12">Use case C: case severity change → linked IP and business exposure</text>
+  <rect x="24" y="80" width="872" height="96" rx="10" fill="#7f1d1d" fill-opacity="0.35" stroke="#f87171" filter="url(#sh)"/>
+  <text x="44" y="112" fill="#fecaca" font-family="system-ui,sans-serif" font-size="14" font-weight="600">Case LIT-2024-089 · OpCo: Gamma Tech Ltd</text>
+  <text x="44" y="134" fill="#fca5a5" font-family="system-ui,sans-serif" font-size="11">Status: Active · Severity: elevated · Last update: 2026-03-15</text>
+  <rect x="720" y="98" width="160" height="36" rx="6" fill="#dc2626" fill-opacity="0.4" stroke="#f87171"/>
+  <text x="740" y="120" fill="#fecaca" font-family="system-ui,sans-serif" font-size="11">Impact tier: High</text>
+  <rect x="24" y="196" width="280" height="200" rx="10" fill="#1e293b" stroke="#334155" filter="url(#sh)"/>
+  <text x="40" y="228" fill="#f8fafc" font-family="system-ui,sans-serif" font-size="13" font-weight="600">Linked IP assets</text>
+  <text x="40" y="252" fill="#94a3b8" font-size="10" font-family="system-ui,sans-serif">Match: entity + keywords + jurisdiction</text>
+  <rect x="40" y="264" width="248" height="36" rx="6" fill="#334155"/>
+  <text x="52" y="286" fill="#e2e8f0" font-size="11" font-family="system-ui,sans-serif">Patent EP-3344555 · Core product</text>
+  <rect x="40" y="308" width="248" height="36" rx="6" fill="#334155"/>
+  <text x="52" y="330" fill="#e2e8f0" font-size="11" font-family="system-ui,sans-serif">Trademark “GammaFlow” · EU</text>
+  <text x="40" y="378" fill="#64748b" font-size="9" font-family="system-ui,sans-serif">Citations: ip.json rows · immutable refs</text>
+  <rect x="320" y="196" width="280" height="200" rx="10" fill="#1e293b" stroke="#334155" filter="url(#sh)"/>
+  <text x="336" y="228" fill="#f8fafc" font-family="system-ui,sans-serif" font-size="13" font-weight="600">Business exposure</text>
+  <text x="336" y="252" fill="#94a3b8" font-size="10" font-family="system-ui,sans-serif">Contracts referencing IP / revenue</text>
+  <rect x="336" y="264" width="248" height="36" rx="6" fill="#334155"/>
+  <text x="348" y="286" fill="#e2e8f0" font-size="11" font-family="system-ui,sans-serif">MSA 2023-88 · indemnity clause 14</text>
+  <rect x="336" y="308" width="248" height="36" rx="6" fill="#334155"/>
+  <text x="348" y="330" fill="#e2e8f0" font-size="11" font-family="system-ui,sans-serif">OEM agreement · product line A</text>
+  <rect x="616" y="196" width="280" height="200" rx="10" fill="#1e293b" stroke="#334155" filter="url(#sh)"/>
+  <text x="632" y="228" fill="#f8fafc" font-family="system-ui,sans-serif" font-size="13" font-weight="600">Suggested tasks</text>
+  <rect x="632" y="244" width="12" height="12" rx="2" fill="#38bdf8"/>
+  <text x="652" y="254" fill="#e2e8f0" font-size="11" font-family="system-ui,sans-serif">Notify IP counsel</text>
+  <rect x="632" y="268" width="12" height="12" rx="2" fill="#38bdf8"/>
+  <text x="652" y="278" fill="#e2e8f0" font-size="11" font-family="system-ui,sans-serif">Refresh contract risk note</text>
+  <rect x="632" y="292" width="12" height="12" rx="2" fill="#334155"/>
+  <text x="652" y="302" fill="#94a3b8" font-size="11" font-family="system-ui,sans-serif">Board narrative draft (citations)</text>
+  <rect x="24" y="412" width="872" height="100" rx="10" fill="#0c4a6e" fill-opacity="0.4" stroke="#0ea5e9" filter="url(#sh)"/>
+  <text x="44" y="444" fill="#e0f2fe" font-family="system-ui,sans-serif" font-size="12" font-weight="600">Explainability</text>
+  <text x="44" y="468" fill="#94a3b8" font-size="10" font-family="system-ui,sans-serif">Rules: severity ≥ threshold AND ≥1 linked IP AND contract ref → tier High. Model v0.2 · snapshot 2026-04-01.</text>
+  <text x="44" y="492" fill="#64748b" font-size="9" font-family="system-ui,sans-serif">Wireframe mockup — Raqib AI intelligence vision sprint</text>
+</svg>
