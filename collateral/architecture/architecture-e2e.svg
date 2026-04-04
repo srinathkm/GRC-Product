@@ -13,36 +13,36 @@
     </marker>
   </defs>
   <rect width="1100" height="640" fill="url(#bg)"/>
-  <text x="550" y="42" text-anchor="middle" font-family="system-ui,Segoe UI,sans-serif" font-size="22" font-weight="700" fill="#0f172a">Regulation Changes Dashboard</text>
-  <text x="550" y="68" text-anchor="middle" font-family="system-ui,Segoe UI,sans-serif" font-size="13" fill="#64748b">End-to-end architecture  overview for stakeholders</text>
+  <text x="550" y="42" text-anchor="middle" font-family="sans-serif" font-size="22" font-weight="700" fill="#0f172a">Regulation Changes Dashboard</text>
+  <text x="550" y="68" text-anchor="middle" font-family="sans-serif" font-size="13" fill="#64748b">End-to-end architecture - overview for stakeholders</text>
   <rect x="380" y="92" width="340" height="44" rx="8" fill="#1e3a5f" filter="url(#shadow)"/>
-  <text x="550" y="120" text-anchor="middle" fill="#ffffff" font-family="system-ui,Segoe UI,sans-serif" font-size="13" font-weight="600">Users  Legal, Governance, Data Security, Leadership</text>
+  <text x="550" y="120" text-anchor="middle" fill="#ffffff" font-family="sans-serif" font-size="13" font-weight="600">Users: Legal, Governance, Data Security, Leadership</text>
   <path d="M550 136 L550 158" stroke="#94a3b8" stroke-width="2" marker-end="url(#arr)"/>
   <rect x="300" y="168" width="500" height="72" rx="10" fill="#ffffff" stroke="#3b82f6" stroke-width="2" filter="url(#shadow)"/>
-  <text x="550" y="198" text-anchor="middle" font-family="system-ui,Segoe UI,sans-serif" font-size="15" font-weight="700" fill="#1d4ed8">React SPA (Vite)</text>
-  <text x="550" y="220" text-anchor="middle" font-family="system-ui,Segoe UI,sans-serif" font-size="12" fill="#475569">Role-based modules, dashboards, uploads, governance frameworks</text>
+  <text x="550" y="198" text-anchor="middle" font-family="sans-serif" font-size="15" font-weight="700" fill="#1d4ed8">React SPA (Vite)</text>
+  <text x="550" y="220" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#475569">Role-based modules, dashboards, uploads, governance frameworks</text>
   <path d="M550 240 L550 262" stroke="#94a3b8" stroke-width="2" marker-end="url(#arr)"/>
   <rect x="260" y="272" width="580" height="88" rx="10" fill="#ffffff" stroke="#0d9488" stroke-width="2" filter="url(#shadow)"/>
-  <text x="550" y="302" text-anchor="middle" font-family="system-ui,Segoe UI,sans-serif" font-size="15" font-weight="700" fill="#0f766e">Node.js REST API (Express)</text>
-  <text x="550" y="324" text-anchor="middle" font-family="system-ui,Segoe UI,sans-serif" font-size="11" fill="#475569">/api/changes, /api/dashboard, /api/ubo, /api/contracts, /api/data-compliance-governance, /api/dependency-intelligence</text>
-  <text x="550" y="346" text-anchor="middle" font-family="system-ui,Segoe UI,sans-serif" font-size="11" fill="#64748b">Auth, JSON body, file uploads, optional integrations</text>
+  <text x="550" y="302" text-anchor="middle" font-family="sans-serif" font-size="15" font-weight="700" fill="#0f766e">Node.js REST API (Express)</text>
+  <text x="550" y="324" text-anchor="middle" font-family="sans-serif" font-size="11" fill="#475569">/api/changes, /api/dashboard, /api/ubo, /api/contracts, /api/data-compliance-governance, /api/dependency-intelligence</text>
+  <text x="550" y="346" text-anchor="middle" font-family="sans-serif" font-size="11" fill="#64748b">Auth, JSON body, file uploads, optional integrations</text>
   <path d="M550 360 L550 382" stroke="#94a3b8" stroke-width="2" marker-end="url(#arr)"/>
   <rect x="80" y="392" width="300" height="100" rx="10" fill="#ffffff" stroke="#8b5cf6" stroke-width="2" filter="url(#shadow)"/>
-  <text x="230" y="422" text-anchor="middle" font-family="system-ui,Segoe UI,sans-serif" font-size="13" font-weight="700" fill="#6d28d9">Domain services</text>
-  <text x="230" y="444" text-anchor="middle" font-family="system-ui,Segoe UI,sans-serif" font-size="11" fill="#475569">Regulatory feed scheduler</text>
-  <text x="230" y="460" text-anchor="middle" font-family="system-ui,Segoe UI,sans-serif" font-size="11" fill="#475569">Dependency intelligence</text>
-  <text x="230" y="476" text-anchor="middle" font-family="system-ui,Segoe UI,sans-serif" font-size="11" fill="#475569">Compliance and M and A engines</text>
+  <text x="230" y="422" text-anchor="middle" font-family="sans-serif" font-size="13" font-weight="700" fill="#6d28d9">Domain services</text>
+  <text x="230" y="444" text-anchor="middle" font-family="sans-serif" font-size="11" fill="#475569">Regulatory feed scheduler</text>
+  <text x="230" y="460" text-anchor="middle" font-family="sans-serif" font-size="11" fill="#475569">Dependency intelligence</text>
+  <text x="230" y="476" text-anchor="middle" font-family="sans-serif" font-size="11" fill="#475569">Compliance and M&amp;A engines</text>
   <rect x="400" y="392" width="300" height="100" rx="10" fill="#ffffff" stroke="#f59e0b" stroke-width="2" filter="url(#shadow)"/>
-  <text x="550" y="422" text-anchor="middle" font-family="system-ui,Segoe UI,sans-serif" font-size="13" font-weight="700" fill="#b45309">AI layer (optional)</text>
-  <text x="550" y="444" text-anchor="middle" font-family="system-ui,Segoe UI,sans-serif" font-size="11" fill="#475569">LLM extraction, assistant, ownership graph</text>
-  <text x="550" y="464" text-anchor="middle" font-family="system-ui,Segoe UI,sans-serif" font-size="10" fill="#94a3b8">Requires API key  graceful fallback if disabled</text>
+  <text x="550" y="422" text-anchor="middle" font-family="sans-serif" font-size="13" font-weight="700" fill="#b45309">AI layer (optional)</text>
+  <text x="550" y="444" text-anchor="middle" font-family="sans-serif" font-size="11" fill="#475569">LLM extraction, assistant, ownership graph</text>
+  <text x="550" y="464" text-anchor="middle" font-family="sans-serif" font-size="10" fill="#94a3b8">Requires API key - graceful fallback if disabled</text>
   <rect x="720" y="392" width="300" height="100" rx="10" fill="#ffffff" stroke="#64748b" stroke-width="2" filter="url(#shadow)"/>
-  <text x="870" y="422" text-anchor="middle" font-family="system-ui,Segoe UI,sans-serif" font-size="13" font-weight="700" fill="#334155">External (optional)</text>
-  <text x="870" y="444" text-anchor="middle" font-family="system-ui,Segoe UI,sans-serif" font-size="11" fill="#475569">Email SMTP</text>
-  <text x="870" y="460" text-anchor="middle" font-family="system-ui,Segoe UI,sans-serif" font-size="11" fill="#475569">SharePoint</text>
-  <text x="870" y="476" text-anchor="middle" font-family="system-ui,Segoe UI,sans-serif" font-size="11" fill="#475569">Defender imports</text>
+  <text x="870" y="422" text-anchor="middle" font-family="sans-serif" font-size="13" font-weight="700" fill="#334155">External (optional)</text>
+  <text x="870" y="444" text-anchor="middle" font-family="sans-serif" font-size="11" fill="#475569">Email SMTP</text>
+  <text x="870" y="460" text-anchor="middle" font-family="sans-serif" font-size="11" fill="#475569">SharePoint</text>
+  <text x="870" y="476" text-anchor="middle" font-family="sans-serif" font-size="11" fill="#475569">Defender imports</text>
   <rect x="200" y="518" width="700" height="88" rx="10" fill="#ffffff" stroke="#059669" stroke-width="2" filter="url(#shadow)"/>
-  <text x="550" y="548" text-anchor="middle" font-family="system-ui,Segoe UI,sans-serif" font-size="14" font-weight="700" fill="#047857">Data and persistence</text>
-  <text x="550" y="572" text-anchor="middle" font-family="system-ui,Segoe UI,sans-serif" font-size="12" fill="#475569">JSON registers, uploaded files, ownership graph store</text>
-  <text x="550" y="592" text-anchor="middle" font-family="system-ui,Segoe UI,sans-serif" font-size="10" fill="#94a3b8">Dev: Vite proxy to API. Prod: static build plus Node or container</text>
+  <text x="550" y="548" text-anchor="middle" font-family="sans-serif" font-size="14" font-weight="700" fill="#047857">Data and persistence</text>
+  <text x="550" y="572" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#475569">JSON registers, uploaded files, ownership graph store</text>
+  <text x="550" y="592" text-anchor="middle" font-family="sans-serif" font-size="10" fill="#94a3b8">Dev: Vite proxy to API. Prod: static build plus Node or container</text>
 </svg>
