@@ -1,7 +1,7 @@
 # M&A Simulator v2 — High-Level Implementation Plan
 
 **Status:** Draft for engineering execution  
-**Source architecture & reviews:** [m-a-simulator-v2-architecture-review.plan.md](plans/m-a-simulator-v2-architecture-review.plan.md) (full roadmap, M&A specialist, C-level, GRC Director reviews)  
+**Source architecture & reviews:** [m-a-simulator-v2-architecture-review.plan.md](m-a-simulator-v2-architecture-review.plan.md) (full roadmap, M&A specialist, C-level, GRC Director reviews)  
 **Aligned process:** Developer skill — Phase 1 (architecture) complete in source doc; this file operationalises **Phase 2 delivery** with solution architecture, UI/UX, and system design.
 
 ---
@@ -58,7 +58,7 @@ flowchart TB
 **Boundaries**
 
 - **Engine** is deterministic: inputs + coefficients → JSON model. Optional LLM may **only** populate structured fields from uploads; it **must not** replace engine math (per ADR in source plan).
-- **API** validates all inputs, returns **versioned** schema + **error taxonomy** (extend [ADR-103](../adr/ADR-103-api-contract-and-failure-mode-policy.md) pattern).
+- **API** validates all inputs, returns **versioned** schema + **error taxonomy** (extend [ADR-103](../../docs/adr/ADR-103-api-contract-and-failure-mode-policy.md) pattern).
 
 ---
 
@@ -201,7 +201,7 @@ Recommend **A** if scope grows (per source plan §5).
 
 | File | Role |
 |------|------|
-| [m-a-simulator-v2-architecture-review.plan.md](plans/m-a-simulator-v2-architecture-review.plan.md) | Full architecture + stakeholder reviews |
+| [m-a-simulator-v2-architecture-review.plan.md](m-a-simulator-v2-architecture-review.plan.md) | Full architecture + stakeholder reviews |
 | This file | Implementation and delivery plan |
 
 ---
