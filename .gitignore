@@ -3,6 +3,16 @@ node_modules/
 server/node_modules/
 client/node_modules/
 
+# E2E / Playwright (generated)
+test-results/
+playwright-report/
+
+# Runtime uploads (created by server on contract upload)
+server/data/contract-uploads/
+
+# Local JSON/PDF snapshots (restore script / dev only)
+server/data/_backups/
+
 # Environment and secrets
 .env
 .env.*

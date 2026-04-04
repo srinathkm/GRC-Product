@@ -20,7 +20,7 @@ A web application for **Governance, Risk and Compliance** across GCC and Middle 
 
 ## Quick start
 
-1. **Install dependencies** (from project root):
+1. **Install dependencies** (from project root). `node_modules` is not tracked in git; this installs root (Playwright, tooling), `client/`, and `server/` packages.
 
    ```bash
    npm run install:all
