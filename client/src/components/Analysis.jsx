@@ -4,6 +4,11 @@ import { getUboSummaryForMa, getUboDataForMa } from './UltimateBeneficiaryOwner'
 import { getEsgSummaryForMa, getEsgDataForMa } from './EsgSummary';
 import { getDataSovereigntySummaryForMa } from './DataSovereignty';
 import { getDataSecuritySummaryForMa } from './DataSecurityCompliance';
+import { MaExecutiveSummary } from './ma/MaExecutiveSummary.jsx';
+import { MaRiskRegisterTable } from './ma/MaRiskRegisterTable.jsx';
+import { MaRegulatoryMatrix } from './ma/MaRegulatoryMatrix.jsx';
+import { MaValueBridge } from './ma/MaValueBridge.jsx';
+import { MaScenarioPanel } from './ma/MaScenarioPanel.jsx';
 
 const API = '/api';
 
@@ -25,6 +30,10 @@ export function Analysis({ language = 'en', selectedParentHolding, onParentHoldi
   const maFileInputRef = useRef(null);
   const [maParentGroup, setMaParentGroup] = useState('');
   const [maTarget, setMaTarget] = useState('');
+  const [maSynergyAnnual, setMaSynergyAnnual] = useState('');
+  const [maDealStructure, setMaDealStructure] = useState('');
+  const [maRegulatedTarget, setMaRegulatedTarget] = useState(false);
+  const [maToast, setMaToast] = useState(null);
   const [maRoles, setMaRoles] = useState({ parents: [], opcos: [] });
 
   useEffect(() => {
@@ -118,6 +127,9 @@ export function Analysis({ language = 'en', selectedParentHolding, onParentHoldi
     const dataSecuritySummary = getDataSecuritySummaryForMa(maTarget);
     if (dataSovereigntySummary) formData.append('dataSovereigntySummary', dataSovereigntySummary);
     if (dataSecuritySummary) formData.append('dataSecuritySummary', dataSecuritySummary);
+    if (maSynergyAnnual.trim() !== '') formData.append('synergyAnnualAed', maSynergyAnnual.trim());
+    if (maDealStructure) formData.append('dealStructure', maDealStructure);
+    if (maRegulatedTarget) formData.append('regulatedTarget', 'true');
     fetch(`${API}/analysis/ma-simulator`, {
       method: 'POST',
       body: formData,
@@ -147,6 +159,24 @@ export function Analysis({ language = 'en', selectedParentHolding, onParentHoldi
         URL.revokeObjectURL(url);
       })
       .catch(() => setMaError('Could not download report'));
+  };
+
+  const downloadMaCsv = () => {
+    if (!maResult?.reportId) return;
+    fetch(`${API}/analysis/ma-simulator/csv?reportId=${encodeURIComponent(maResult.reportId)}`)
+      .then((r) => {
+        if (!r.ok) throw new Error('Download failed');
+        return r.blob();
+      })
+      .then((blob) => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = maResult.csvDownloadFilename || 'M&A-Framework-Assessment.csv';
+        a.click();
+        URL.revokeObjectURL(url);
+      })
+      .catch(() => setMaError('Could not download CSV'));
   };
 
   const maxBar = result?.chartData?.riskScores?.length
@@ -279,6 +309,55 @@ export function Analysis({ language = 'en', selectedParentHolding, onParentHoldi
             <span className="analysis-upload-hint">All OpCos and parent groups except the selected Parent Group</span>
           </div>
           <div className="analysis-control-row">
+            <label htmlFor="ma-deal-structure">Deal structure (optional)</label>
+            <select
+              id="ma-deal-structure"
+              className="analysis-select"
+              value={maDealStructure}
+              onChange={(e) => {
+                setMaDealStructure(e.target.value);
+                setMaResult(null);
+              }}
+            >
+              <option value="">Not specified</option>
+              <option value="share">Share / equity acquisition</option>
+              <option value="asset">Asset purchase</option>
+              <option value="merger">Merger</option>
+            </select>
+            <span className="analysis-upload-hint">Used in the executive summary narrative</span>
+          </div>
+          <div className="analysis-control-row">
+            <label htmlFor="ma-synergy">Annual synergy (AED, optional)</label>
+            <input
+              id="ma-synergy"
+              type="number"
+              min="0"
+              step="1000"
+              className="analysis-select"
+              style={{ maxWidth: '14rem' }}
+              placeholder="e.g. 500000"
+              value={maSynergyAnnual}
+              onChange={(e) => {
+                setMaSynergyAnnual(e.target.value);
+                setMaResult(null);
+              }}
+            />
+            <span className="analysis-upload-hint">Drives the value bridge comparison</span>
+          </div>
+          <div className="analysis-control-row">
+            <label className="analysis-checkbox-label">
+              <input
+                type="checkbox"
+                checked={maRegulatedTarget}
+                onChange={(e) => {
+                  setMaRegulatedTarget(e.target.checked);
+                  setMaResult(null);
+                }}
+              />
+              {' '}Target is a regulated financial entity (metadata for assessment)
+            </label>
+          </div>
+          <div className="analysis-control-row">
             <label>Upload document (optional)</label>
             <div className="analysis-upload">
               <input
@@ -315,7 +394,23 @@ export function Analysis({ language = 'en', selectedParentHolding, onParentHoldi
         {maResult && (
           <div className="analysis-ma-outcome">
             <h4 className="analysis-ma-outcome-title">Assessment outcome</h4>
+            {(maResult.schemaVersion || maResult.coefficientVersion) && (
+              <p className="analysis-ma-meta">
+                Schema {maResult.schemaVersion ?? '—'} · Coefficients {maResult.coefficientVersion ?? '—'}
+                {maResult.methodologyNote && (
+                  <>
+                    <br />
+                    <span>{maResult.methodologyNote}</span>
+                  </>
+                )}
+              </p>
+            )}
             {maResult.summary && <p className="analysis-ma-summary">{maResult.summary}</p>}
+
+            <MaExecutiveSummary executiveSummary={maResult.executiveSummary} />
+            <MaRiskRegisterTable riskRegister={maResult.riskRegister} />
+            <MaRegulatoryMatrix regulatoryMatrix={maResult.regulatoryMatrix} />
+            <MaValueBridge valueBridge={maResult.valueBridge} />
 
             <div className="analysis-ma-cards">
               {maResult.applicableFrameworksByJurisdiction && maResult.applicableFrameworksByJurisdiction.length > 0 && (
@@ -496,8 +591,43 @@ export function Analysis({ language = 'en', selectedParentHolding, onParentHoldi
               >
                 Download PDF for audit review
               </button>
+              <button
+                type="button"
+                className="analysis-btn analysis-btn-secondary"
+                onClick={downloadMaCsv}
+                disabled={!maResult.reportId}
+              >
+                Download CSV export
+              </button>
             </div>
           </div>
+        )}
+        <MaScenarioPanel
+          apiBase={API}
+          parentGroup={maParentGroup}
+          target={maTarget}
+          dealStructure={maDealStructure}
+          synergyAnnual={maSynergyAnnual}
+          regulatedTarget={maRegulatedTarget}
+          currentResult={maResult}
+          onLoadScenario={(record) => {
+            const snap = record.assessmentSnapshot && typeof record.assessmentSnapshot === 'object'
+              ? { ...record.assessmentSnapshot }
+              : {};
+            setMaParentGroup(record.parentGroup || '');
+            setMaTarget(record.target || '');
+            setMaDealStructure(record.dealStructure || '');
+            setMaSynergyAnnual(record.synergyAnnualAed != null ? String(record.synergyAnnualAed) : '');
+            setMaRegulatedTarget(!!record.regulatedTarget);
+            setMaResult(snap);
+          }}
+          onNotify={(msg) => {
+            setMaToast(msg);
+            setTimeout(() => setMaToast(null), 5000);
+          }}
+        />
+        {maToast && (
+          <div className="analysis-ma-toast" role="status">{maToast}</div>
         )}
       </section>
       )}

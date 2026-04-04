@@ -5,6 +5,7 @@ import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import { createChatCompletion, isLlmConfigured } from '../services/llm.js';
+import { runMaAssessment, loadCoefficients } from '../services/maAssessmentEngine.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const changesPath = join(__dirname, '../data/changes.json');
@@ -1047,94 +1048,6 @@ analysisRouter.post('/risk-prediction', upload.single('historical'), async (req,
   }
 });
 
-const FRAMEWORK_SCOPES = {
-  'DFSA Rulebook': 'DIFC financial services, conduct of business, prudential, AML/CFT',
-  'SAMA': 'KSA banking, insurance, AML/CFT',
-  'CMA': 'KSA capital markets, listing, corporate governance',
-  'Dubai 2040': 'Dubai urban planning, sustainability',
-  'Saudi 2030': 'Vision 2030, local content, sector strategy',
-  'SDAIA': 'KSA data governance, AI ethics',
-  'ADGM FSRA Rulebook': 'ADGM financial services, AML/CFT',
-  'ADGM Companies Regulations': 'ADGM company registration',
-  'CBUAE Rulebook': 'UAE federal banking, insurance, AML/CFT',
-  'UAE AML/CFT': 'UAE federal AML/CFT',
-  'UAE Federal Laws': 'UAE federal commercial, labour, sector laws',
-  'JAFZA Operating Regulations': 'JAFZA licensing, customs',
-  'DMCC Company Regulations': 'DMCC company formation',
-  'DMCC Compliance & AML': 'DMCC AML/CFT',
-  'QFCRA Rules': 'Qatar Financial Centre',
-  'Qatar AML Law': 'Qatar AML/CFT',
-  'CBB Rulebook': 'Bahrain banking, AML',
-  'BHB Sustainability ESG': 'Bahrain Bourse ESG disclosure',
-  'Oman CMA Regulations': 'Oman securities, governance',
-  'Oman AML Law': 'Oman AML/CFT',
-  'Kuwait CMA Regulations': 'Kuwait securities, listing',
-  'Kuwait AML Law': 'Kuwait AML/CFT',
-};
-
-/** Framework -> zone/location for Multi Jurisdiction Matrix (aligned with client). */
-const FRAMEWORK_TO_ZONE = {
-  'DFSA Rulebook': { zone: 'DIFC', location: 'DIFC, Dubai, UAE' },
-  'Dubai 2040': { zone: 'Dubai Mainland', location: 'Dubai, UAE' },
-  SAMA: { zone: 'KSA Onshore', location: 'Saudi Arabia (KSA)' },
-  CMA: { zone: 'KSA Onshore', location: 'Saudi Arabia (KSA)' },
-  'Saudi 2030': { zone: 'KSA Onshore', location: 'Saudi Arabia (KSA)' },
-  SDAIA: { zone: 'KSA Onshore', location: 'Saudi Arabia (KSA)' },
-  'ADGM FSRA Rulebook': { zone: 'ADGM', location: 'Abu Dhabi Global Market, UAE' },
-  'ADGM Companies Regulations': { zone: 'ADGM', location: 'Abu Dhabi Global Market, UAE' },
-  'CBUAE Rulebook': { zone: 'Abu Dhabi Mainland', location: 'Abu Dhabi, UAE' },
-  'UAE AML/CFT': { zone: 'UAE Federal', location: 'UAE' },
-  'UAE Federal Laws': { zone: 'UAE Federal', location: 'UAE' },
-  'JAFZA Operating Regulations': { zone: 'JAFZA', location: 'Dubai, UAE' },
-  'DMCC Company Regulations': { zone: 'DMCC', location: 'Dubai, UAE' },
-  'DMCC Compliance & AML': { zone: 'DMCC', location: 'Dubai, UAE' },
-  'QFCRA Rules': { zone: 'Qatar QFC', location: 'Qatar' },
-  'Qatar AML Law': { zone: 'Qatar', location: 'Qatar' },
-  'CBB Rulebook': { zone: 'Bahrain', location: 'Bahrain' },
-  'BHB Sustainability ESG': { zone: 'Bahrain', location: 'Bahrain' },
-  'Oman CMA Regulations': { zone: 'Oman', location: 'Oman' },
-  'Oman AML Law': { zone: 'Oman', location: 'Oman' },
-  'Kuwait CMA Regulations': { zone: 'Kuwait', location: 'Kuwait' },
-  'Kuwait AML Law': { zone: 'Kuwait', location: 'Kuwait' },
-};
-
-/** Key processes to complete per framework (governance / jurisdiction). */
-const KEY_PROCESSES_BY_FRAMEWORK = {
-  'DFSA Rulebook': ['Licence variation / notification to DFSA', 'AML/CFT policies and MLRO appointment', 'Conduct of business and client asset reporting', 'Prudential returns and capital adequacy'],
-  'SAMA': ['SAMA registration / licence update', 'AML/CFT and sanctions compliance', 'Capital adequacy and liquidity reporting', 'Conduct and disclosure standards'],
-  'CMA': ['CMA notification of change of control', 'Listing rules and disclosure', 'Corporate governance and board composition', 'Continuous disclosure obligations'],
-  'CBUAE Rulebook': ['CBUAE notification / licence', 'AML/CFT and CDD alignment', 'Regulatory reporting and capital', 'Outsourcing and group policies'],
-  'UAE AML/CFT': ['UBO and beneficial ownership register', 'AML/CFT policies and MLRO', 'STR reporting and record-keeping', 'Sanctions screening'],
-  'UAE Federal Laws': ['Commercial licence and registration', 'Labour and immigration', 'Data protection (UAE PDPL)', 'Sector-specific authorisations'],
-  'SDAIA': ['Data governance and classification', 'AI ethics and assurance', 'Cross-border data transfer', 'Localisation where required'],
-  'ADGM FSRA Rulebook': ['ADGM registration / notification', 'AML/CFT and conduct', 'Prudential and reporting', 'Client assets and custody'],
-  'ADGM Companies Regulations': ['Company registration and filings', 'Directors and shareholders', 'Annual returns'],
-  'DMCC Company Regulations': ['DMCC company update', 'Licence and compliance', 'AML/CFT (DMCC)'],
-  'DMCC Compliance & AML': ['AML/CFT policies', 'MLRO and reporting', 'Record-keeping'],
-  'QFCRA Rules': ['QFC notification', 'AML/CFT', 'Regulatory reporting'],
-  'Qatar AML Law': ['AML/CFT policies', 'UBO and CDD', 'STR and record-keeping'],
-  'CBB Rulebook': ['CBB notification', 'AML and prudential', 'Reporting and governance'],
-  'Oman CMA Regulations': ['CMA notification', 'Disclosure and governance'],
-  'Oman AML Law': ['AML/CFT and UBO', 'Reporting'],
-  'Kuwait CMA Regulations': ['CMA notification', 'Listing and disclosure'],
-  'Kuwait AML Law': ['AML/CFT and UBO', 'Reporting'],
-  'JAFZA Operating Regulations': ['JAFZA licence update', 'Customs and compliance'],
-  'BHB Sustainability ESG': ['ESG disclosure and reporting', 'Governance alignment'],
-  'Dubai 2040': ['Sustainability and urban compliance', 'Reporting as required'],
-  'Saudi 2030': ['Local content and Vision 2030 alignment', 'Sector strategy compliance'],
-};
-
-/** Default timeline (days post-signing) for compliance types. */
-const DEFAULT_COMPLIANCE_DAYS = {
-  registration: 60,
-  amlCft: 90,
-  dataProtection: 120,
-  reporting: 90,
-  crossJurisdictional: 180,
-  licence: 60,
-  governance: 90,
-};
-
 analysisRouter.post('/ma-simulator', uploadDoc.single('document'), async (req, res) => {
   try {
     const parentGroup = (req.body && req.body.parentGroup) ? String(req.body.parentGroup).trim() : '';
@@ -1168,149 +1081,62 @@ analysisRouter.post('/ma-simulator', uploadDoc.single('document'), async (req, r
     let timeModel = null;
     let financialModelling = null;
 
+    let schemaVersion;
+    let coefficientVersion;
+    let methodologyNote;
+    let riskRegister = [];
+    let regulatoryMatrix = [];
+    let valueBridge;
+    let executiveSummary;
+    let lineage = [];
+    let csvExport = '';
+
     if (parentGroup && target) {
-      const data = await readFile(companiesPath, 'utf-8').then(JSON.parse).catch(() => ({}));
-      const frameworksForTarget = new Set();
-      for (const [fw, entries] of Object.entries(data)) {
-        if (!Array.isArray(entries)) continue;
-        for (const entry of entries) {
-          const companies = entry.companies || [];
-          const parent = entry.parent || '';
-          if (parent === target || companies.includes(target)) {
-            frameworksForTarget.add(fw);
-          }
-        }
-      }
-      frameworkList = Array.from(frameworksForTarget);
-
+      const companiesData = await readFile(companiesPath, 'utf-8').then(JSON.parse).catch(() => ({}));
       const allChanges = await readFile(changesPath, 'utf-8').then(JSON.parse).catch(() => []);
-      const changesForTarget = (Array.isArray(allChanges) ? allChanges : [])
-        .filter((c) => c.framework && frameworkList.includes(c.framework))
-        .sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0))
-        .slice(0, 20)
-        .map((c) => ({
-          framework: c.framework,
-          title: c.title || '',
-          date: c.date || '',
-          snippet: c.snippet || c.fullText?.slice(0, 200) || '',
-        }));
-      governanceFrameworkSummary = changesForTarget;
-
-      multiJurisdictionMatrix = frameworkList.map((fw) => {
-        const z = FRAMEWORK_TO_ZONE[fw];
-        return { framework: fw, zone: z?.zone || '—', location: z?.location || '—' };
-      });
-
-      complianceDetail = {
-        frameworks: frameworkList.length > 0
-          ? frameworkList.map((name) => ({ name, scope: FRAMEWORK_SCOPES[name] || 'Sector-specific regulation', description: FRAMEWORK_SCOPES[name] }))
-          : [
-              { name: 'UAE Federal Laws', scope: 'UAE federal commercial, labour', description: 'Default for UAE entities' },
-              { name: 'CBUAE Rulebook', scope: 'If financial', description: 'Banking and financial' },
-              { name: 'SAMA', scope: 'If KSA financial', description: 'KSA banking' },
-              { name: 'DFSA Rulebook', scope: 'If DIFC', description: 'DIFC financial' },
-            ],
-        obligations: [
-          'Pre-incorporation: company registration, licensing, and any sector-specific authorisations in the target jurisdiction(s).',
-          'AML/CFT: beneficial ownership, CDD, record-keeping, and reporting as per applicable framework(s).',
-          'Data protection: UAE PDPL / KSA PDPL alignment for personal data; cross-border transfer mechanisms where relevant.',
-          'Ongoing reporting and governance: capital adequacy, conduct of business, and disclosure as per regulator.',
-          'Cross-jurisdictional: where target operates in multiple jurisdictions, ensure each jurisdiction\'s requirements are mapped and met.',
-        ],
-        gaps: [
-          { control: 'Licence and registration', description: 'Confirm target\'s current licences and any new filings required post-acquisition', remediation: 'Legal and compliance review' },
-          { control: 'AML/CFT and sanctions', description: 'Integrate target into group AML/sanctions policies and systems', remediation: 'Within 90 days of close' },
-          { control: 'Data and IT systems', description: 'Map data flows and systems across jurisdictions; align to group standards', remediation: 'System mapping and integration plan' },
-        ],
-      };
-      const fteEstimate = Math.min(10, Math.max(2, frameworkList.length + 1));
-      const oneTimeLegal = 400000;
-      const oneTimeCompliance = 350000;
-      const oneTimeIT = 500000;
-      const annualFte = fteEstimate * 440000;
-      const annualAuditFees = 150000 + frameworkList.length * 25000;
-      financialCommercial = {
-        manpowerFte: `${fteEstimate} FTE (est. for compliance integration)`,
-        manpowerCost: `${(fteEstimate * 440000).toLocaleString()} AED/year (blended rate)`,
-        crossJurisdictionalMapping: `Target "${target}" under Parent Group "${parentGroup}" may span ${frameworkList.length || 2} jurisdiction(s). Map systems for: (1) Regulatory reporting per framework, (2) Data residency and localisation, (3) Shared services and outsourcing limits, (4) Licence and capital requirements per entity. Recommend a cross-jurisdictional system inventory and integration roadmap within 60 days of signing.`,
-        additionalCosts: 'Estimated one-time integration: AED 550,000–1,500,000 (legal, compliance, and IT alignment). Annual ongoing: FTE above plus audit and regulatory fees (AED).',
-      };
-
-      const jurisdictionGroups = {};
-      for (const fw of frameworkList) {
-        const z = FRAMEWORK_TO_ZONE[fw];
-        const jurisdiction = z?.zone || 'Other';
-        if (!jurisdictionGroups[jurisdiction]) jurisdictionGroups[jurisdiction] = [];
-        jurisdictionGroups[jurisdiction].push({ framework: fw, location: z?.location || '—' });
+      const synergyRaw = req.body?.synergyAnnualAed;
+      let synergyAnnualAed;
+      if (synergyRaw !== undefined && synergyRaw !== null && String(synergyRaw).trim() !== '') {
+        const n = Number(synergyRaw);
+        synergyAnnualAed = Number.isFinite(n) ? n : undefined;
       }
-      applicableFrameworksByJurisdiction = Object.entries(jurisdictionGroups).map(([jurisdiction, list]) => ({
-        jurisdiction,
-        location: list[0]?.location || '—',
-        frameworks: list.map((x) => x.framework),
-      }));
+      const dealStructure = req.body?.dealStructure ? String(req.body.dealStructure).trim() : '';
+      const regulatedTarget = req.body?.regulatedTarget === 'true' || req.body?.regulatedTarget === true;
 
-      keyProcessesByFramework = frameworkList.map((fw) => ({
-        framework: fw,
-        processes: KEY_PROCESSES_BY_FRAMEWORK[fw] || [
-          'Licence/registration update',
-          'AML/CFT and beneficial ownership',
-          'Regulatory reporting alignment',
-          'Data protection and governance',
-        ],
-      }));
-
-      complianceTimelines = [
-        { compliance: 'Company registration / licence update', framework: 'All', daysPostSigning: DEFAULT_COMPLIANCE_DAYS.registration },
-        { compliance: 'AML/CFT and UBO integration', framework: 'AML/CFT frameworks', daysPostSigning: DEFAULT_COMPLIANCE_DAYS.amlCft },
-        { compliance: 'Data protection and PDPL alignment', framework: 'Data governance', daysPostSigning: DEFAULT_COMPLIANCE_DAYS.dataProtection },
-        { compliance: 'Regulatory reporting (first submissions)', framework: 'Sector regulators', daysPostSigning: DEFAULT_COMPLIANCE_DAYS.reporting },
-        { compliance: 'Cross-jurisdictional system mapping', framework: 'Group compliance', daysPostSigning: DEFAULT_COMPLIANCE_DAYS.crossJurisdictional },
-        { compliance: 'Governance and board alignment', framework: 'Governance frameworks', daysPostSigning: DEFAULT_COMPLIANCE_DAYS.governance },
-      ];
-      frameworkList.forEach((fw) => {
-        const processes = KEY_PROCESSES_BY_FRAMEWORK[fw];
-        if (processes && processes.length) {
-          const days = fw.includes('AML') ? 90 : fw.includes('Data') || fw.includes('SDAIA') ? 120 : 90;
-          processes.slice(0, 2).forEach((p, i) => {
-            complianceTimelines.push({ compliance: p, framework: fw, daysPostSigning: days + i * 30 });
-          });
-        }
+      const assessment = await runMaAssessment({
+        parentGroup,
+        target,
+        companiesData,
+        changesData: Array.isArray(allChanges) ? allChanges : [],
+        options: {
+          synergyAnnualAed,
+          dealStructure: dealStructure || undefined,
+          regulatedTarget,
+          heatMapRow,
+        },
       });
 
-      systemIntegrations = [
-        { system: 'Core banking / finance', description: 'General ledger, regulatory reporting feeds', priority: 'High' },
-        { system: 'AML/CFT and sanctions screening', description: 'CDD, transaction monitoring, sanctions lists', priority: 'High' },
-        { system: 'HR and payroll', description: 'Employee data, payroll for group reporting', priority: 'Medium' },
-        { system: 'Data warehouse and BI', description: 'Group reporting and dashboards', priority: 'Medium' },
-        { system: 'Document and records management', description: 'Compliance records, retention', priority: 'Medium' },
-        { system: 'Identity and access (IAM)', description: 'Single sign-on, role-based access', priority: 'High' },
-      ];
-
-      const totalWeeks = 26 + Math.min(frameworkList.length * 2, 12);
-      timeModel = {
-        totalWeeks,
-        totalMonths: Math.round((totalWeeks / 4) * 10) / 10,
-        phases: [
-          { name: 'Due diligence and planning', weeks: 4 },
-          { name: 'Licence and registration', weeks: 8 },
-          { name: 'AML/CFT and data protection', weeks: 12 },
-          { name: 'System integration and go-live', weeks: Math.max(8, totalWeeks - 24) },
-        ],
-      };
-
-      financialModelling = {
-        totalOneTimeAED: oneTimeLegal + oneTimeCompliance + oneTimeIT,
-        totalAnnualAED: annualFte + annualAuditFees,
-        breakdown: [
-          { item: 'Legal and regulatory (one-time)', amountAED: oneTimeLegal, type: 'one-time' },
-          { item: 'Compliance and policy (one-time)', amountAED: oneTimeCompliance, type: 'one-time' },
-          { item: 'IT and system integration (one-time)', amountAED: oneTimeIT, type: 'one-time' },
-          { item: 'Compliance FTE (annual)', amountAED: annualFte, type: 'annual' },
-          { item: 'Audit and regulatory fees (annual)', amountAED: annualAuditFees, type: 'annual' },
-        ],
-      };
-
-      extractedSummary = `Assessment for Parent Group "${parentGroup}" and Target "${target}". ${frameworkList.length || 4} framework(s) identified. Compliance detail and financial/commercial aspects below.`;
+      frameworkList = assessment.frameworkList;
+      governanceFrameworkSummary = assessment.governanceFrameworkSummary;
+      multiJurisdictionMatrix = assessment.multiJurisdictionMatrix;
+      complianceDetail = assessment.complianceDetail;
+      financialCommercial = assessment.financialCommercial;
+      applicableFrameworksByJurisdiction = assessment.applicableFrameworksByJurisdiction;
+      keyProcessesByFramework = assessment.keyProcessesByFramework;
+      complianceTimelines = assessment.complianceTimelines;
+      systemIntegrations = assessment.systemIntegrations;
+      timeModel = assessment.timeModel;
+      financialModelling = assessment.financialModelling;
+      extractedSummary = assessment.extractedSummary;
+      schemaVersion = assessment.schemaVersion;
+      coefficientVersion = assessment.coefficientVersion;
+      methodologyNote = assessment.methodologyNote;
+      riskRegister = assessment.riskRegister;
+      regulatoryMatrix = assessment.regulatoryMatrix;
+      valueBridge = assessment.valueBridge;
+      executiveSummary = assessment.executiveSummary;
+      lineage = assessment.lineage;
+      csvExport = assessment.csvExport || '';
     }
 
     const dataSovereigntyAssessmentStatus = dataSovereigntySummary
@@ -1388,10 +1214,13 @@ analysisRouter.post('/ma-simulator', uploadDoc.single('document'), async (req, r
       complianceTimelines,
     });
 
+    const csvFilename = `M&A-Framework-Assessment-${reportId}.csv`;
     maReportStore.set(reportId, {
       body: reportBody,
       pdfBytes: Buffer.from(pdfBytes),
       filename: pdfFilename,
+      csvText: csvExport || '',
+      csvFilename,
     });
     setTimeout(() => maReportStore.delete(reportId), 60 * 60 * 1000);
 
@@ -1410,6 +1239,15 @@ analysisRouter.post('/ma-simulator', uploadDoc.single('document'), async (req, r
       timeModel: timeModel || undefined,
       complianceTimelines,
       downloadFilename: pdfFilename,
+      csvDownloadFilename: csvFilename,
+      schemaVersion,
+      coefficientVersion,
+      methodologyNote,
+      riskRegister,
+      regulatoryMatrix,
+      valueBridge,
+      executiveSummary,
+      lineage,
     });
   } catch (e) {
     console.error('M&A simulator error:', e);
@@ -1435,5 +1273,37 @@ analysisRouter.get('/ma-simulator/report', (req, res) => {
     res.setHeader('Content-Type', 'text/plain; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="${filename.replace(/\.pdf$/i, '.txt')}"`);
     res.send(stored.body);
+  }
+});
+
+analysisRouter.get('/ma-simulator/csv', (req, res) => {
+  const reportId = req.query.reportId;
+  if (!reportId) {
+    return res.status(400).send('reportId required');
+  }
+  const stored = maReportStore.get(reportId);
+  if (!stored) {
+    return res.status(404).send('Report not found or expired');
+  }
+  const filename = stored.csvFilename || 'M&A-Framework-Assessment.csv';
+  const text = stored.csvText != null ? String(stored.csvText) : '';
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+  res.send(text || 'section,key,value\n');
+});
+
+analysisRouter.get('/ma-coefficients', async (req, res) => {
+  try {
+    const c = await loadCoefficients();
+    res.json({
+      version: c.version,
+      methodologyNote: c.methodologyNote,
+      rates: c.rates,
+      timeModel: c.timeModel,
+      defaultComplianceDays: c.defaultComplianceDays,
+    });
+  } catch (e) {
+    console.error('ma-coefficients error:', e);
+    res.status(500).json({ error: e.message || 'Failed to load coefficients' });
   }
 });

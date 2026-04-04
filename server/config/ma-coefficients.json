@@ -1,0 +1,33 @@
+{
+  "version": "1.0.0",
+  "methodologyNote": "Cost and time estimates are indicative and derived from configurable coefficients; validate with legal, compliance, finance, and IT before relying on figures for board or regulatory decisions.",
+  "rates": {
+    "oneTimeLegalAed": 400000,
+    "oneTimeComplianceAed": 350000,
+    "oneTimeITAed": 500000,
+    "annualFtePerFteAed": 440000,
+    "auditBaseAed": 150000,
+    "auditPerFrameworkAed": 25000,
+    "fteMin": 2,
+    "fteMax": 10,
+    "ftePerFrameworkBonus": 1
+  },
+  "timeModel": {
+    "baseWeeks": 26,
+    "weeksPerFramework": 2,
+    "weeksPerFrameworkCap": 12,
+    "phaseDueDiligenceWeeks": 4,
+    "phaseLicenceWeeks": 8,
+    "phaseAmlDataWeeks": 12,
+    "phaseIntegrationMinWeeks": 8
+  },
+  "defaultComplianceDays": {
+    "registration": 60,
+    "amlCft": 90,
+    "dataProtection": 120,
+    "reporting": 90,
+    "crossJurisdictional": 180,
+    "licence": 60,
+    "governance": 90
+  }
+}

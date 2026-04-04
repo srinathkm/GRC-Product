@@ -36,3 +36,6 @@ server/data/defender-scores.json
 server/data/defender-findings.json
 server/data/defender-summaries.json
 server/data/samples/
+
+# M&A saved deal scenarios (may contain MNPI; created at runtime)
+server/data/ma-scenarios/scenarios.json
