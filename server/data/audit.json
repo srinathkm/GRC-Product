@@ -6,5 +6,60 @@
     "module": "onboarding",
     "entityName": "SKM LLC (SKM Life Sciences & Technology)",
     "detail": "OpCo SKM LLC (SKM Life Sciences & Technology) linked to parent First Holding Group"
+  },
+  {
+    "id": "aud-1775286805610-fkzor",
+    "timestamp": "2026-04-04T07:13:25.610Z",
+    "action": "create",
+    "module": "ma-scenarios",
+    "entityId": "ma-scn-1775286805605-2856f0ad",
+    "entityName": "Test Demo Scanario - Run 1",
+    "user": "anonymous",
+    "after": {
+      "parentGroup": "First Holding Group",
+      "target": "SKM LLC (SKM Life Sciences & Technology)"
+    },
+    "detail": "M&A deal scenario saved",
+    "ip": "127.0.0.1"
+  },
+  {
+    "id": "aud-1775291330802-qwywb",
+    "timestamp": "2026-04-04T08:28:50.802Z",
+    "action": "create",
+    "module": "ma-scenarios",
+    "entityId": "ma-scn-1775291330792-1a08792b",
+    "entityName": "Test Demo Scanario - Run 1",
+    "user": "anonymous",
+    "after": {
+      "parentGroup": "First Holding Group",
+      "target": "SKM LLC (SKM Life Sciences & Technology)"
+    },
+    "detail": "M&A deal scenario saved",
+    "ip": "127.0.0.1"
+  },
+  {
+    "id": "aud-1775291338211-i4jwn",
+    "timestamp": "2026-04-04T08:28:58.211Z",
+    "action": "delete",
+    "module": "ma-scenarios",
+    "entityId": "ma-scn-1775286805605-2856f0ad",
+    "user": "anonymous",
+    "detail": "M&A deal scenario deleted",
+    "ip": "127.0.0.1"
+  },
+  {
+    "id": "aud-1775291341095-jry8f",
+    "timestamp": "2026-04-04T08:29:01.095Z",
+    "action": "create",
+    "module": "ma-scenarios",
+    "entityId": "ma-scn-1775291341092-8ea0634a",
+    "entityName": "Test Demo Scanario - Run 2",
+    "user": "anonymous",
+    "after": {
+      "parentGroup": "First Holding Group",
+      "target": "SKM LLC (SKM Life Sciences & Technology)"
+    },
+    "detail": "M&A deal scenario saved",
+    "ip": "127.0.0.1"
   }
 ]

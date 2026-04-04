@@ -1,0 +1,142 @@
+{
+  "version": 1,
+  "graphs": {
+    "First_Holding_Group::SKM_LLC_SKM_Life_Sciences_Technology": {
+      "graph": {
+        "schemaVersion": "1",
+        "nodes": [
+          {
+            "id": "skm-llc",
+            "label": "SKM LLC (SKM Life Sciences & Technology)",
+            "type": "corporate",
+            "jurisdiction": "KSA"
+          },
+          {
+            "id": "gulf-holdings-group-llc",
+            "label": "Gulf Holdings Group LLC",
+            "type": "corporate",
+            "jurisdiction": "UAE"
+          },
+          {
+            "id": "peninsula-capital-partners-wll",
+            "label": "Peninsula Capital Partners WLL",
+            "type": "corporate",
+            "jurisdiction": "Bahrain"
+          },
+          {
+            "id": "arabian-investment-fund-saoc",
+            "label": "Arabian Investment Fund SAOC",
+            "type": "corporate",
+            "jurisdiction": "Oman"
+          },
+          {
+            "id": "faisal-al-tamimi",
+            "label": "Faisal Al-Tamimi",
+            "type": "person"
+          },
+          {
+            "id": "nadia-al-khatib",
+            "label": "Nadia Al-Khatib",
+            "type": "person"
+          },
+          {
+            "id": "omar-al-balushi",
+            "label": "Omar Al-Balushi",
+            "type": "person"
+          }
+        ],
+        "edges": [
+          {
+            "id": "e1",
+            "source": "gulf-holdings-group-llc",
+            "target": "skm-llc",
+            "kind": "owns",
+            "percent": 40,
+            "citations": [
+              {
+                "page": "1",
+                "quote": "Corporate Shareholder 1\n  Entity Name               : Gulf Holdings Group LLC\n..."
+              }
+            ]
+          },
+          {
+            "id": "e2",
+            "source": "peninsula-capital-partners-wll",
+            "target": "skm-llc",
+            "kind": "owns",
+            "percent": 35,
+            "citations": [
+              {
+                "page": "1",
+                "quote": "Corporate Shareholder 2\n  Entity Name               : Peninsula Capital Partners WLL\n..."
+              }
+            ]
+          },
+          {
+            "id": "e3",
+            "source": "arabian-investment-fund-saoc",
+            "target": "skm-llc",
+            "kind": "owns",
+            "percent": 25,
+            "citations": [
+              {
+                "page": "1",
+                "quote": "Corporate Shareholder 3\n  Entity Name               : Arabian Investment Fund SAOC\n..."
+              }
+            ]
+          },
+          {
+            "id": "e4",
+            "source": "faisal-al-tamimi",
+            "target": "gulf-holdings-group-llc",
+            "kind": "controls",
+            "confidence": "high",
+            "citations": [
+              {
+                "page": "1",
+                "quote": "Gulf Holdings Group LLC     -> Ultimate individual controller: Faisal Al-Tamimi"
+              }
+            ]
+          },
+          {
+            "id": "e5",
+            "source": "nadia-al-khatib",
+            "target": "peninsula-capital-partners-wll",
+            "kind": "controls",
+            "confidence": "high",
+            "citations": [
+              {
+                "page": "1",
+                "quote": "Peninsula Capital Partners  -> Ultimate individual controller: Nadia Al-Khatib"
+              }
+            ]
+          },
+          {
+            "id": "e6",
+            "source": "omar-al-balushi",
+            "target": "arabian-investment-fund-saoc",
+            "kind": "controls",
+            "confidence": "high",
+            "citations": [
+              {
+                "page": "1",
+                "quote": "Arabian Investment Fund     -> Ultimate individual controller: Omar Al-Balushi"
+              }
+            ]
+          }
+        ],
+        "subjectNodeId": "skm-llc"
+      },
+      "warnings": [],
+      "extractionMeta": {
+        "textLength": 2875,
+        "truncated": false,
+        "source": "llm",
+        "extractedAt": "2026-04-04T08:23:53.552Z",
+        "fileName": "UBO_B_Corporate_Shareholders.pdf"
+      },
+      "fileName": "UBO_B_Corporate_Shareholders.pdf",
+      "updatedAt": "2026-04-04T08:23:57.129Z"
+    }
+  }
+}

@@ -389,7 +389,12 @@ export default function App() {
             <MultiJurisdictionMatrix language={language} selectedParentHolding={selectedParentHolding} companiesRefreshKey={companiesRefreshKey} />
           )}
           {currentView === 'ubo' && (
-            <UltimateBeneficiaryOwner language={language} selectedParentHolding={selectedParentHolding} companiesRefreshKey={companiesRefreshKey} />
+            <UltimateBeneficiaryOwner
+              language={language}
+              selectedParentHolding={selectedParentHolding}
+              selectedOpco={selectedOpco}
+              companiesRefreshKey={companiesRefreshKey}
+            />
           )}
           {(currentView === 'analysis' || currentView === 'ma-simulator') && (
             <Analysis language={language} selectedParentHolding={selectedParentHolding} onParentHoldingChange={setSelectedParentHolding} parents={parentHoldingList} companiesRefreshKey={companiesRefreshKey} activeView={currentView} />

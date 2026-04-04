@@ -485,6 +485,7 @@ export function OrganizationDashboard({ language = 'en', parents = [], selectedP
           <span className="org-dash-nav-org">{orgName}</span>
           {parentList.length > 0 && (
             <select
+              data-testid="org-dash-parent-select"
               className="org-dash-nav-select"
               value={selectedParent}
               onChange={(e) => onParentHoldingChange && onParentHoldingChange(e.target.value)}

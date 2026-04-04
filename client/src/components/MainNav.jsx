@@ -90,6 +90,7 @@ export function MainNav({ language = 'en', currentView, onSelect, allowedModuleI
             <button
               key={module.id}
               type="button"
+              data-testid={`nav-module-${module.id}`}
               className={`main-nav-module-item ${isActive ? 'active' : ''}`}
               onClick={() => onSelect(defaultSection.id)}
             >
@@ -105,6 +106,7 @@ export function MainNav({ language = 'en', currentView, onSelect, allowedModuleI
             <button
               key={section.id}
               type="button"
+              data-testid={`nav-section-${section.id}`}
               className={`main-nav-section-item ${isActive ? 'active' : ''}`}
               onClick={() => onSelect(section.id)}
             >

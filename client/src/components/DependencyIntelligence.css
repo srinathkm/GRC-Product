@@ -157,18 +157,6 @@
   padding-left: 1.2rem;
 }
 
-.dep-trace {
-  margin: 0.35rem 0 0;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: #f8fafc;
-  color: #0f172a;
-  max-height: 240px;
-  overflow: auto;
-  padding: 0.5rem;
-  font-size: 0.7rem;
-}
-
 .dep-note {
   color: var(--text-muted);
   font-size: 0.8rem;

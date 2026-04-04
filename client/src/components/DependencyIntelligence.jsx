@@ -177,9 +177,6 @@ export function DependencyIntelligence({
                   </li>
                 ))}
               </ul>
-
-              <h4>Explainability Trace</h4>
-              <pre className="dep-trace">{JSON.stringify(selectedCluster.trace, null, 2)}</pre>
             </div>
           )}
         </div>

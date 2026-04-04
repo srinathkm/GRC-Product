@@ -1,5 +1,7 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, lazy, Suspense } from 'react';
 import './UltimateBeneficiaryOwner.css';
+
+const OwnershipGraphPanel = lazy(() => import('./ownership/OwnershipGraphPanel.jsx'));
 
 const API = '/api';
 const STORAGE_KEY = 'ubo_register';
@@ -164,7 +166,12 @@ const DEFAULT_DOCUMENTS = MANDATORY_UBO_DOCUMENTS.map((d) => ({
   uploadedAt: '',
 }));
 
-export function UltimateBeneficiaryOwner({ language = 'en', selectedParentHolding, companiesRefreshKey = 0 }) {
+export function UltimateBeneficiaryOwner({
+  language = 'en',
+  selectedParentHolding,
+  selectedOpco = '',
+  companiesRefreshKey = 0,
+}) {
   const [opcos, setOpcos] = useState([]);
   const [loading, setLoading] = useState(false);
   const [uboData, setUboData] = useState(loadUboRegister);
@@ -1151,6 +1158,7 @@ export function UltimateBeneficiaryOwner({ language = 'en', selectedParentHoldin
       <div className="ubo-tabs">
         <button
           type="button"
+          data-testid="ubo-tab-register"
           className={`ubo-tab ${activeTab === 'register' ? 'ubo-tab-active' : ''}`}
           onClick={() => setActiveTab('register')}
         >
@@ -1158,6 +1166,7 @@ export function UltimateBeneficiaryOwner({ language = 'en', selectedParentHoldin
         </button>
         <button
           type="button"
+          data-testid="ubo-tab-structure"
           className={`ubo-tab ${activeTab === 'structure' ? 'ubo-tab-active' : ''}`}
           onClick={() => setActiveTab('structure')}
         >
@@ -1165,6 +1174,7 @@ export function UltimateBeneficiaryOwner({ language = 'en', selectedParentHoldin
         </button>
         <button
           type="button"
+          data-testid="ubo-tab-documents"
           className={`ubo-tab ${activeTab === 'documents' ? 'ubo-tab-active' : ''}`}
           onClick={() => setActiveTab('documents')}
         >
@@ -1172,10 +1182,19 @@ export function UltimateBeneficiaryOwner({ language = 'en', selectedParentHoldin
         </button>
         <button
           type="button"
+          data-testid="ubo-tab-registry"
           className={`ubo-tab ${activeTab === 'registry' ? 'ubo-tab-active' : ''}`}
           onClick={() => setActiveTab('registry')}
         >
           UAE Trade Registry
+        </button>
+        <button
+          type="button"
+          data-testid="ubo-tab-ownershipgraph"
+          className={`ubo-tab ${activeTab === 'ownershipgraph' ? 'ubo-tab-active' : ''}`}
+          onClick={() => setActiveTab('ownershipgraph')}
+        >
+          Ownership graph
         </button>
       </div>
 
@@ -1664,6 +1683,25 @@ export function UltimateBeneficiaryOwner({ language = 'en', selectedParentHoldin
           </div>
           <p className="ubo-mandatory-note">Changes here update the UBO register for each OpCo. Use <button type="button" className="ubo-link" onClick={() => { setShowViewChanges(true); setUboChanges(loadUboChanges()); }}>View Changes</button> to see the change history.</p>
         </div>
+      )}
+
+      {activeTab === 'ownershipgraph' && (
+        <Suspense fallback={<div className="ubo-loading">Loading ownership chart…</div>}>
+          <OwnershipGraphPanel
+            subjectHint={
+              holdingStructure?.name && holdingStructure.name !== 'Parent (UBO)'
+                ? holdingStructure.name
+                : selectedParentHolding || ''
+            }
+            parentHolding={selectedParentHolding || ''}
+            selectedOpco={selectedOpco || ''}
+            registerOpcoNames={opcos}
+            onOpenInRegister={(opco) => {
+              setActiveTab('register');
+              setViewingOpco(opco);
+            }}
+          />
+        </Suspense>
       )}
 
       {activeTab === 'registry' && (

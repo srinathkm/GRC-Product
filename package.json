@@ -9,6 +9,8 @@
     "install:all": "npm install && cd client && npm install && cd ../server && npm install",
     "build": "cd client && npm run build",
     "test": "cd server && npm test",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
     "start": "cd server && npm start",
     "docker:build": "docker compose build",
     "docker:up": "docker compose up -d",
@@ -16,6 +18,7 @@
     "docker:package": "tar --exclude='node_modules' --exclude='client/node_modules' --exclude='server/node_modules' --exclude='.git' --exclude='*.tar.gz' -czvf raqib-docker.tar.gz ."
   },
   "devDependencies": {
+    "@playwright/test": "1.49.1",
     "concurrently": "^8.2.2"
   }
 }

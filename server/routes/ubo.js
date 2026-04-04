@@ -3,6 +3,8 @@ import multer from 'multer';
 import OpenAI from 'openai';
 import { createChatCompletion, isLlmConfigured } from '../services/llm.js';
 import { extractTextFromBuffer } from '../services/text-extract.js';
+import { extractOwnershipGraphFromText } from '../services/ownershipGraphExtract.js';
+import { saveGraphRecord, getGraphRecord } from '../services/ownershipGraphStore.js';
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -23,6 +25,27 @@ const uploadLicence = multer({
       ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'].includes(file.mimetype);
     if (allowed) cb(null, true);
     else cb(new Error('Only PDF and DOC/DOCX are allowed for licence documents'), false);
+  },
+});
+
+/** PDF, Word, or images — same family as org extraction plus DOCX for registers. */
+const uploadOwnershipGraph = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (_, file, cb) => {
+    const allowed =
+      /\.(pdf|doc|docx|png|jpg|jpeg|gif|webp)$/i.test(file.originalname) ||
+      [
+        'application/pdf',
+        'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'image/png',
+        'image/jpeg',
+        'image/gif',
+        'image/webp',
+      ].includes(file.mimetype);
+    if (allowed) cb(null, true);
+    else cb(new Error('Upload a PDF, Word document, or image for ownership extraction'), false);
   },
 });
 
@@ -1519,6 +1542,25 @@ uboRouter.post('/extract-org-from-file', (req, res, next) => {
     parentHoldings = await fillMissingNationalitiesFromDocument(parentHoldings, rawText);
     // Map nationality terms to full country-of-origin names (e.g. British -> United Kingdom) via LLM.
     parentHoldings = await applyCountryOfOriginToParentHoldings(parentHoldings);
+
+    let ownershipGraph = null;
+    let ownershipGraphWarnings = [];
+    let ownershipGraphMeta = null;
+    const wantOwnershipGraph =
+      req.body?.includeOwnershipGraph === 'true' ||
+      req.body?.includeOwnershipGraph === true ||
+      req.body?.includeOwnershipGraph === '1';
+    if (wantOwnershipGraph && rawText && rawText.trim()) {
+      try {
+        const og = await extractOwnershipGraphFromText(rawText, organizationName || '');
+        ownershipGraph = og.graph;
+        ownershipGraphWarnings = Array.isArray(og.warnings) ? og.warnings : [];
+        ownershipGraphMeta = og.extractionMeta || null;
+      } catch (ogErr) {
+        ownershipGraphWarnings = [ogErr && ogErr.message ? String(ogErr.message) : 'Ownership graph extraction failed'];
+      }
+    }
+
     res.json({
       organizationName,
       certificate: {
@@ -1534,9 +1576,93 @@ uboRouter.post('/extract-org-from-file', (req, res, next) => {
       message: organizationName
         ? 'Organization name extracted from document title.'
         : 'Could not confidently extract organization name from document.',
+      ...(wantOwnershipGraph
+        ? { ownershipGraph, ownershipGraphWarnings, ownershipGraphMeta }
+        : {}),
     });
   } catch (e) {
     res.status(500).json({ error: e.message || 'Extraction failed' });
+  }
+});
+
+/**
+ * POST /api/ubo/ownership-graph/extract
+ * Multipart: file, optional subjectHint (form field)
+ * Returns OwnershipGraphV1 plus warnings (decision-support; verify against source documents).
+ */
+uboRouter.post('/ownership-graph/extract', (req, res, next) => {
+  uploadOwnershipGraph.single('file')(req, res, (err) => {
+    if (err) {
+      return res.status(400).json({ error: err.message || 'File upload failed' });
+    }
+    next();
+  });
+}, async (req, res) => {
+  try {
+    if (!req.file || !req.file.buffer) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+    const { buffer, mimetype, originalname } = req.file;
+    const mime = (mimetype || 'application/octet-stream').toLowerCase();
+    let rawText = '';
+    try {
+      rawText = (await extractTextFromBuffer(buffer, mime)) || '';
+    } catch (texErr) {
+      return res.status(422).json({
+        error: 'Could not read text from this file.',
+        detail: texErr && texErr.message ? String(texErr.message) : '',
+        graph: { schemaVersion: '1', nodes: [], edges: [], subjectNodeId: '' },
+        warnings: ['This file may be scanned or image-only without extractable text.'],
+        extractionMeta: { extractedAt: new Date().toISOString(), source: 'text_extract_failed' },
+        fileName: originalname || '',
+      });
+    }
+    const subjectHint = typeof req.body?.subjectHint === 'string' ? req.body.subjectHint.trim() : '';
+    const { graph, warnings, extractionMeta } = await extractOwnershipGraphFromText(rawText, subjectHint);
+    res.json({
+      graph,
+      warnings,
+      extractionMeta: { ...extractionMeta, fileName: originalname || '' },
+      fileName: originalname || '',
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message || 'Extraction failed' });
+  }
+});
+
+/**
+ * POST /api/ubo/ownership-graph/save
+ * JSON body: { contextId, graph, warnings?, extractionMeta?, fileName? }
+ * Persists graph for reload via GET (Phase 2).
+ */
+uboRouter.post('/ownership-graph/save', async (req, res) => {
+  try {
+    const { contextId, graph, warnings, extractionMeta, fileName } = req.body || {};
+    if (!contextId) {
+      return res.status(400).json({ error: 'contextId is required' });
+    }
+    const result = await saveGraphRecord(contextId, { graph, warnings, extractionMeta, fileName });
+    res.json(result);
+  } catch (e) {
+    const msg = e && e.message ? String(e.message) : 'Save failed';
+    return res.status(400).json({ error: msg });
+  }
+});
+
+/**
+ * GET /api/ubo/ownership-graph/:contextId
+ * Returns saved graph payload or 404.
+ */
+uboRouter.get('/ownership-graph/:contextId', async (req, res) => {
+  try {
+    const raw = req.params.contextId || '';
+    const rec = await getGraphRecord(raw);
+    if (!rec) {
+      return res.status(404).json({ error: 'No saved graph for this context' });
+    }
+    res.json(rec);
+  } catch (e) {
+    res.status(500).json({ error: e.message || 'Load failed' });
   }
 });
 

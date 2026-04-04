@@ -385,10 +385,21 @@ Order sections **fixed** for muscle memory:
 ## Implementation checklist
 
 - [ ] Figma (or FigJam) mock linked and/or exported PNG/SVG under `sprints/ownership-graph-from-documents/assets/` (optional but recommended for sign-off)
-- [ ] Write ADR-301..303 and align API errors with ADR-103
-- [ ] Define OwnershipGraphV1 JSON Schema + extraction service + validation
-- [ ] Add POST extract (+ optional GET persist) in ubo routes
-- [ ] OwnershipGraphView with React Flow + ELK/dagre + detail pane
-- [ ] Wire new tab/section in UltimateBeneficiaryOwner.jsx
-- [ ] UX: focal subject, Focus subject, loading/empty/partial/error states, pane hierarchy, search (or defer with explicit Phase-2 note), minimap or path breadcrumb (P0/P1 per UX backlog)
-- [ ] Unit tests for graph build, cycles, fixtures; client smoke
+- [x] Write ADR-301..303 and align API errors with ADR-103
+- [x] Define OwnershipGraphV1 JSON Schema + extraction service + validation
+- [x] Add POST extract (+ optional GET persist) in ubo routes
+- [x] OwnershipGraphView with React Flow + ELK/dagre + detail pane
+- [x] Wire new tab/section in UltimateBeneficiaryOwner.jsx
+- [x] UX: focal subject, Focus subject, loading/empty/partial/error states, pane hierarchy, search (or defer with explicit Phase-2 note), minimap or path breadcrumb (P0/P1 per UX backlog)
+- [x] Unit tests for graph build, cycles, fixtures; client smoke
+
+**Outcome log:** see [`SPRINT-OUTCOME.md`](./SPRINT-OUTCOME.md).
+
+**Phase 2 (backlog) — implemented in repo**
+
+- **Figma / design asset:** [`assets/README.md`](./assets/README.md) + [`assets/ownership-graph-desktop.svg`](./assets/ownership-graph-desktop.svg) (wireframe; replace Figma link when available).
+- **GET persistence:** `GET /api/ubo/ownership-graph/:contextId` + `POST /api/ubo/ownership-graph/save` — storage `server/data/ownership-graphs/graphs.json`, context id from parent + OpCo scope (`ownershipGraphContextId.js`).
+- **Open in UBO register:** node detail pane button when a graph label matches an OpCo in the register.
+- **Edge-click pane:** click an edge to show relationship-only pane (from → to, citations).
+- **Coach marks:** first-visit overlay (`OwnershipCoachMarks.jsx`, `localStorage` key `og-coach-v1-dismissed`).
+- **E2E:** Playwright (`playwright.config.cjs`, `npm run test:e2e`), spec `e2e/ubo-ownership-graph.spec.js` (mocked APIs + parent select).
