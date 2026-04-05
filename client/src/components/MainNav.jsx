@@ -10,6 +10,7 @@ const MODULES = [
       { id: 'mgmt-dashboard', labelKey: 'navMgmtDashboard' },
       { id: 'org-overview', labelKey: 'navOrgOverview' },
       { id: 'org-dashboard', labelKey: 'navOrgDashboard' },
+      { id: 'portfolio-intelligence', labelKey: 'navPortfolioIntelligence' },
       { id: 'task-tracker', labelKey: 'navTaskTracker' },
     ],
   },

@@ -24,6 +24,7 @@ import { Help } from './components/Help';
 import { ManagementDashboard } from './components/ManagementDashboard';
 import { TaskTracker } from './components/TaskTracker';
 import { DependencyIntelligence } from './components/DependencyIntelligence';
+import { PortfolioIntelligence } from './components/PortfolioIntelligence';
 
 const FRAMEWORKS = [
   'DFSA Rulebook',
@@ -69,10 +70,10 @@ const ROLE_MODULE_IDS = {
 
 // Views accessible per role (for redirect when switching roles)
 const ROLE_VIEW_IDS = {
-  'legal-team': ['mgmt-dashboard', 'dependency-intelligence', 'org-overview', 'org-dashboard', 'legal-onboarding', 'poa-management', 'ip-management', 'licence-management', 'litigations-management', 'contracts-management', 'contracts-upload'],
-  'governance-team': ['mgmt-dashboard', 'dependency-intelligence', 'onboarding', 'org-overview', 'org-dashboard', 'parent-overview', 'governance-framework', 'multi-jurisdiction', 'ubo', 'data-sovereignty', 'data-security', 'task-tracker'],
-  'data-security-team': ['mgmt-dashboard', 'dependency-intelligence', 'org-overview', 'org-dashboard', 'data-sovereignty', 'data-security', 'task-tracker'],
-  board: ['mgmt-dashboard', 'dependency-intelligence', 'org-overview', 'org-dashboard', 'analysis', 'ma-simulator', 'data-sovereignty', 'data-security'],
+  'legal-team': ['mgmt-dashboard', 'dependency-intelligence', 'portfolio-intelligence', 'org-overview', 'org-dashboard', 'legal-onboarding', 'poa-management', 'ip-management', 'licence-management', 'litigations-management', 'contracts-management', 'contracts-upload'],
+  'governance-team': ['mgmt-dashboard', 'dependency-intelligence', 'portfolio-intelligence', 'onboarding', 'org-overview', 'org-dashboard', 'parent-overview', 'governance-framework', 'multi-jurisdiction', 'ubo', 'data-sovereignty', 'data-security', 'task-tracker'],
+  'data-security-team': ['mgmt-dashboard', 'dependency-intelligence', 'portfolio-intelligence', 'org-overview', 'org-dashboard', 'data-sovereignty', 'data-security', 'task-tracker'],
+  board: ['mgmt-dashboard', 'dependency-intelligence', 'portfolio-intelligence', 'org-overview', 'org-dashboard', 'analysis', 'ma-simulator', 'data-sovereignty', 'data-security'],
 };
 
 const ROLE_OPTIONS = [
@@ -294,6 +295,7 @@ export default function App() {
               executiveOpco={selectedOpco}
             />
           )}
+          {currentView === 'portfolio-intelligence' && <PortfolioIntelligence language={language} />}
           {currentView === 'onboarding' && (
             <Onboarding
               language={language}

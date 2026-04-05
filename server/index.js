@@ -35,6 +35,7 @@ import { fieldMappingsRouter } from './routes/fieldMappings.js';
 import { tasksRouter } from './routes/tasks.js';
 import { dataComplianceGovernanceRouter } from './routes/dataComplianceGovernance.js';
 import { complianceDeltasRouter } from './routes/complianceDeltas.js';
+import { portfolioIntelligenceRouter } from './routes/portfolioIntelligence.js';
 import { maRouter } from './routes/maScenarios.js';
 import { startFeedScheduler } from './services/regulatoryFeed.js';
 
@@ -73,6 +74,7 @@ app.use('/api/field-mappings', fieldMappingsRouter);
 app.use('/api/tasks', tasksRouter);
 app.use('/api/data-compliance-governance', dataComplianceGovernanceRouter);
 app.use('/api/compliance-deltas', complianceDeltasRouter);
+app.use('/api/portfolio-intelligence', portfolioIntelligenceRouter);
 app.use('/api/ma', maRouter);
 
 app.get('/api/health', (_, res) => res.json({ status: 'ok' }));

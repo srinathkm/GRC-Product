@@ -1,0 +1,242 @@
+/* Portfolio intelligence — aligns with DependencyIntelligence / app surfaces */
+.pi-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding: 1rem 1.25rem 2rem;
+  max-width: 1200px;
+}
+
+.pi-hero {
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 1rem;
+}
+
+.pi-title {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: -0.02em;
+}
+
+.pi-intro {
+  margin: 0.5rem 0 0;
+  max-width: 52rem;
+  font-size: 0.92rem;
+  line-height: 1.55;
+  color: var(--text-muted, #64748b);
+}
+
+.pi-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+@media (max-width: 960px) {
+  .pi-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.pi-panel {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  padding: 1rem 1rem 1.1rem;
+}
+
+.pi-panel h2 {
+  margin: 0 0 0.35rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.pi-panel-note {
+  margin: 0 0 0.85rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+
+.pi-search-row {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.pi-input {
+  flex: 1;
+  min-width: 200px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.45rem 0.65rem;
+  font-size: 0.9rem;
+  background: var(--surface);
+  color: var(--text);
+}
+
+.pi-input:focus {
+  outline: 2px solid rgba(14, 165, 233, 0.35);
+  outline-offset: 1px;
+}
+
+.pi-btn {
+  border: 1px solid var(--border);
+  background: var(--surface-elevated, #f1f5f9);
+  color: var(--text);
+  border-radius: 6px;
+  padding: 0.45rem 0.9rem;
+  font-size: 0.88rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.pi-btn:hover {
+  background: var(--border);
+}
+
+.pi-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.pi-table-wrap {
+  overflow-x: auto;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+
+.pi-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+.pi-table th,
+.pi-table td {
+  text-align: left;
+  padding: 0.45rem 0.6rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.pi-table th {
+  background: rgba(15, 23, 42, 0.04);
+  color: var(--text-muted);
+  font-weight: 600;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.pi-table tr:last-child td {
+  border-bottom: none;
+}
+
+.pi-meta {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin-top: 0.5rem;
+}
+
+.pi-graph-preview {
+  margin-top: 0.75rem;
+  padding: 0.65rem;
+  background: rgba(15, 23, 42, 0.03);
+  border-radius: 8px;
+  border: 1px dashed var(--border);
+}
+
+.pi-graph-preview h3 {
+  margin: 0 0 0.5rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.pi-subheading {
+  margin: 0.75rem 0 0.35rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.pi-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.pi-tier {
+  display: inline-block;
+  padding: 0.2rem 0.55rem;
+  border-radius: 4px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.pi-tier-high {
+  background: rgba(220, 38, 38, 0.12);
+  color: #b91c1c;
+}
+
+.pi-tier-medium {
+  background: rgba(234, 179, 8, 0.15);
+  color: #a16207;
+}
+
+.pi-tier-low {
+  background: rgba(100, 116, 139, 0.15);
+  color: #475569;
+}
+
+.pi-list {
+  margin: 0.5rem 0 0;
+  padding-left: 1.1rem;
+  font-size: 0.84rem;
+  line-height: 1.5;
+  color: var(--text);
+}
+
+.pi-select {
+  width: 100%;
+  max-width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.45rem 0.55rem;
+  font-size: 0.88rem;
+  background: var(--surface);
+  color: var(--text);
+  margin-bottom: 0.65rem;
+}
+
+.pi-dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.25rem 0.75rem;
+  font-size: 0.84rem;
+  margin: 0.5rem 0 0;
+}
+
+.pi-dl dt {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.pi-dl dd {
+  margin: 0;
+  color: var(--text);
+}
+
+.pi-error {
+  color: #b91c1c;
+  font-size: 0.85rem;
+}
