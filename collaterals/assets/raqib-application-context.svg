@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 280" width="720" height="280">
+  <defs>
+    <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0f172a"/>
+      <stop offset="100%" style="stop-color:#1e3a5f"/>
+    </linearGradient>
+  </defs>
+  <rect width="720" height="280" fill="url(#g)" rx="12"/>
+  <text x="360" y="38" fill="#f8fafc" font-family="system-ui,Segoe UI,sans-serif" font-size="18" font-weight="600" text-anchor="middle">Raqib  Application context</text>
+  <text x="360" y="60" fill="#94a3b8" font-family="system-ui,sans-serif" font-size="11" text-anchor="middle">GCC / Middle East GRC · Parent holdings &amp; OpCos · Regulatory change &amp; legal registers</text>
+  <rect x="40" y="90" width="140" height="72" rx="8" fill="#1e293b" stroke="#334155"/>
+  <text x="110" y="118" fill="#e2e8f0" font-size="11" font-family="system-ui,sans-serif" text-anchor="middle" font-weight="600">Executives</text>
+  <text x="110" y="138" fill="#94a3b8" font-size="9" font-family="system-ui,sans-serif" text-anchor="middle">Board · C-level</text>
+  <text x="110" y="154" fill="#94a3b8" font-size="9" font-family="system-ui,sans-serif" text-anchor="middle">Risk &amp; strategy</text>
+  <rect x="210" y="90" width="140" height="72" rx="8" fill="#1e293b" stroke="#334155"/>
+  <text x="280" y="118" fill="#e2e8f0" font-size="11" font-family="system-ui,sans-serif" text-anchor="middle" font-weight="600">Governance</text>
+  <text x="280" y="138" fill="#94a3b8" font-size="9" font-family="system-ui,sans-serif" text-anchor="middle">Policy · frameworks</text>
+  <text x="280" y="154" fill="#94a3b8" font-size="9" font-family="system-ui,sans-serif" text-anchor="middle">Ownership</text>
+  <rect x="380" y="90" width="140" height="72" rx="8" fill="#1e293b" stroke="#334155"/>
+  <text x="450" y="118" fill="#e2e8f0" font-size="11" font-family="system-ui,sans-serif" text-anchor="middle" font-weight="600">Legal</text>
+  <text x="450" y="138" fill="#94a3b8" font-size="9" font-family="system-ui,sans-serif" text-anchor="middle">IP · contracts</text>
+  <text x="450" y="154" fill="#94a3b8" font-size="9" font-family="system-ui,sans-serif" text-anchor="middle">Litigations · POA</text>
+  <rect x="550" y="90" width="130" height="72" rx="8" fill="#1e293b" stroke="#334155"/>
+  <text x="615" y="118" fill="#e2e8f0" font-size="11" font-family="system-ui,sans-serif" text-anchor="middle" font-weight="600">Data &amp; security</text>
+  <text x="615" y="140" fill="#94a3b8" font-size="9" font-family="system-ui,sans-serif" text-anchor="middle">Sovereignty</text>
+  <text x="615" y="154" fill="#94a3b8" font-size="9" font-family="system-ui,sans-serif" text-anchor="middle">Defender · controls</text>
+  <path d="M 180 126 L 200 126" stroke="#38bdf8" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+  <path d="M 350 126 L 370 126" stroke="#38bdf8" stroke-width="2" fill="none"/>
+  <path d="M 520 126 L 540 126" stroke="#38bdf8" stroke-width="2" fill="none"/>
+  <defs>
+    <marker id="arrow" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+      <path d="M0,0 L6,3 L0,6 Z" fill="#38bdf8"/>
+    </marker>
+  </defs>
+  <rect x="120" y="190" width="480" height="64" rx="8" fill="#0c4a6e" fill-opacity="0.35" stroke="#0ea5e9"/>
+  <text x="360" y="218" fill="#e0f2fe" font-size="12" font-family="system-ui,sans-serif" text-anchor="middle" font-weight="600">Single web application · REST API · JSON registers · optional LLM</text>
+  <text x="360" y="238" fill="#94a3b8" font-size="10" font-family="system-ui,sans-serif" text-anchor="middle">Illustration for collateral documentation  not a deployment diagram</text>
+</svg>

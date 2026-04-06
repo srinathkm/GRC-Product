@@ -112,6 +112,7 @@ regulation-changes-dashboard/
 ├── server/                 # Express API, services, routes, tests
 │   └── data/               # JSON registers and runtime stores (see .gitignore)
 ├── docs/                   # Product docs, architecture collateral, images
+├── collaterals/            # PDF-ready end-to-end product documentation (Markdown + figures)
 ├── collateral/             # Client-facing architecture diagrams (export to slides)
 ├── demo-files/             # Optional demo PDFs and sourcing notes
 ├── e2e/                    # Playwright specs
@@ -139,6 +140,7 @@ Defender integration details and UI behaviour are documented in **[docs/PRODUCT_
 | Document | Content |
 |----------|---------|
 | [docs/PRODUCT_FEATURES_AND_FUNCTIONALITY.md](docs/PRODUCT_FEATURES_AND_FUNCTIONALITY.md) | Deep product and feature description |
+| [collaterals/RAQIB_END_TO_END_DOCUMENTATION.md](collaterals/RAQIB_END_TO_END_DOCUMENTATION.md) | End-to-end collateral: objectives, scenarios, value, modules, LLM map (PDF-friendly) |
 | [docs/PRODUCTION_READINESS_REPORT.md](docs/PRODUCTION_READINESS_REPORT.md) | Production readiness notes |
 | [collateral/architecture/presentation-architecture.md](collateral/architecture/presentation-architecture.md) | Architecture diagrams for stakeholders (Mermaid) |
 | [DEPLOY.md](DEPLOY.md) | Docker and deployment |
