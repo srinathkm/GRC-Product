@@ -2,19 +2,6 @@
 #
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
-
-app = 'app-proud-moon-8040'
-primary_region = 'iad'
-
-[build]
-# Optional: use macvlan so the container has its own static IP on the LAN.
-# 1. Set parent to your host's main interface (e.g. eth0 on Linux, not en0 on macOS - macvlan needs Linux).
-# 2. Set subnet/gateway to match your LAN (e.g. 192.168.1.0/24, gateway 192.168.1.1).
-# 3. Pick a static IP outside your DHCP range (e.g. 192.168.1.100).
-# 4. Uncomment the "networks" section below and remove "ports" so the container is reached only at its macvlan IP.
-# 5. Create the network once: docker network create -d macvlan -o parent=eth0 --subnet=192.168.1.0/24 --gateway=192.168.1.1 raqib-macvlan
-#    Then in this file use: networks: raqib-macvlan: { external: true } and assign ipv4_address under the app service.
-
 services:
   app:
     build:
