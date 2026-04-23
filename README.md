@@ -1,3 +1,8 @@
+---
+title: Raqib
+description: Governance, Risk, and Compliance Platform
+---
+
 <div align="center">
 
 <h1 align="center">Raqib - Compliance Intelligence Platform</h1>
