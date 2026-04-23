@@ -26,7 +26,7 @@
 
 ## Overview
 
-**Raqib** helps legal, governance, data security, and executive teams monitor **regulatory change**, **organizational exposure**, **legal registers**, **UBO and ownership structure**, and **data / security posture**—with **LLM** support for chat, document extraction, analysis, health svored and summaries.
+**Raqib** helps legal, governance, data security, and executive teams monitor **regulatory change**, **organizational exposure**, **legal registers**, **UBO and ownership structure**, and **data / security posture**—with **LLM** support for chat, document extraction, analysis, health scores and summaries.
 
 | | |
 |---|---|
