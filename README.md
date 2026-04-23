@@ -8,13 +8,15 @@
 
 <br/>
 
-<img src="docs/images/readme-product-hero.png" alt="Raqib - Compliance Intelligence Platform - home screen (Management Dashboard) from the running app" width="100%" />
+<img src="docs/images/readme-product-hero.png" alt="Raqib - Compliance Intelligence Platform - home screen" width="100%" />
 
 <br/>
 
-[Quick start](#-quick-start) · [Stack](#-technology-stack) · [Capabilities](#-capabilities-at-a-glance) · [Deploy](#-deployment) · [Documentation](#-documentation)
+[Quick start](#quick-start) · [Stack](#technology-stack) · [Capabilities](#capabilities-at-a-glance) · [Deploy](#deployment) · [Documentation](#documentation)
 
 </div>
+
+---
 
 ---
 
