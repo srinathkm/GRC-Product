@@ -1,10 +1,11 @@
 <div align="center">
 
-# Raqib - Compliance Intelligence Platform
+<h1 align="center">Raqib - Compliance Intelligence Platform</h1>
 
-**Governance, risk, and compliance for GCC and Middle East regulatory frameworks**
-
-*Unified regulatory intelligence, entity and ownership management, data compliance, and AI-assisted analysis in a single web application.*
+<p align="center">
+  <b>Governance, risk, and compliance for GCC and Middle East regulatory frameworks</b><br>
+  <i>Unified regulatory intelligence, entity and ownership management, data compliance, and AI-assisted analysis in a single web application.</i>
+</p>
 
 <br/>
 
@@ -12,12 +13,15 @@
 
 <br/>
 
-[Quick start](#quick-start) · [Stack](#technology-stack) · [Capabilities](#capabilities-at-a-glance) · [Deploy](#deployment) · [Documentation](#documentation)
+<p align="center">
+  <a href="#quick-start">Quick start</a> &middot; 
+  <a href="#technology-stack">Stack</a> &middot; 
+  <a href="#capabilities-at-a-glance">Capabilities</a> &middot; 
+  <a href="#deployment">Deploy</a> &middot; 
+  <a href="#documentation">Documentation</a>
+</p>
 
 </div>
-
----
-
 ---
 
 ## Overview
