@@ -164,15 +164,3 @@ Defender integration details and UI behaviour are documented in **[docs/PRODUCT_
 | `npm test` | Server unit tests |
 | `npm run test:e2e` | Playwright E2E tests |
 | `npm run capture:readme-screenshot` | Regenerate `docs/images/readme-product-hero.png` (requires `npm run dev` / Vite on port 5173) |
-
----
-
-## Contributing & support
-
-Use issues and pull requests on the hosting repository. Keep **secrets and customer data** out of the repo; rely on `.env` and gitignored paths for local and runtime data.
-
----
-
-<p align="center">
-  <sub>Screenshot captured from the dev app at <code>http://localhost:5173</code> (default view). Re-run <code>npm run capture:readme-screenshot</code> with the client running to refresh this image.</sub>
-</p>
