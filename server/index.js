@@ -2,6 +2,7 @@ import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
+import { existsSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { FRAMEWORKS, FRAMEWORK_REFERENCES } from './constants.js';
@@ -81,10 +82,18 @@ app.get('/api/health', (_, res) => res.json({ status: 'ok' }));
 app.get('/api/frameworks', (_, res) => res.json({ frameworks: FRAMEWORKS, references: FRAMEWORK_REFERENCES }));
 
 // Serve built client (when running in Docker or with client/dist copied to server/public)
-app.use(express.static(join(__dirname, 'public')));
+const publicDir = join(__dirname, 'public');
+const spaIndexPath = join(publicDir, 'index.html');
+app.use(express.static(publicDir));
 app.get('*', (req, res, next) => {
   if (req.path.startsWith('/api')) return next();
-  res.sendFile(join(__dirname, 'public', 'index.html'));
+  if (existsSync(spaIndexPath)) {
+    res.sendFile(spaIndexPath);
+    return;
+  }
+  res.status(404).json({
+    error: 'Frontend build not found. Start the Vite dev server or build/copy client assets to server/public.'
+  });
 });
 
 const bind = process.env.BIND || '127.0.0.1';
